@@ -1,0 +1,15 @@
+{
+  "name": "roadmap",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "check": "tsc --noEmit",
+    "test": "vitest run",
+    "seed": "node --experimental-strip-types roadmap.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.0",
+    "typescript": "^5.8.0",
+    "vitest": "^4.0.0"
+  }
+}
