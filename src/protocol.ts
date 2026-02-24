@@ -201,3 +201,42 @@ export function order<T extends string>(g: Graph<T>): string[] {
   if (out.length < nodes.length) throw new Error('Cycle detected');
   return out;
 }
+
+// --- orient: agent reorientation ---
+// Given a graph and a filesystem probe, returns current position, what's done,
+// what to produce, what's available to consume, and what remains.
+
+export interface Orientation {
+  position: string;
+  done: string[];
+  produces: readonly string[];
+  consumes: readonly string[];
+  remaining: string[];
+}
+
+export function orient<T extends string>(
+  g: Graph<T>,
+  exists: (artifact: string) => boolean,
+): Orientation {
+  const seq = order(g);
+  const nodes = flat(g);
+  const nm = new Map(nodes.map(n => [n.id, n]));
+  const done: string[] = [];
+
+  for (const id of seq) {
+    const node = nm.get(id)!;
+    if (node.produces.length && node.produces.every(exists)) {
+      done.push(id);
+      continue;
+    }
+    return {
+      position: id,
+      done,
+      produces: node.produces,
+      consumes: node.consumes,
+      remaining: seq.slice(seq.indexOf(id) + 1),
+    };
+  }
+
+  return { position: g.term, done, produces: [], consumes: [], remaining: [] };
+}
