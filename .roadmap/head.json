@@ -1009,28 +1009,6 @@
       "validate": [],
       "idempotent": false
     },
-    "term": {
-      "id": "term",
-      "desc": "v0.4.0-adoption-ready: All phases complete, adoption-verified, release-ready",
-      "produces": [],
-      "consumes": [],
-      "deps": [
-        "phase-11-term"
-      ],
-      "validate": [
-        {
-          "type": "function",
-          "target": "tsc",
-          "fn": "npx tsc --noEmit"
-        },
-        {
-          "type": "function",
-          "target": "vitest",
-          "fn": "npx vitest run --reporter=dot"
-        }
-      ],
-      "idempotent": false
-    },
     "version-spec": {
       "id": "version-spec",
       "desc": "Spec: DAG versioning + protocol version tracking",
@@ -1853,6 +1831,154 @@
         "release-readiness-assessment"
       ],
       "validate": [],
+      "idempotent": false
+    },
+    "integrate-gen-spec": {
+      "id": "integrate-gen-spec",
+      "desc": "Design: roadmap.ts generation strategy (bootstrap template vs. full generation)",
+      "produces": [
+        "docs/decisions/integrate-generation.md"
+      ],
+      "consumes": [],
+      "deps": [
+        "phase-11-term"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "docs/decisions/integrate-generation.md"
+        }
+      ],
+      "idempotent": true
+    },
+    "integrate-gen-impl": {
+      "id": "integrate-gen-impl",
+      "desc": "Implementation: Generate roadmap.ts from ProjectMetadata + buildProcess, validate DAG",
+      "produces": [
+        "src/auto-integrate-gen.ts"
+      ],
+      "consumes": [
+        "docs/decisions/integrate-generation.md"
+      ],
+      "deps": [
+        "integrate-gen-spec"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "src/auto-integrate-gen.ts"
+        },
+        {
+          "type": "function",
+          "target": "compile-auto-integrate-gen",
+          "fn": "npx tsc src/auto-integrate-gen.ts --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "integrate-cli": {
+      "id": "integrate-cli",
+      "desc": "CLI entrypoint: \"roadmap integrate\" command with --dry-run support",
+      "produces": [
+        "bin/roadmap-integrate.ts"
+      ],
+      "consumes": [
+        "src/auto-integrate-gen.ts"
+      ],
+      "deps": [
+        "integrate-gen-impl"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "bin/roadmap-integrate.ts"
+        },
+        {
+          "type": "function",
+          "target": "compile-cli",
+          "fn": "npx tsc bin/roadmap-integrate.ts --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "integrate-test": {
+      "id": "integrate-test",
+      "desc": "Comprehensive testing: End-to-end integration tests (3+ real project patterns)",
+      "produces": [
+        "tests/auto-integrate-full.test.ts"
+      ],
+      "consumes": [
+        "bin/roadmap-integrate.ts"
+      ],
+      "deps": [
+        "integrate-cli"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "tests/auto-integrate-full.test.ts"
+        },
+        {
+          "type": "function",
+          "target": "test-integrate",
+          "fn": "npx vitest run tests/auto-integrate-full.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "integrate-docs": {
+      "id": "integrate-docs",
+      "desc": "Documentation: Adoption guide for external projects + CLI walkthrough",
+      "produces": [
+        "docs/ADOPTION-GUIDE.md"
+      ],
+      "consumes": [
+        "tests/auto-integrate-full.test.ts"
+      ],
+      "deps": [
+        "integrate-test"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "docs/ADOPTION-GUIDE.md"
+        }
+      ],
+      "idempotent": true
+    },
+    "phase-12-term": {
+      "id": "phase-12-term",
+      "desc": "Phase 12 complete: External adoption enablement (CLI ready, adoption guide complete)",
+      "produces": [],
+      "consumes": [
+        "docs/ADOPTION-GUIDE.md"
+      ],
+      "deps": [
+        "integrate-docs"
+      ],
+      "validate": [],
+      "idempotent": false
+    },
+    "term": {
+      "id": "term",
+      "desc": "v0.4.0-adoption-ready: All phases complete, adoption-verified, release-ready",
+      "produces": [],
+      "consumes": [],
+      "deps": [
+        "phase-12-term"
+      ],
+      "validate": [
+        {
+          "type": "function",
+          "target": "tsc",
+          "fn": "npx tsc --noEmit"
+        },
+        {
+          "type": "function",
+          "target": "vitest",
+          "fn": "npx vitest run --reporter=dot"
+        }
+      ],
       "idempotent": false
     }
   },

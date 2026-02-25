@@ -38,6 +38,8 @@ export async function planIntegration(repoRoot: string): Promise<IntegrationPlan
 
 export async function executeIntegration(repoRoot: string): Promise<void> {
   const plan = await planIntegration(repoRoot);
-  // TODO: generate roadmap.ts, validate, boot
   console.log(`Integration plan: ${plan.timeEstimate}s, ${plan.dependencies.length} deps`);
+
+  // TODO: Write roadmap.ts to disk
+  // TODO: Boot executor
 }
