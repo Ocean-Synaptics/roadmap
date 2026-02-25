@@ -81,15 +81,31 @@ Grep for `@exports` across src/ to get the full API map without reading function
 | `check(g)` | Disconnected nodes, unreachable from init or term | On demand |
 | `orient(g, exists)` | Position from filesystem — which artifacts actually exist | Session start |
 
+## CLI
+
+```
+bin/roadmap orient    --note "..."   Position + produces/consumes (JSON)
+bin/roadmap describe  --note "..."   Full API surface + project state
+bin/roadmap validate  --note "..."   Run validation rules (all or single node)
+bin/roadmap parallel  --note "..."   Batched execution groups
+bin/roadmap expand    --note "..."   Run expansion script, validate, commit
+bin/roadmap branch    --note "..."   Create git branch with optional DAG
+bin/roadmap trail [--last N]         Read invocation trail
+bin/roadmap trail --archive          Commit trail to git, truncate
+bin/roadmap help                     Usage
+```
+
+All commands except help/trail require `--note "reason"`. Every invocation appends to `.roadmap/trail.jsonl`.
+
+## Session Protocol
+
+**At session start**: `bin/roadmap orient --note "session start — <intent>"`. This is mandatory — it finds position and leaves a breadcrumb. Do not infer position from memory or file reads.
+
+**At session end**: If trail has entries, `bin/roadmap trail --archive` to commit the session's breadcrumbs before exiting.
+
 ## This Repo's Own Roadmap
 
-DAG stored in `.roadmap/head.json`. Query via `roadmap.ts`:
-
-```
-node --experimental-strip-types roadmap.ts --position   # JSON: position, produces, remaining
-node --experimental-strip-types roadmap.ts --show        # Human-readable summary
-node --experimental-strip-types roadmap.ts --validate    # Run all validation rules
-```
+DAG stored in `.roadmap/head.json`. Legacy query via `roadmap.ts` still works but prefer `bin/roadmap`.
 
 ## Expansion Protocol
 
