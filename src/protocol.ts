@@ -237,3 +237,58 @@ export function orient<T extends string>(
 
   return { position: g.term, done: done.filter(id => id !== g.term), produces: [], consumes: [], remaining: [] };
 }
+
+// --- merge: combine two DAGs at reconcile() join points ---
+// Merges g1 and g2 by adding edges from g1→g2 at specified connection points.
+// Returns merged graph, validated by define() and verify().
+
+export function merge<T1 extends string, T2 extends string>(
+  g1: Graph<T1>,
+  g2: Graph<T2>,
+  connections: readonly Array<{ g1Node: string; g2Node: string; artifact: string }>,
+  initOverride?: string,
+  termOverride?: string,
+): Graph<T1 | T2> {
+  // Validate inputs
+  if (!g1 || !g2) throw new Error('Both g1 and g2 required for merge');
+
+  // Check for node ID conflicts (caller must pre-qualify)
+  const ids1 = new Set(Object.keys(g1.nodes));
+  const ids2 = new Set(Object.keys(g2.nodes));
+  const conflicts = [...ids1].filter(id => ids2.has(id));
+  if (conflicts.length) throw new Error(`Node ID conflicts: ${conflicts.join(', ')}. Pre-qualify node IDs before merge.`);
+
+  // Merge node maps
+  const mergedNodes: Record<string, Flat> = {};
+  for (const [id, node] of Object.entries(g1.nodes)) {
+    mergedNodes[id as string] = node as Flat;
+  }
+  for (const [id, node] of Object.entries(g2.nodes)) {
+    mergedNodes[id as string] = node as Flat;
+  }
+
+  // Add connection edges: modify g2 nodes to depend on g1 nodes
+  for (const conn of connections) {
+    const g2Node = mergedNodes[conn.g2Node as string];
+    if (!g2Node) throw new Error(`Connection g2Node "${conn.g2Node}" not found in g2`);
+    if (!g2Node.deps.includes(conn.g1Node as string)) {
+      g2Node.deps = [...g2Node.deps, conn.g1Node as string];
+    }
+  }
+
+  // Create merged graph with inferred init/term
+  const merged: Graph<T1 | T2> = {
+    id: `${g1.id}+${g2.id}`,
+    desc: `${g1.desc} → ${g2.desc}`,
+    init: (initOverride || g1.init) as T1 | T2,
+    term: (termOverride || g2.term) as T1 | T2,
+    nodes: mergedNodes as any,
+  };
+
+  // Validate merged graph
+  const validated = define(merged);
+  const errors = verify(validated);
+  if (errors.length) throw new Error(`Merge validation failed: ${errors.join(', ')}`);
+
+  return validated;
+}

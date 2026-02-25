@@ -103,9 +103,9 @@ const roadmap = define(graph({
       deps: ['fix-reconcile', 'fix-orient', 'adv-property'],
     },
 
-    term: {
-      id: 'term',
-      desc: 'Adversarially hardened: bugs fixed and proven, property tests pass, type safety verified, consumer integration validated',
+    'phase-1-term': {
+      id: 'phase-1-term',
+      desc: 'Phase 1 complete: adversarially hardened protocol core (bugs fixed, contracts proven)',
       produces: [],
       consumes: [
         'tests/adv-reconcile.test.ts',
@@ -115,6 +115,40 @@ const roadmap = define(graph({
         'tests/consumer-integration.test.ts',
       ],
       deps: ['consumer-integration', 'adv-types'],
+    },
+
+    // --- PHASE 2: DAG merge operations ---
+
+    'merge-spec': {
+      id: 'merge-spec',
+      desc: 'Spec: merge(g1, g2, connections) combines DAGs at reconcile() join points — init/term unification strategy',
+      produces: ['docs/decisions/merge-design.md'],
+      consumes: ['src/protocol.ts', 'docs/decisions/reconcile-gap.md'],
+      deps: ['phase-1-term'],
+    },
+
+    'adv-merge': {
+      id: 'adv-merge',
+      desc: 'Adversarial spec: merge() preserves structure (no cycles), unifies nodes correctly, consumes satisfied',
+      produces: ['tests/adv-merge.test.ts'],
+      consumes: ['src/protocol.ts'],
+      deps: ['phase-1-term'],
+    },
+
+    'merge-impl': {
+      id: 'merge-impl',
+      desc: 'Implement merge(g1, g2): validate inputs, reconcile(), add structural edges, define() + verify() merged graph',
+      produces: ['src/protocol.ts'],
+      consumes: ['tests/adv-merge.test.ts', 'docs/decisions/merge-design.md'],
+      deps: ['adv-merge', 'merge-spec'],
+    },
+
+    term: {
+      id: 'term',
+      desc: 'Complete: protocol core hardened + DAG merge operations, typed governance for multi-repo roadmaps',
+      produces: [],
+      consumes: ['tests/adv-merge.test.ts', 'docs/decisions/merge-design.md'],
+      deps: ['merge-impl'],
     },
   },
 }));
