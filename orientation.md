@@ -112,6 +112,52 @@ New layer between orient() and the execution protocol. Add to roadmap.ts as a fu
 for this library. The components survey shared in the session that produced adv-reconcile and
 adv-orient is this document — write it up before the next roadmap expansion.
 
+### When `term` is reached
+
+`term` in the current roadmap.ts = end of adversarial hardening (phase 1 of 8 layers).
+The library is NOT complete. Do not stop.
+
+Next step: expand roadmap.ts to cover the next layer. Before doing so:
+1. Write `reorientation.md` — 3-layer analysis (Conceptual / Normative / Operational)
+   capturing the components survey. This document justifies the phase order of the expansion.
+2. Expand using the DAG expansion protocol (SKILL.md): define new INIT (current term),
+   define new TERM (next layer complete), EXPAND → FLIP → RECONCILE → RECURSE until
+   `check()` returns done.
+
+The 8-layer stack in order (each layer's term = next layer's init):
+1. Protocol correctness — current roadmap.ts ← you are here
+2. Plan format convention (index/tracking/structure/phase/execution/orientation templates)
+3. φ embedding + gate runner (parallel)
+4. orientation.md generation from orient() output
+5. Autonomous execution protocol (formalized meta-prompt)
+6. Full adversarial framework (ADV-RM vectors, DO.Q queue)
+7. DO.B perpetual dogfood loop
+8. COEL lifecycle formalization
+
+### Phase-end protocol (after completing each node)
+
+1. Run `node --experimental-strip-types roadmap.ts` — must exit 0
+2. Run `tsc --noEmit` — must pass
+3. Run orient() snippet (Position section above) — confirm position advanced
+4. Update position table in this file: mark node done, advance "next" marker
+5. Commit: `git commit -m "feat: <node-id> — <one line description>"`
+
+### If you identify new work that should block the current phase
+
+Recursive phase expansion protocol:
+1. Add a new node with `deps` pointing to its prerequisites
+2. Add the current phase's node to the new node's `deps` (or update deps if inserting upstream)
+3. Run `define(g)` — catches cycles
+4. Run `check(g)` — all nodes must remain reachable init→term
+5. Run `verify(g)` — all consumes must be satisfiable
+6. Advance: the new node becomes current position
+
+Example: if work W must happen before `adv-property`:
+```typescript
+'blocker-W': { id: 'blocker-W', deps: ['init'], produces: ['W-artifact'], ... }
+'adv-property': { ..., deps: ['blocker-W'] }  // was: deps: ['init']
+```
+
 ### Capabilities
 
 | capability | status |
