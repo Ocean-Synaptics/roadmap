@@ -1,98 +1,85 @@
-# Roadmap Protocol — CLAUDE.md Reconciliation Overlay
+# Roadmap Protocol — CLAUDE.md Overlay
 
-Paste this into any existing CLAUDE.md. It does not replace existing instructions — it layers on top. Conflicts resolve in favor of the roadmap protocol (this is the governance layer; your existing instructions are the execution layer).
+Paste into any CLAUDE.md. Layers on top of existing instructions — does not replace them. Protocol governs sequencing and state; your existing config governs style and conventions.
 
 ---
 
 ## Roadmap Protocol
 
-**Every interaction that mutates state is roadmap-governed.** Code, files, config, infra, project structure, documentation — if it produces or modifies artifacts, it runs through the DAG. Only pure reasoning (Q&A, explanation, analysis that produces no files) is exempt.
+Every interaction that mutates state (code, files, config, infra, docs) is roadmap-governed. Only pure reasoning (Q&A, explanation, no artifacts produced) is exempt. Planning is a task — it produces a DAG.
 
-### Classification — apply on every user message
+### CLI
 
-| Type | Test | Roadmap? |
-|------|------|----------|
-| Reasoning | Answer a question. No files touched. | No |
-| Task | Produces or changes any artifact. | **Yes** |
-| Planning | Designs what to build. | **Yes** — planning IS a task. It produces a DAG. |
+The roadmap CLI lives at `~/src/roadmap/bin/roadmap`. It works from any directory.
 
-If uncertain, it's a task.
-
-### On session start
-
-1. Look for `bin/roadmap` or `.roadmap/head.json` in the repo.
-2. **If found**: run `bin/roadmap orient --note "session start — <intent>"` before doing anything else. This is not optional. The output tells you where you are — position, what's done, what remains. Trust it over memory, context, or prior conversation.
-3. **If not found and task is >1 step**: create one.
-
-```bash
-mkdir -p .roadmap
-# Write minimal head.json — init (current state) → term (goal)
-# Then: bin/roadmap orient --note "session start — bootstrapped roadmap"
+```
+~/src/roadmap/bin/roadmap orient    --note "..."   Position (or "untracked" if no local DAG)
+~/src/roadmap/bin/roadmap describe  --note "..."   Full API surface + project state
+~/src/roadmap/bin/roadmap validate  --note "..."   Run validation rules
+~/src/roadmap/bin/roadmap parallel  --note "..."   Batched execution groups
+~/src/roadmap/bin/roadmap expand    --note "..."   Run expansion script, validate, commit
+~/src/roadmap/bin/roadmap branch    --note "..."   Create git branch with optional DAG
+~/src/roadmap/bin/roadmap trail                    Read trail (local if DAG exists, else global)
+~/src/roadmap/bin/roadmap trail --global           Cross-project trail (~/.roadmap/trail.jsonl)
+~/src/roadmap/bin/roadmap trail --repo <name>      Filter by repo
+~/src/roadmap/bin/roadmap trail --archive          Commit (local) or truncate (global)
+~/src/roadmap/bin/roadmap help
 ```
 
-Minimum viable DAG:
+All commands except help/trail require `--note "reason"`.
+
+### Trail
+
+Every invocation appends to `~/.roadmap/trail.jsonl` (global, cross-project). Repos with `.roadmap/head.json` also get a local trail. Each entry carries `repo`, `ts`, `cmd`, `note`, and (for orient) `position`.
+
+### Session protocol
+
+**Start**: `~/src/roadmap/bin/roadmap orient --note "session start — <intent>"`
+
+- If the repo has `.roadmap/head.json`: returns DAG position, produces, remaining.
+- If not: returns `position: "untracked"`. The breadcrumb still records.
+- Either way, the global trail gets an entry.
+
+**During work**: orient after completing logical units. If doing multi-step work in an untracked repo and the task warrants it, create a `.roadmap/head.json`:
+
 ```json
 {
-  "id": "project-name",
-  "desc": "what this roadmap governs",
-  "init": "init",
-  "term": "term",
+  "id": "project-name", "desc": "goal", "init": "init", "term": "term",
   "nodes": {
     "init": { "id": "init", "desc": "current state", "produces": [], "consumes": [], "deps": [], "validate": [], "idempotent": true },
-    "term": { "id": "term", "desc": "goal state", "produces": [], "consumes": [], "deps": ["init"], "validate": [], "idempotent": false }
+    "term": { "id": "term", "desc": "goal", "produces": [], "consumes": [], "deps": ["init"], "validate": [], "idempotent": false }
   }
 }
 ```
 
-Expand nodes between init and term. 3 nodes is fine for a small task. `define()` catches structural errors — cycles, missing init/term, disconnected nodes.
+Expand nodes between init and term. 3 is fine for a small task. `define()` catches structural errors.
 
-### During work
+**End**: `~/src/roadmap/bin/roadmap trail --archive` if trail has entries.
 
-- Each logical unit maps to a DAG node. If what you're doing isn't in the DAG, a node is missing — add it.
-- After completing a node: `bin/roadmap orient --note "<what changed>"` to record the breadcrumb and verify position advanced.
-- Never skip orient. Never infer position from reading files or memory. The DAG is the source of truth.
+### What this changes
 
-### On session end
+Before: agent reads codebase, plans internally, executes, maybe writes summary.
+After: agent orients, sees position, executes, records breadcrumb, advances. Sessions are continuations, not fresh starts.
 
-- `bin/roadmap trail --archive` — commits the session's breadcrumbs to git, then truncates the trail file. Previous sessions' trails are in git history.
-
-### Conflict resolution with your existing instructions
-
-Your existing CLAUDE.md tells the agent *how* to work (style, conventions, tooling, constraints). The roadmap protocol tells it *what* to work on and *when*. They compose:
-
-| Your instructions say | Roadmap says | Resolution |
-|----------------------|--------------|------------|
-| "Use pytest for tests" | "Node X produces tests/" | Write tests with pytest. Node X tracks it. |
-| "Always run lint before commit" | "orient after completing a node" | Lint, then orient. Both happen. |
-| "Don't modify files without asking" | "Task is roadmap-governed" | Ask before modifying, but the DAG still tracks what's planned. |
-| "Use feature branches" | "bin/roadmap branch <name>" | Roadmap branch command creates the git branch. |
-
-If your instructions conflict with the protocol on *sequencing* or *state tracking*, the protocol wins. If they conflict on *style* or *conventions*, yours win.
-
-### What changes about how the agent works
-
-**Before**: Agent reads the codebase, makes a plan in its head, executes, maybe writes a summary.
-
-**After**: Agent orients in the DAG, sees what's next, executes that node, records a breadcrumb, advances. Every session is a continuation of a structured plan, not a fresh start. Handoffs between sessions are explicit — the trail shows what happened, orient shows where to resume.
-
-**The agent cannot**:
+The agent cannot:
 - Start work without orienting
-- Work on something not in the DAG (must add a node first)
 - Claim progress without the trail recording it
-- Skip steps — DAG deps enforce ordering
+- Infer position from memory — orient is the source of truth
 
-**The agent gains**:
-- Instant reorientation (one command vs. reading files to guess position)
+The agent gains:
+- Instant reorientation (one command, not file-reading)
 - Session continuity (trail + git history)
-- Structural guarantees (cycles, contracts, ordering validated by the protocol)
+- Cross-project visibility (`trail --global`)
 
-### Installation
+### Conflict resolution
 
-Copy `bin/roadmap` and `bin/roadmap.ts` from `~/src/roadmap/` into your repo's `bin/`. Or add `roadmap` as a dependency. The CLI needs Node.js with `--experimental-strip-types` (handled by the wrapper script).
+Your existing CLAUDE.md governs *how* (style, tools, conventions). The protocol governs *what* and *when* (sequencing, state, ordering). They compose:
 
-```bash
-cp -r ~/src/roadmap/bin/roadmap ~/src/roadmap/bin/roadmap.ts your-repo/bin/
-cp -r ~/src/roadmap/src/ your-repo/node_modules/roadmap/src/  # or npm link
-```
+| Yours says | Protocol says | Resolution |
+|------------|--------------|------------|
+| "Use pytest" | "Node X produces tests/" | Write tests with pytest. Node X tracks it. |
+| "Run lint before commit" | "Orient after node completion" | Lint, then orient. Both happen. |
+| "Don't modify without asking" | "Task is roadmap-governed" | Ask first, but DAG tracks what's planned. |
+| "Use feature branches" | `roadmap branch <name>` | Roadmap creates the git branch. |
 
-Then paste this section into your CLAUDE.md.
+Sequencing/state conflicts → protocol wins. Style/convention conflicts → yours win.

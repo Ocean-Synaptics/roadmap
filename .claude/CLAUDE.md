@@ -90,18 +90,22 @@ bin/roadmap validate  --note "..."   Run validation rules (all or single node)
 bin/roadmap parallel  --note "..."   Batched execution groups
 bin/roadmap expand    --note "..."   Run expansion script, validate, commit
 bin/roadmap branch    --note "..."   Create git branch with optional DAG
-bin/roadmap trail [--last N]         Read invocation trail
-bin/roadmap trail --archive          Commit trail to git, truncate
+bin/roadmap trail [--last N]         Read invocation trail (local)
+bin/roadmap trail --global           Cross-project trail (~/.roadmap/trail.jsonl)
+bin/roadmap trail --repo <name>      Filter by repo name
+bin/roadmap trail --archive          Commit (local) or truncate (global)
 bin/roadmap help                     Usage
 ```
 
-All commands except help/trail require `--note "reason"`. Every invocation appends to `.roadmap/trail.jsonl`.
+All commands except help/trail require `--note "reason"`. Every invocation appends to both `~/.roadmap/trail.jsonl` (global) and `.roadmap/trail.jsonl` (local, if DAG exists). Works from any repo — untracked repos get `position: "untracked"` and still write to the global trail.
 
 ## Session Protocol
 
 **At session start**: `bin/roadmap orient --note "session start — <intent>"`. This is mandatory — it finds position and leaves a breadcrumb. Do not infer position from memory or file reads.
 
-**At session end**: If trail has entries, `bin/roadmap trail --archive` to commit the session's breadcrumbs before exiting.
+**During work**: Orient after completing logical units to record breadcrumbs.
+
+**At session end**: `bin/roadmap trail --archive` if trail has entries.
 
 ## This Repo's Own Roadmap
 
