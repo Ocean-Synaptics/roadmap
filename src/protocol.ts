@@ -343,3 +343,143 @@ export function branch<T extends string>(
 
   return validated;
 }
+
+// --- modify: delete/skip goals during execution (replanning support) ---
+// Enables agents to adapt when discovering better paths or obsolete work
+
+export interface ModifyAnalysis {
+  dependents: string[]; // Nodes that depend on target
+  orphaned: string[]; // Nodes left unreachable after deletion
+  produces: string[]; // Artifacts target produces
+  safe: boolean; // Can be safely deleted?
+  reason: string; // Why safe/unsafe
+}
+
+export function analyze<T extends string>(g: Graph<T>, nodeId: string): ModifyAnalysis {
+  const nodes = flat(g);
+  const nm = new Map(nodes.map(n => [n.id, n]));
+  const target = nm.get(nodeId);
+
+  if (!target) {
+    return {
+      dependents: [],
+      orphaned: [],
+      produces: [],
+      safe: false,
+      reason: `Node "${nodeId}" not found`,
+    };
+  }
+
+  // Find nodes that depend on this one
+  const dependents = nodes.filter(n => n.deps.includes(nodeId)).map(n => n.id);
+
+  // Simulate deletion: which nodes become unreachable?
+  const tempNodes = { ...g.nodes };
+  delete (tempNodes as any)[nodeId];
+
+  let orphaned: string[] = [];
+  try {
+    // Check reachability from init in modified graph
+    const reachable = new Set<string>();
+    const queue = [g.init];
+    reachable.add(g.init);
+
+    while (queue.length) {
+      const id = queue.shift()!;
+      const node = (tempNodes as any)[id];
+      if (!node) break;
+
+      for (const dep of node.deps) {
+        if (!reachable.has(dep) && dep !== nodeId) {
+          reachable.add(dep);
+          queue.push(dep);
+        }
+      }
+    }
+
+    // Nodes not reachable (except term, which is checked separately)
+    orphaned = Object.keys(tempNodes)
+      .filter(id => !reachable.has(id) && id !== g.term)
+      .sort();
+  } catch {
+    // Analysis failed
+  }
+
+  const safe = orphaned.length === 0 && nodeId !== g.init && nodeId !== g.term;
+  const reason = safe
+    ? `Leaf node with ${dependents.length} dependents (must update their consumes)`
+    : orphaned.length > 0
+      ? `Deletion orphans: ${orphaned.join(', ')}`
+      : `Cannot delete ${nodeId}: critical node (init or term)`;
+
+  return {
+    dependents,
+    orphaned,
+    produces: target.produces,
+    safe,
+    reason,
+  };
+}
+
+export function modify<T extends string>(
+  g: Graph<T>,
+  nodeId: string,
+  action: 'delete' | 'skip',
+): Graph<T> | Error {
+  if (action === 'skip') {
+    // Skip is metadata (not implemented in core protocol)
+    // Caller can use in orient() decision logic
+    return g; // Return unchanged for now
+  }
+
+  if (action !== 'delete') {
+    return new Error(`Unknown action: ${action}`);
+  }
+
+  if (nodeId === g.init || nodeId === g.term) {
+    return new Error(`Cannot delete ${nodeId}: cannot modify init or term`);
+  }
+
+  // Build new nodes without target
+  const modifiedNodes: Record<string, Flat> = {};
+  for (const [id, node] of Object.entries(g.nodes)) {
+    if (id === nodeId) continue; // Skip target
+
+    // Remove nodeId from this node's deps
+    const newDeps = (node as Flat).deps.filter(d => d !== nodeId);
+    modifiedNodes[id] = { ...(node as Flat), deps: newDeps };
+  }
+
+  // Create modified graph
+  const modified: Graph<T> = {
+    id: `${g.id}:modified`,
+    desc: `${g.desc} (node "${nodeId}" deleted)`,
+    init: g.init,
+    term: g.term,
+    nodes: modifiedNodes as any,
+  };
+
+  // Re-validate: must remain acyclic, connected, with satisfied contracts
+  try {
+    const cycles = flat(modified).filter(n => n.id).map(n => n.id);
+    const kahn = [...cycles].sort(); // Placeholder cycle detection
+
+    // Full validation
+    const defined = define(modified);
+    const checkResult = check(defined);
+    if (!checkResult.done) {
+      return new Error(
+        `Deletion breaks connectivity. Orphaned: ${checkResult.orphans?.join(', ') || 'unknown'}`,
+      );
+    }
+
+    const verifyErrors = verify(defined);
+    if (verifyErrors.length) {
+      return new Error(`Deletion breaks contracts: ${verifyErrors.join(', ')}`);
+    }
+
+    return defined;
+  } catch (e) {
+    return new Error(`Deletion validation failed: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}

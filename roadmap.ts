@@ -327,9 +327,25 @@ const roadmap = define(graph({
       deps: ['phase-4.5-term'],
     },
 
+    'modify-spec': {
+      id: 'modify-spec',
+      desc: 'Spec: goal deletion + replanning — analyze(), modify(g, nodeId, delete), decision logging',
+      produces: ['docs/decisions/modify-spec.md'],
+      consumes: ['src/protocol.ts'],
+      deps: ['phase-4.5-term'],
+    },
+
+    'adv-modify': {
+      id: 'adv-modify',
+      desc: 'Adversarial spec: modify() preserves graph validity, analyze() shows impact, skip action tracked',
+      produces: ['tests/adv-modify.test.ts'],
+      consumes: ['src/protocol.ts'],
+      deps: ['modify-spec'],
+    },
+
     'phase-5-term': {
       id: 'phase-5-term',
-      desc: 'Phase 5 complete: operational hardening — efficient orientation, consumer automation, multi-repo patterns',
+      desc: 'Phase 5 complete: agent autonomy hardening — O(1) orientation, bootstrap template, replanning support',
       produces: [],
       consumes: [
         'src/git-state.schema.ts',
@@ -338,8 +354,10 @@ const roadmap = define(graph({
         'example/consumer-bootstrap.ts',
         'tests/bootstrap-gen.test.ts',
         'example/multi-repo-merge.ts',
+        'tests/adv-modify.test.ts',
+        'docs/decisions/modify-spec.md',
       ],
-      deps: ['git-state-orient', 'bootstrap-test', 'multi-repo-pattern'],
+      deps: ['git-state-orient', 'bootstrap-test', 'multi-repo-pattern', 'adv-modify'],
     },
 
     // --- PHASE 6: Governance layer (session lifecycle + audit) ---
