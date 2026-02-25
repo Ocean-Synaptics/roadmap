@@ -53,7 +53,7 @@ export class RoadmapError extends Error {
 }
 
 function formatMessage(code: ErrorCode, ctx: RoadmapErrorContext): string {
-  const parts = [code];
+  const parts: string[] = [code];
   if (ctx.attempted) parts.push(`attempted: ${ctx.attempted}`);
   if (ctx.current) parts.push(`current: ${ctx.current}`);
   if (ctx.fix) parts.push(`fix: ${ctx.fix}`);

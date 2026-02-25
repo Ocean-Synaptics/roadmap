@@ -10,9 +10,9 @@
  * - Can be extended with reconcile() to add custom phases
  */
 
-import type { ProjectMetadata } from './project-metadata.schema';
-import type { NodeSpec, Graph } from './protocol';
-import { check, verify, define } from './protocol';
+import type { ProjectMetadata } from './project-metadata.schema.ts';
+import type { NodeSpec, Graph } from './protocol.ts';
+import { check, verify, define } from './protocol.ts';
 
 export interface GeneratedDAG {
   sourceCode: string; // The roadmap.ts code
@@ -283,7 +283,7 @@ export function validateGeneratedDAG(dag: Graph<any>): { valid: boolean; errors:
   }
 
   // All generated nodes must be idempotent (can safely re-run)
-  for (const [nodeId, node] of Object.entries(dag.nodes)) {
+  for (const [nodeId, node] of Object.entries(dag.nodes) as [string, NodeSpec<string, string>][]) {
     if (nodeId !== dag.term && !node.idempotent) {
       errors.push(`Non-terminal node "${nodeId}" must be idempotent=true`);
     }
