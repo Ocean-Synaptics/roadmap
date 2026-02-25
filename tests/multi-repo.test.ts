@@ -306,10 +306,8 @@ test('merge: rejects invalid connection (missing artifact)', () => {
     },
   }));
 
-  // Merge with wrong connection
-  const merged = merge(g1, g2, [{ g1Node: 'b', g2Node: 'c', artifact: 'x.txt' }]);
-
-  // Still acyclic + connected, but verify() should catch contract violation
-  const verifyErrs = verify(merged);
-  expect(verifyErrs.length).toBeGreaterThan(0);
+  // Merge with wrong connection — should throw on validation
+  expect(() =>
+    merge(g1, g2, [{ g1Node: 'b', g2Node: 'c', artifact: 'x.txt' }])
+  ).toThrow('Merge validation failed');
 });
