@@ -3,8 +3,8 @@
  * Auto-detects metadata, generates roadmap, validates, boots
  */
 
-import { readProjectMetadata, validateProjectMetadata } from './project-metadata.schema.ts';
-import { detectProjectType } from './project-detector.ts';
+import { readProjectMetadata } from './project-metadata.schema.ts';
+import { requireProjectMetadata } from './project-detector.ts';
 import { discoverBuildProcess } from './build-discoverer.ts';
 import { discoverDependencies } from './dependency-resolver.ts';
 import type { ProjectMetadata } from './project-metadata.schema.ts';
@@ -17,21 +17,12 @@ export interface IntegrationPlan {
 }
 
 export async function planIntegration(repoRoot: string): Promise<IntegrationPlan> {
-  // Try to read metadata
-  let metadata = await readProjectMetadata(repoRoot);
+  // Metadata is required (no auto-detection)
+  await requireProjectMetadata(repoRoot);
 
+  const metadata = await readProjectMetadata(repoRoot);
   if (!metadata) {
-    // Auto-detect
-    const typeResult = await detectProjectType(repoRoot);
-    const buildResult = await discoverBuildProcess(repoRoot);
-    const deps = await discoverDependencies(repoRoot);
-
-    metadata = {
-      projectType: typeResult.type,
-      init: [],  // TODO: auto-discover
-      term: [],  // TODO: auto-discover
-      buildCommand: buildResult?.command,
-    };
+    throw new Error('Metadata missing after validation');
   }
 
   const build = await discoverBuildProcess(repoRoot);
@@ -39,7 +30,7 @@ export async function planIntegration(repoRoot: string): Promise<IntegrationPlan
 
   return {
     metadata,
-    buildProcess: build?.command || 'npm run build',
+    buildProcess: build?.command || metadata.buildCommand || 'npm run build',
     dependencies: deps.map(d => d.repo),
     timeEstimate: 5,  // seconds
   };
