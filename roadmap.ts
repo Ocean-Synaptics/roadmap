@@ -177,12 +177,54 @@ const roadmap = define(graph({
       deps: ['adv-branch', 'branch-spec'],
     },
 
-    term: {
-      id: 'term',
-      desc: 'Complete: protocol core hardened + merge + branch operations, typed governance for multi-repo + parallel roadmaps',
+    'phase-3-term': {
+      id: 'phase-3-term',
+      desc: 'Phase 3 complete: branch operations enable parallel development + variant exploration',
       produces: [],
       consumes: ['tests/adv-branch.test.ts', 'docs/decisions/branch-design.md'],
       deps: ['branch-impl'],
+    },
+
+    // --- PHASE 4: Ecosystem readiness (v0.2.0) ---
+
+    'skill-finalize': {
+      id: 'skill-finalize',
+      desc: 'Finalize SKILL.md: protocol spec + merge/branch examples, expansion workflow',
+      produces: ['SKILL.md'],
+      consumes: ['src/protocol.ts', 'docs/decisions/merge-design.md', 'docs/decisions/branch-design.md'],
+      deps: ['phase-3-term'],
+    },
+
+    'readme-write': {
+      id: 'readme-write',
+      desc: 'Write README.md: what/why/how, 3+ end-to-end examples, installation, API reference',
+      produces: ['README.md'],
+      consumes: ['SKILL.md', 'src/protocol.ts'],
+      deps: ['phase-3-term'],
+    },
+
+    'example-create': {
+      id: 'example-create',
+      desc: 'Create real consumer example: example/simple-project-roadmap.ts + integration test',
+      produces: ['example/simple-project-roadmap.ts', 'example/test.ts'],
+      consumes: ['README.md'],
+      deps: ['readme-write'],
+    },
+
+    'release-prepare': {
+      id: 'release-prepare',
+      desc: 'Add CHANGELOG.md, update package.json version to 0.2.0, prepare npm publish',
+      produces: ['CHANGELOG.md', 'package.json'],
+      consumes: [],
+      deps: ['example-create', 'skill-finalize'],
+    },
+
+    term: {
+      id: 'term',
+      desc: 'v0.2.0 ready: published npm package, documented API, real consumer examples',
+      produces: [],
+      consumes: ['README.md', 'SKILL.md', 'CHANGELOG.md'],
+      deps: ['release-prepare'],
     },
   },
 }));
