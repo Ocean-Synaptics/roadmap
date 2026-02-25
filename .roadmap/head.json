@@ -1015,7 +1015,7 @@
       "produces": [],
       "consumes": [],
       "deps": [
-        "phase-9-term"
+        "phase-10-term"
       ],
       "validate": [],
       "idempotent": false
@@ -1394,6 +1394,137 @@
       ],
       "deps": [
         "cockpit-integration"
+      ],
+      "validate": [],
+      "idempotent": false
+    },
+    "api-audit": {
+      "id": "api-audit",
+      "desc": "Audit: measure API surface, identify unused exports, tree-shaking opportunities",
+      "produces": [
+        "docs/decisions/api-audit.md",
+        "docs/api-usage-metrics.md"
+      ],
+      "consumes": [
+        "src/protocol.ts"
+      ],
+      "deps": [
+        "phase-9-term"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "docs/decisions/api-audit.md"
+        },
+        {
+          "type": "artifact-exists",
+          "target": "docs/api-usage-metrics.md"
+        }
+      ],
+      "idempotent": true
+    },
+    "sub-entry-points-spec": {
+      "id": "sub-entry-points-spec",
+      "desc": "Spec: split index.ts into sub-entry-points (recovery, validation, versioning)",
+      "produces": [
+        "docs/decisions/entry-points-design.md"
+      ],
+      "consumes": [
+        "docs/decisions/api-audit.md"
+      ],
+      "deps": [
+        "api-audit"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "docs/decisions/entry-points-design.md"
+        }
+      ],
+      "idempotent": true
+    },
+    "api-refactor": {
+      "id": "api-refactor",
+      "desc": "Refactor: move optional modules to sub-entry-points (recovery, validation, versioning)",
+      "produces": [
+        "src/index.recovery.ts",
+        "src/index.validation.ts",
+        "src/index.versioning.ts",
+        "src/index.agent.ts"
+      ],
+      "consumes": [
+        "docs/decisions/entry-points-design.md",
+        "src/protocol.ts"
+      ],
+      "deps": [
+        "sub-entry-points-spec"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "src/index.recovery.ts"
+        },
+        {
+          "type": "artifact-exists",
+          "target": "src/index.validation.ts"
+        },
+        {
+          "type": "artifact-exists",
+          "target": "src/index.versioning.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "package-exports-update": {
+      "id": "package-exports-update",
+      "desc": "Update: package.json exports field with new entry points",
+      "produces": [],
+      "consumes": [
+        "src/index.recovery.ts",
+        "src/index.validation.ts",
+        "src/index.versioning.ts"
+      ],
+      "deps": [
+        "api-refactor"
+      ],
+      "validate": [],
+      "idempotent": true
+    },
+    "api-test-migration": {
+      "id": "api-test-migration",
+      "desc": "Test: update imports to use correct sub-entry-points, verify tree-shaking",
+      "produces": [
+        "tests/api-tree-shaking.test.ts"
+      ],
+      "consumes": [
+        "src/index.recovery.ts",
+        "src/index.validation.ts",
+        "src/index.versioning.ts"
+      ],
+      "deps": [
+        "package-exports-update"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "tests/api-tree-shaking.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "phase-10-term": {
+      "id": "phase-10-term",
+      "desc": "Phase 10 complete: API optimized, sub-entry-points, tree-shaking ready",
+      "produces": [],
+      "consumes": [
+        "src/index.recovery.ts",
+        "src/index.validation.ts",
+        "src/index.versioning.ts",
+        "src/index.agent.ts",
+        "tests/api-tree-shaking.test.ts"
+      ],
+      "deps": [
+        "api-test-migration"
       ],
       "validate": [],
       "idempotent": false
