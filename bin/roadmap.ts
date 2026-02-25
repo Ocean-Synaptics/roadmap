@@ -287,6 +287,21 @@ function cmdParallel(note: string) {
 
 function cmdTrail() {
   const trailPath = join(repoRoot, '.roadmap', 'trail.jsonl');
+
+  if (args.includes('--archive')) {
+    if (!existsSync(trailPath)) {
+      json({ archived: false, reason: 'no trail to archive' });
+      return;
+    }
+    const lines = readFileSync(trailPath, 'utf-8').trim().split('\n').filter(Boolean);
+    execSync('git add .roadmap/trail.jsonl', { cwd: repoRoot, stdio: 'pipe' });
+    execSync(`git commit -m "roadmap: archive trail (${lines.length} entries)"`, { cwd: repoRoot, stdio: 'pipe' });
+    const hash = execSync('git rev-parse --short HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
+    writeFileSync(trailPath, '');
+    json({ archived: true, entries: lines.length, commit: hash });
+    return;
+  }
+
   if (!existsSync(trailPath)) {
     json({ entries: [], count: 0 });
     return;
@@ -311,6 +326,7 @@ Commands:
   branch <name> [dag] Create git branch with optional separate DAG
   parallel            Show parallel execution batches
   trail [--last N]    Read the invocation trail
+  trail --archive     Commit trail to git, then truncate
   help                This message
 
 All commands (except help/trail) require --note "reason".
