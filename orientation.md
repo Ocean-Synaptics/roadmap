@@ -42,6 +42,38 @@ Or read the table below (updated after each completed node):
 | consumer-integration | blocked | tests/consumer-integration.test.ts |
 | term | blocked | — |
 
+### Execution modes
+
+**Semi-autonomous** — execute one phase group, stop, present results and offer options.
+**Fully autonomous** — execute all phase groups to `term` without stopping.
+
+Phase groups (for semi mode stopping points):
+
+| group | nodes | stop condition |
+|-------|-------|---------------|
+| A | adv-property + adv-types | both test files written, both red |
+| B | fix-reconcile + fix-orient | both fixes applied, all 10 previously-red tests now green, decision docs written |
+| C | consumer-integration + term | integration test written and passing, roadmap at term |
+
+On completing a group (semi) or reaching term (full), present:
+```
+Phase complete: <group name>
+Capabilities gained: <what is now DELIVERED>
+Tests: <before count> → <after count>
+Remaining groups: <list>
+
+Options:
+[1] Continue to next group (<group name>)
+[2] Run all remaining groups autonomously to term
+[3] Stop here
+```
+
+Stop immediately (both modes) on:
+- Unexpected dirty tree (files modified that don't belong to current node)
+- Test failure that isn't one of the known-red adv-* tests
+- `tsc --noEmit` errors after a change
+Report what was found and wait.
+
 ### What you must not break
 
 **`tests/adv-reconcile.test.ts` and `tests/adv-orient.test.ts` are intentionally red.**
