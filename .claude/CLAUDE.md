@@ -2,90 +2,74 @@
 
 DAG expansion protocol library. Any repo can depend on this package, define a `roadmap.ts`, and get typed governance over its development plan.
 
-## What This Is
+## Entry Points
 
-`src/protocol.ts` — one file, six functions:
+| Import | What |
+|--------|------|
+| `roadmap` | Full API — DAG ops + recovery + versioning + predicates + errors |
+| `roadmap/protocol` | Core — define, verify, orient, merge, branch, reconcile, parallelOrder |
+| `roadmap/agent` | Sealed agent API — getBrief, advance, checkpoint (no DAG introspection) |
+| `roadmap/recovery` | CheckpointManager + AuditTrail |
+| `roadmap/validation` | validateNode, validateGraph |
+| `roadmap/versioning` | loadDAG, migration, compatibility |
 
-```
-define(g)               validate structure (cycles, init/term)
-verify(g)               validate contracts (consumes satisfied by predecessors)
-check(g)                termination (every node reachable init→term)
-reconcile(g, fwd, bwd)  find where forward.produces meets backward.consumes
-order(g)                implementation sequence (topo sort)
-orient(g, exists)       agent reorientation (position from filesystem state)
-```
+Full file-by-file map: `docs/MODULE-MAP.md`
 
-Two types:
-
-```
-NodeSpec<TAll, TSelf>   { id, desc, produces, consumes, deps }
-Graph<T>                { id, desc, init, term, nodes: { [N in T]: NodeSpec<T, N> } }
-```
-
-## How A Consumer Repo Uses It
-
-### 1. Install
+## Core API
 
 ```
-pnpm add ../roadmap   # or npm install, git dependency, etc.
+define(g)                validate structure (cycles, init/term)
+verify(g)                validate contracts (consumes satisfied by predecessors)
+check(g)                 termination (every node reachable init→term)
+order(g)                 implementation sequence (topo sort)
+parallelOrder(g)         batched topo sort → string[][] (concurrent execution groups)
+orient(g, exists)        agent reorientation (position from filesystem state)
+reconcile(g, fwd, bwd)   find where forward.produces meets backward.consumes
+merge(g1, g2, conn)      combine DAGs at join points
+branch(g, from)          extract subgraph
+fileExists(root)         curried predicate for orient()
+RoadmapError(code, ctx)  typed error with fix suggestion
 ```
 
-### 2. Write roadmap.ts
+## Key Types
 
 ```typescript
-import { define, graph } from 'roadmap/protocol';
+NodeSpec<TAll, TSelf>   { id, desc, produces, consumes, deps, validate, idempotent }
+Graph<T>                { id, desc, init, term, nodes: { [N in T]: NodeSpec<T, N> } }
+Orientation             { position, done, produces, consumes, remaining }
+RoadmapError            { code: ErrorCode, context: { fix, entry, ... } }
+Brief                   { nodeId, desc, produces, consumes, handoffs }
+FinalHandoff            { summary, keyDecisions, gotchas, timestamp }
+```
 
-export default define(graph({
-  id: 'my-project',
-  desc: 'what this project is',
-  init: 'scaffold',
-  term: 'deployed',
+## Quick Usage
+
+```typescript
+import { define, graph, orient, fileExists } from 'roadmap';
+
+const g = define(graph({
+  id: 'my-project', desc: '...', init: 'start', term: 'done',
   nodes: {
-    scaffold: { id: 'scaffold', desc: 'what exists now', produces: [...], consumes: [], deps: [] },
-    deployed: { id: 'deployed', desc: 'what should exist', produces: [], consumes: [], deps: [] },
+    start: { id: 'start', desc: '...', produces: ['src/index.ts'], consumes: [], deps: [], validate: [{ type: 'artifact-exists', target: 'src/index.ts' }], idempotent: true },
+    done:  { id: 'done',  desc: '...', produces: [], consumes: ['src/index.ts'], deps: ['start'], validate: [], idempotent: false },
   },
 }));
+
+const pos = orient(g, fileExists(process.cwd()));
+// pos.position, pos.produces, pos.consumes, pos.remaining
 ```
 
-Two disconnected nodes. The gap is the project. Expand by adding nodes between them until `check()` returns `done: true`.
+## File Headers
 
-### 3. Orient agents
-
-```typescript
-import { orient } from 'roadmap/protocol';
-import roadmap from './roadmap.ts';
-import { existsSync } from 'node:fs';
-import { join } from 'node:path';
-
-const o = orient(roadmap, (a) => existsSync(join(repoRoot, a)));
-// o.position  — current node (first with missing artifacts)
-// o.produces  — files to create
-// o.consumes  — files available from predecessors
-// o.remaining — how many nodes left
+Every src/ file has structured headers for machine discovery:
+```
+// @module protocol
+// @exports define, verify, orient, merge, branch, ...
+// @types NodeSpec, Graph, Orientation, ...
+// @entry roadmap/protocol
 ```
 
-The agent creates the files in `produces`, commits, re-runs `orient()`, advances.
-
-### 4. Type exports
-
-```typescript
-export type NodeId = keyof typeof roadmap.nodes;
-export type Artifact = (typeof roadmap.nodes)[NodeId]['produces'][number];
-```
-
-Any file that references a phase or artifact imports these types. The roadmap becomes the project schema — invalid references are compile errors.
-
-## Expansion Protocol
-
-For building new roadmaps or expanding existing ones, read `SKILL.md`. The protocol:
-
-1. Define INIT (what exists) and TERM (what should exist)
-2. EXPAND backward from TERM — what must exist immediately before it?
-3. FLIP — EXPAND forward from INIT — what can we build first?
-4. RECONCILE — `reconcile(g, fwd, bwd)` finds where produces meets consumes
-5. RECURSE into gaps — sub-expand coarse nodes at finer granularity
-6. `define(g)` after every change, `check(g)` to test termination
-7. Done when `check()` returns `{ done: true }` and `verify()` returns `[]`
+Grep for `@exports` across src/ to get the full API map without reading function bodies.
 
 ## Validation Stack
 
@@ -99,9 +83,20 @@ For building new roadmaps or expanding existing ones, read `SKILL.md`. The proto
 
 ## This Repo's Own Roadmap
 
-`roadmap.ts` is self-referential — this library describes its own construction. Run it:
+DAG stored in `.roadmap/head.json`. Query via `roadmap.ts`:
 
 ```
-node --experimental-strip-types roadmap.ts   # validates + self-checks
-tsc --noEmit                                 # type-checks
+node --experimental-strip-types roadmap.ts --position   # JSON: position, produces, remaining
+node --experimental-strip-types roadmap.ts --show        # Human-readable summary
+node --experimental-strip-types roadmap.ts --validate    # Run all validation rules
 ```
+
+## Expansion Protocol
+
+1. Define INIT (what exists) and TERM (what should exist)
+2. EXPAND backward from TERM
+3. FLIP — EXPAND forward from INIT
+4. RECONCILE — `reconcile(g, fwd, bwd)` finds where produces meets consumes
+5. RECURSE into gaps
+6. `define(g)` after every change, `check(g)` to test termination
+7. Done when `check()` returns `{ done: true }` and `verify()` returns `[]`
