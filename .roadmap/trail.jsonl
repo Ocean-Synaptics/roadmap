@@ -1,0 +1,6 @@
+{"ts":"2026-02-25T19:04:29.357Z","cmd":"orient","note":"smoke test — fresh session","position":"term","dagId":"roadmap-adversarial","detail":{"done":98,"remaining":0,"complete":true}}
+{"ts":"2026-02-25T19:04:30.120Z","cmd":"validate","note":"checking init node","dagId":"roadmap-adversarial","detail":{"nodeId":"init"}}
+{"ts":"2026-02-25T19:04:34.931Z","cmd":"parallel","note":"looking at concurrency shape","dagId":"roadmap-adversarial"}
+{"ts":"2026-02-25T19:04:36.261Z","cmd":"orient","note":"second orient — verifying trail accumulates","position":"term","dagId":"roadmap-adversarial","detail":{"done":98,"remaining":0,"complete":true}}
+{"ts":"2026-02-25T19:04:37.759Z","cmd":"describe","note":"pre-merge survey","position":"term","dagId":"roadmap-adversarial"}
+{"ts":"2026-02-25T19:30:06.969Z","cmd":"orient","note":"testing wrapper script","position":"term","dagId":"roadmap-adversarial","detail":{"done":98,"remaining":0,"complete":true}}
