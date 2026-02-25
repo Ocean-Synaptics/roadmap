@@ -483,3 +483,64 @@ export function modify<T extends string>(
     return new Error(`Deletion validation failed: ${e instanceof Error ? e.message : String(e)}`);
   }
 }
+
+// --- Atomic modifications: modify + commit for concurrent agent safety ---
+
+export interface ModificationRecord {
+  timestamp: number;
+  action: 'delete' | 'skip';
+  nodeId: string;
+  reason: string;
+  evidence?: string;
+  commitHash?: string;
+  graphAfter?: Graph<string>;
+}
+
+/**
+ * Atomic modify: apply modification then commit to git.
+ * All agents see committed state on next spawn.
+ *
+ * Returns: { success, graph, commitHash, error? }
+ * On failure: error returned, no commit made.
+ */
+export async function modifyAndCommit(
+  g: Graph<any>,
+  nodeId: string,
+  action: 'delete' | 'skip',
+  reason: string,
+  repoRoot: string,
+  evidence?: string,
+): Promise<{ success: boolean; graph?: Graph<any>; commitHash?: string; error?: string }> {
+  // Attempt modification (in-memory)
+  const modResult = modify(g, nodeId, action);
+  if (modResult instanceof Error) {
+    return { success: false, error: modResult.message };
+  }
+
+  // Modification succeeded, now commit it
+  try {
+    const { execSync } = await import('node:child_process');
+    const { writeFileSync } = await import('node:fs');
+    const { join } = await import('node:path');
+
+    // Write modified roadmap back to file (roadmap.ts)
+    const roadmapPath = join(repoRoot, 'roadmap.ts');
+    const roadmapContent = `export default ${JSON.stringify(modResult, null, 2)};\n`;
+
+    writeFileSync(roadmapPath, roadmapContent);
+
+    // Commit the change
+    execSync(`git add roadmap.ts`, { cwd: repoRoot, stdio: 'ignore' });
+    const commitMsg = `roadmap: ${action} ${nodeId} — ${reason}`;
+    execSync(`git commit -m "${commitMsg}"`, { cwd: repoRoot, stdio: 'ignore' });
+
+    // Get commit hash
+    const commitHash = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
+
+    // Post-commit hook will update git-state.json automatically
+
+    return { success: true, graph: modResult, commitHash };
+  } catch (e) {
+    return { success: false, error: `Commit failed: ${e instanceof Error ? e.message : String(e)}` };
+  }
+}

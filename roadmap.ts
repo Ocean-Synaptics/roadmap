@@ -343,9 +343,25 @@ const roadmap = define(graph({
       deps: ['modify-spec'],
     },
 
+    'atomic-modify-design': {
+      id: 'atomic-modify-design',
+      desc: 'Spec: atomic modifications via git commits — modifyAndCommit(), concurrent agent safety',
+      produces: ['docs/decisions/atomic-modify-design.md'],
+      consumes: ['src/protocol.ts', 'docs/decisions/modify-spec.md'],
+      deps: ['adv-modify'],
+    },
+
+    'adv-atomic-modify': {
+      id: 'adv-atomic-modify',
+      desc: 'Adversarial spec: modifyAndCommit() atomically persists, concurrent agents see committed state',
+      produces: ['tests/adv-atomic-modify.test.ts'],
+      consumes: ['src/protocol.ts'],
+      deps: ['atomic-modify-design'],
+    },
+
     'phase-5-term': {
       id: 'phase-5-term',
-      desc: 'Phase 5 complete: agent autonomy hardening — O(1) orientation, bootstrap template, replanning support',
+      desc: 'Phase 5 complete: agent autonomy — O(1) orientation, bootstrap template, replanning + atomic commits',
       produces: [],
       consumes: [
         'src/git-state.schema.ts',
@@ -356,8 +372,10 @@ const roadmap = define(graph({
         'example/multi-repo-merge.ts',
         'tests/adv-modify.test.ts',
         'docs/decisions/modify-spec.md',
+        'tests/adv-atomic-modify.test.ts',
+        'docs/decisions/atomic-modify-design.md',
       ],
-      deps: ['git-state-orient', 'bootstrap-test', 'multi-repo-pattern', 'adv-modify'],
+      deps: ['git-state-orient', 'bootstrap-test', 'multi-repo-pattern', 'adv-atomic-modify'],
     },
 
     // --- PHASE 6: Governance layer (session lifecycle + audit) ---
