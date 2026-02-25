@@ -143,12 +143,46 @@ const roadmap = define(graph({
       deps: ['adv-merge', 'merge-spec'],
     },
 
-    term: {
-      id: 'term',
-      desc: 'Complete: protocol core hardened + DAG merge operations, typed governance for multi-repo roadmaps',
+    'phase-2-term': {
+      id: 'phase-2-term',
+      desc: 'Phase 2 complete: DAG merge operations enable recursive expansion + multi-repo coordination',
       produces: [],
       consumes: ['tests/adv-merge.test.ts', 'docs/decisions/merge-design.md'],
       deps: ['merge-impl'],
+    },
+
+    // --- PHASE 3: Branch operations ---
+
+    'branch-spec': {
+      id: 'branch-spec',
+      desc: 'Spec: branch(g, from) extracts subgraph from node to term, creates variant DAG for parallel development',
+      produces: ['docs/decisions/branch-design.md'],
+      consumes: ['src/protocol.ts', 'docs/decisions/merge-design.md'],
+      deps: ['phase-2-term'],
+    },
+
+    'adv-branch': {
+      id: 'adv-branch',
+      desc: 'Adversarial spec: branch() preserves structure (acyclic), includes all reachable nodes to term, consumes satisfied',
+      produces: ['tests/adv-branch.test.ts'],
+      consumes: ['src/protocol.ts'],
+      deps: ['phase-2-term'],
+    },
+
+    'branch-impl': {
+      id: 'branch-impl',
+      desc: 'Implement branch(g, from): extract subgraph, set new init/term, validate via define() + verify()',
+      produces: ['src/protocol.ts'],
+      consumes: ['tests/adv-branch.test.ts', 'docs/decisions/branch-design.md'],
+      deps: ['adv-branch', 'branch-spec'],
+    },
+
+    term: {
+      id: 'term',
+      desc: 'Complete: protocol core hardened + merge + branch operations, typed governance for multi-repo + parallel roadmaps',
+      produces: [],
+      consumes: ['tests/adv-branch.test.ts', 'docs/decisions/branch-design.md'],
+      deps: ['branch-impl'],
     },
   },
 }));

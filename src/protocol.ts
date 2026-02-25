@@ -292,3 +292,54 @@ export function merge<T1 extends string, T2 extends string>(
 
   return validated;
 }
+
+// --- branch: extract subgraph from a node to term ---
+// Branches g from fromNode to g.term, creating a variant DAG.
+// Returns branched graph, validated by define() and verify().
+
+export function branch<T extends string>(
+  g: Graph<T>,
+  fromNode: T,
+): Graph<T> {
+  if (!g || !fromNode) throw new Error('Graph and fromNode required for branch');
+  if (!(fromNode in g.nodes)) throw new Error(`fromNode "${fromNode}" not in graph`);
+
+  // Forward pass: find all nodes reachable FROM fromNode
+  const nodes = flat(g);
+  const forward = new Set<string>();
+  const q = [fromNode];
+  while (q.length) {
+    const n = q.shift()!;
+    if (forward.has(n)) continue;
+    forward.add(n);
+    const nm = new Map(nodes.map(nd => [nd.id, nd]));
+    const successors = nodes.filter(nd => nd.deps.includes(n)).map(nd => nd.id);
+    for (const s of successors) {
+      if (!forward.has(s)) q.push(s);
+    }
+  }
+
+  // Extract nodes in forward set
+  const branchedNodes: Record<string, Flat> = {};
+  for (const node of nodes) {
+    if (forward.has(node.id)) {
+      branchedNodes[node.id] = node;
+    }
+  }
+
+  // Create branched graph
+  const branched: Graph<T> = {
+    id: `${g.id}:${fromNode}`,
+    desc: `Branch of ${g.desc} from ${fromNode}`,
+    init: fromNode,
+    term: g.term,
+    nodes: branchedNodes as any,
+  };
+
+  // Validate
+  const validated = define(branched);
+  const errors = verify(validated);
+  if (errors.length) throw new Error(`Branch validation failed: ${errors.join(', ')}`);
+
+  return validated;
+}
