@@ -12,8 +12,9 @@
 //   node roadmap.ts --advance          # Advance to next node (requires commit)
 
 import { readHeadDAG, getReconciliationManifest, listCheckpoints } from './.roadmap/query.ts';
+import { generateREADME, generateSKILL, generateSPEC } from './.roadmap/docs-gen.ts';
 import { check, verify, orient } from './src/protocol.ts';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 const repoRoot = process.cwd();
@@ -54,8 +55,21 @@ async function main() {
         await showPosition(dag);
         break;
 
+      case '--gen-readme':
+        console.log(generateREADME(dag));
+        break;
+
+      case '--gen-skill':
+        console.log(generateSKILL(dag));
+        break;
+
+      case '--gen-spec':
+        console.log(generateSPEC(dag));
+        break;
+
       default:
         console.error(`Unknown command: ${command}`);
+        console.error('Available: --show, --export-manifest, --list-checkpoints, --position, --gen-readme, --gen-skill, --gen-spec');
         process.exit(1);
     }
   } catch (e) {
@@ -148,10 +162,8 @@ let cachedDAG: any = null;
 function getCachedDAG() {
   if (!cachedDAG) {
     try {
-      const fs = require('node:fs');
-      const path = require('node:path');
-      const headPath = path.join(process.cwd(), '.roadmap', 'head.json');
-      const content = fs.readFileSync(headPath, 'utf-8');
+      const headPath = join(process.cwd(), '.roadmap', 'head.json');
+      const content = readFileSync(headPath, 'utf-8');
       cachedDAG = JSON.parse(content);
     } catch (e) {
       throw new Error(`Cannot read cached roadmap: ${e instanceof Error ? e.message : String(e)}`);
