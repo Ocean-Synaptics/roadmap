@@ -1015,10 +1015,103 @@
       "produces": [],
       "consumes": [],
       "deps": [
+        "phase-7-term"
+      ],
+      "validate": [],
+      "idempotent": false
+    },
+    "version-spec": {
+      "id": "version-spec",
+      "desc": "Spec: DAG versioning + protocol version tracking",
+      "produces": [
+        "docs/decisions/version-migration-design.md",
+        "src/versioning.schema.ts"
+      ],
+      "consumes": [
+        "src/protocol.ts"
+      ],
+      "deps": [
         "phase-6-term"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "docs/decisions/version-migration-design.md"
+        },
+        {
+          "type": "artifact-exists",
+          "target": "src/versioning.schema.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "version-migrations": {
+      "id": "version-migrations",
+      "desc": "Implement: version compatibility checker + DAG migrations (0.1→0.2, 0.2→0.3)",
+      "produces": [
+        "src/migrations.ts",
+        "tests/migrations.test.ts"
+      ],
+      "consumes": [
+        "src/versioning.schema.ts"
+      ],
+      "deps": [
+        "version-spec"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "src/migrations.ts"
+        },
+        {
+          "type": "artifact-exists",
+          "target": "tests/migrations.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "version-validation": {
+      "id": "version-validation",
+      "desc": "Extend define() to validate version compatibility on DAG load",
+      "produces": [
+        "src/protocol.ts",
+        "tests/version-validation.test.ts"
+      ],
+      "consumes": [
+        "src/migrations.ts"
+      ],
+      "deps": [
+        "version-migrations"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "src/protocol.ts"
+        },
+        {
+          "type": "artifact-exists",
+          "target": "tests/version-validation.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "phase-7-term": {
+      "id": "phase-7-term",
+      "desc": "Phase 7 complete: versioning + consumer DAG migration",
+      "produces": [],
+      "consumes": [
+        "src/protocol.ts",
+        "src/versioning.schema.ts",
+        "src/migrations.ts",
+        "docs/decisions/version-migration-design.md"
+      ],
+      "deps": [
+        "version-validation"
       ],
       "validate": [],
       "idempotent": false
     }
-  }
+  },
+  "version": "0.3.0",
+  "protocolVersion": "0.3.0"
 }
