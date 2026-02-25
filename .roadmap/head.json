@@ -1393,7 +1393,8 @@
         "example/cockpit-roadmap-integration.test.ts"
       ],
       "deps": [
-        "cockpit-integration"
+        "cockpit-integration",
+        "phase-10-term"
       ],
       "validate": [],
       "idempotent": false
