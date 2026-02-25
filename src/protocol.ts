@@ -654,3 +654,8 @@ export async function validateGraph<T extends string>(
 
   return { passed, results, summary };
 }
+
+// Versioning exports
+export { loadDAG, loadDAGFromFile } from './versioning.ts';
+export { checkCompatibility, migrateDAG } from './versioning.schema.ts';
+export { DAGMigrator } from './migrations.ts';
