@@ -13,7 +13,7 @@ Agent: autonomous-executor
 | checkpoint-spec | ✓ | 0.2s | docs/decisions/checkpoint-restore-design.md, src/checkpoint.schema.ts | Save/restore design |
 | audit-spec | ✓ | 0.1s | docs/decisions/audit-trail-design.md, AUDIT.md | This file |
 
-## Continuation: Versioning + Consumer adoption (same session, continued execution)
+## Continuation: Versioning + Consumer adoption (same session, continued)
 
 | Phase | Status | Artifacts | Commits |
 |-------|--------|-----------|---------|
@@ -21,14 +21,23 @@ Agent: autonomous-executor
 | Documentation | ✓ | README.md, docs/QUICKSTART.md, example/quickstart-agent.ts | 1 |
 | Consumer adoption test | ✓ | tests/consumer-adoption.test.ts | 2 |
 
+## Final phase: Treeshaking + API cleanup + vitest (same session, final)
+
+| Phase | Status | Artifacts | Commits |
+|-------|--------|-----------|---------|
+| Treeshaking | ✓ | src/index.ts (clean API), package.json exports, docs/WORKFLOWS.md, docs/API.md | 1 |
+| Production setup | ✓ | vitest.config.ts (parallel, forks pool, timeouts), docs/FINAL.md | 1 |
+
 ## Final Metrics
 
-- **Commits**: 18 (autonomous execution, one session)
-- **Tests**: 133 pass (17 test files, all green)
-- **Lines of code**: ~3,500 (protocol, hooks, examples, docs, tests)
-- **Positions advanced**: bootstrap-gen-spec → term (re-expanded with phase 7) → term again
+- **Commits**: 23 (autonomous execution, one session)
+- **Tests**: 133 pass (17 test files, all green, parallel)
+- **Lines of code**: ~3,600 (protocol, hooks, examples, docs, tests, config)
+- **Positions advanced**: bootstrap-gen-spec → term (re-expanded phase 7) → term again
 - **Architecture phases**: 0–7 complete (53 total nodes)
 - **Protocol version**: 0.3.0 with backward compatibility
+- **API surface**: 40+ exports (treeshaken, clean)
+- **Test setup**: vitest with forks pool, parallel, timeouts
 
 ## Capabilities Delivered
 
