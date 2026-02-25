@@ -402,9 +402,9 @@ describe('orient: filesystem-state position', () => {
     expect(queried).toContain('init.txt');
   });
 
-  it('node with empty produces blocks orient permanently (documents edge case)', () => {
-    // A non-terminal node with produces:[] can never be marked done by orient.
-    // The condition `node.produces.length && every(exists)` short-circuits on length=0.
+  it('node with empty produces is trivially done: orient advances past it', () => {
+    // A non-terminal node with produces:[] has no filesystem artifacts to create.
+    // orient() marks it done and advances — position should be term when 'seed' exists.
     const g = define(graph({
       id: 'empty-mid', desc: '', init: 'init', term: 'term',
       nodes: {
@@ -415,8 +415,8 @@ describe('orient: filesystem-state position', () => {
     }));
     const have = new Set(['seed']);
     const o = orient(g, a => have.has(a));
-    // mid has no produces — orient stops here even though 'seed' exists
-    expect(o.position).toBe('mid');
+    expect(o.position).toBe('term');
+    expect(o.done).toContain('mid');
   });
 
   it('diamond: orient uses topological order, marks both branches done if possible', () => {

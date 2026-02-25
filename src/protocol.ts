@@ -168,10 +168,7 @@ export function reconcile<T extends string>(
       if (shared.length) {
         for (const a of shared) connections.push({ forward: f, backward: b, artifact: a });
       } else {
-        const m = [
-          ...fn.produces.filter(p => !bn.consumes.includes(p)),
-          ...bn.consumes.filter(c => !fn.produces.includes(c)),
-        ];
+        const m = bn.consumes.filter(c => !fn.produces.includes(c));
         if (m.length) gaps.push({ between: [f, b], missing: m });
       }
     }
@@ -225,7 +222,7 @@ export function orient<T extends string>(
 
   for (const id of seq) {
     const node = nm.get(id)!;
-    if (node.produces.length && node.produces.every(exists)) {
+    if (!node.produces.length || node.produces.every(exists)) {
       done.push(id);
       continue;
     }
@@ -238,5 +235,5 @@ export function orient<T extends string>(
     };
   }
 
-  return { position: g.term, done, produces: [], consumes: [], remaining: [] };
+  return { position: g.term, done: done.filter(id => id !== g.term), produces: [], consumes: [], remaining: [] };
 }
