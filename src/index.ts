@@ -26,6 +26,18 @@ export {
 export { CheckpointManager } from './checkpoint.ts';
 export { AuditTrail } from './audit.ts';
 
+// Agent APIs (sealed, no DAG introspection)
+export {
+  getBrief,
+  loadHandoffJournal,
+} from './brief.ts';
+
+export {
+  checkpoint,
+  advance,
+  verifyBootstrapSignature,
+} from './handoff.ts';
+
 // Versioning + migration
 export {
   loadDAG,
@@ -64,3 +76,9 @@ export type {
 } from './versioning.schema.ts';
 
 export type { AuditEntry, AuditSession } from './audit.ts';
+
+export type {
+  Brief,
+  FinalHandoff,
+  InterimHandoff,
+} from './brief.ts';
