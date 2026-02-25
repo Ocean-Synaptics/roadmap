@@ -1959,13 +1959,174 @@
       "validate": [],
       "idempotent": false
     },
-    "term": {
-      "id": "term",
-      "desc": "v0.4.0-adoption-ready: All phases complete, adoption-verified, release-ready",
-      "produces": [],
+    "docs-restructure": {
+      "id": "docs-restructure",
+      "desc": "Move dev history docs to docs/archive/, keep only README/CHANGELOG/PROTOCOL/SKILL at root",
+      "produces": [
+        "docs/archive/orientation.md",
+        "docs/archive/reorientation.md",
+        "docs/archive/reorientation-phase5.md",
+        "docs/archive/ADOPTION-AUDIT.md",
+        "docs/archive/SPEC.md",
+        "docs/archive/PROMPT.md",
+        "docs/archive/RELEASE-ROADMAP.md",
+        "docs/archive/AUDIT.md"
+      ],
       "consumes": [],
       "deps": [
         "phase-12-term"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "docs/archive/orientation.md"
+        },
+        {
+          "type": "artifact-exists",
+          "target": "docs/archive/SPEC.md"
+        }
+      ],
+      "idempotent": true
+    },
+    "api-surface-docs": {
+      "id": "api-surface-docs",
+      "desc": "Export map in README (all 6 entry points incl. roadmap/agent), module map, types-at-a-glance, orient↔orientCached signpost",
+      "produces": [
+        "docs/MODULE-MAP.md"
+      ],
+      "consumes": [
+        "docs/archive/orientation.md"
+      ],
+      "deps": [
+        "docs-restructure"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "docs/MODULE-MAP.md"
+        }
+      ],
+      "idempotent": true
+    },
+    "predicate-builders": {
+      "id": "predicate-builders",
+      "desc": "Curried exists predicates: fileExists(root), gitArtifactExists(root), compound(...preds)",
+      "produces": [
+        "src/predicates.ts",
+        "tests/predicates.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "phase-12-term"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "src/predicates.ts"
+        },
+        {
+          "type": "artifact-exists",
+          "target": "tests/predicates.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "parallel-order": {
+      "id": "parallel-order",
+      "desc": "parallelOrder(g) → string[][] — batches of mutually independent nodes for concurrent execution",
+      "produces": [
+        "tests/parallel-order.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "phase-12-term"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "tests/parallel-order.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "error-model": {
+      "id": "error-model",
+      "desc": "RoadmapError class: typed codes (POSITION_MISMATCH, CONTRACT_VIOLATION, ...) + fix field + entry point",
+      "produces": [
+        "src/errors.ts",
+        "tests/errors.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "phase-12-term"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "src/errors.ts"
+        },
+        {
+          "type": "artifact-exists",
+          "target": "tests/errors.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "cli-binary": {
+      "id": "cli-binary",
+      "desc": "bin/roadmap CLI: orient, advance, describe, validate subcommands. JSON stdout. describeGraph() via describe. package.json bin entry.",
+      "produces": [
+        "bin/roadmap.ts",
+        "tests/cli.test.ts"
+      ],
+      "consumes": [
+        "docs/MODULE-MAP.md",
+        "src/predicates.ts",
+        "src/errors.ts",
+        "tests/parallel-order.test.ts"
+      ],
+      "deps": [
+        "api-surface-docs",
+        "predicate-builders",
+        "parallel-order",
+        "error-model",
+        "file-headers"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "bin/roadmap.ts"
+        },
+        {
+          "type": "artifact-exists",
+          "target": "tests/cli.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "phase-13-term": {
+      "id": "phase-13-term",
+      "desc": "Phase 13 complete: Consumption surface (CLI, predicates, parallelOrder, errors, clean docs, file headers, CLAUDE.md)",
+      "produces": [],
+      "consumes": [
+        "bin/roadmap.ts",
+        "tests/cli.test.ts"
+      ],
+      "deps": [
+        "cli-binary",
+        "claude-md",
+        "repo-cleanup"
+      ],
+      "validate": [],
+      "idempotent": false
+    },
+    "term": {
+      "id": "term",
+      "desc": "v0.5.0-consumption-ready: All phases complete, CLI binary ships, clean API surface",
+      "produces": [],
+      "consumes": [],
+      "deps": [
+        "phase-13-term"
       ],
       "validate": [
         {
@@ -1980,6 +2141,43 @@
         }
       ],
       "idempotent": false
+    },
+    "file-headers": {
+      "id": "file-headers",
+      "desc": "Structured @module/@exports/@types/@entry headers in all src/ files. Enables grep-based API discovery.",
+      "produces": [],
+      "consumes": [
+        "docs/archive/orientation.md"
+      ],
+      "deps": [
+        "docs-restructure"
+      ],
+      "validate": [],
+      "idempotent": true
+    },
+    "repo-cleanup": {
+      "id": "repo-cleanup",
+      "desc": "Remove stale .roadmap/ expansion scripts, tests/adoption/ scaffolding, dead artifacts from completed phases",
+      "produces": [],
+      "consumes": [],
+      "deps": [
+        "phase-12-term"
+      ],
+      "validate": [],
+      "idempotent": true
+    },
+    "claude-md": {
+      "id": "claude-md",
+      "desc": "Update .claude/CLAUDE.md for consumer LLMs: module map, export table, type signatures, usage examples",
+      "produces": [],
+      "consumes": [
+        "docs/MODULE-MAP.md"
+      ],
+      "deps": [
+        "api-surface-docs"
+      ],
+      "validate": [],
+      "idempotent": true
     }
   },
   "version": "0.3.0",
