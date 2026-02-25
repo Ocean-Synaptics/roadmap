@@ -1,93 +1,74 @@
 #!/usr/bin/env node
-// Post-commit hook: write .regent/git-state.json
-// Called automatically after every git commit.
-// Run time: <50ms (subsumed in git operation time)
+/**
+ * Post-commit hook: write .regent/git-state.json
+ *
+ * Runs after every commit. Computes current git state and caches it for O(1) agent orientation.
+ * Cost: subsumed in git (happens alongside git operations anyway).
+ *
+ * Install as: .git/hooks/post-commit (chmod +x)
+ */
 
 import { execSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
+import { writeFileSync, mkdirSync } from 'node:fs';
+import { join } from 'node:path';
 import type { GitState } from '../src/git-state.schema.ts';
 
-const repoRoot = execSync('git rev-parse --show-toplevel', { encoding: 'utf-8' }).trim();
-const regentDir = join(repoRoot, '.regent');
+const repoRoot = process.cwd();
+const stateDir = join(repoRoot, '.regent');
+const statePath = join(stateDir, 'git-state.json');
 
-// Ensure .regent/ exists
-mkdirSync(regentDir, { recursive: true });
-
-// Compute current git state
-function getGitState(): GitState {
+try {
+  // Get current branch
   const branch = execSync('git rev-parse --abbrev-ref HEAD', { encoding: 'utf-8' }).trim();
-  const hash = execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim();
-  const subject = execSync('git log -1 --format=%s', { encoding: 'utf-8' }).trim();
+
+  // Get HEAD commit info
+  const hashOutput = execSync('git rev-parse HEAD', { encoding: 'utf-8' }).trim();
+  const subjectOutput = execSync('git log -1 --pretty=%s', { encoding: 'utf-8' }).trim();
 
   // Check if working tree is clean
-  const status = execSync('git status --porcelain', { encoding: 'utf-8' });
-  const clean = status === '';
+  const statusOutput = execSync('git status --porcelain', { encoding: 'utf-8' });
+  const clean = statusOutput.trim() === '';
 
   // Parse dirty files
-  const dirty = status
-    .split('\n')
-    .filter(line => line.trim())
-    .map(line => ({
-      status: line.slice(0, 2).trim(),
-      path: line.slice(3),
-    }));
+  const dirty = clean
+    ? undefined
+    : statusOutput
+        .split('\n')
+        .filter(line => line.trim())
+        .map(line => ({
+          status: line.substring(0, 2).trim(),
+          path: line.substring(3).trim(),
+          phase: null, // Could infer from roadmap.ts deps, but keep simple for now
+          note: undefined,
+        }));
 
-  // Attempt to infer phase from the commit message or recent work
-  // Strategy: if commit subject starts with a known phase name, use it
-  const phaseMatch = subject.match(/^(git-state|bootstrap|multi-repo|checkpoint|audit|regent)/);
-  const phase = phaseMatch ? phaseMatch[1] : null;
+  // Count commits since last checkpoint (for now, just total commits)
+  const totalCommits = parseInt(
+    execSync('git rev-list --count HEAD', { encoding: 'utf-8' }).trim(),
+    10
+  );
 
-  // Find last checkpoint (tag matching "checkpoint-*")
-  let lastCheckpoint: string | null = null;
-  try {
-    lastCheckpoint = execSync('git describe --tags --abbrev=0 --match="checkpoint-*" 2>/dev/null', {
-      encoding: 'utf-8',
-    }).trim();
-  } catch {
-    // No checkpoint tag found
-  }
-
-  // Count dirty commits (commits not yet pushed)
-  let dirtyCommits = 0;
-  try {
-    const remoteHead = execSync('git rev-parse origin/HEAD', { encoding: 'utf-8' }).trim();
-    const dirtyOutput = execSync(`git rev-list ${remoteHead}..HEAD --count`, {
-      encoding: 'utf-8',
-    }).trim();
-    dirtyCommits = parseInt(dirtyOutput, 10);
-  } catch {
-    // No remote, or other error — default to 0
-  }
-
-  return {
+  const state: GitState = {
     timestamp: Date.now(),
     branch,
     head: {
-      hash,
-      subject,
-      phase,
-      checkpoint: null, // Agent sets this if needed
+      hash: hashOutput,
+      subject: subjectOutput,
+      phase: null, // Could infer from commit message or roadmap node tags
+      checkpoint: null,
     },
     clean,
-    dirty: dirty.length
-      ? dirty.map(d => ({
-          status: d.status,
-          path: d.path,
-          phase: null, // Agent or hook can annotate
-          note: undefined,
-        }))
-      : undefined,
-    lastCheckpoint,
-    roadmapPosition: null,
-    dirtyCommits,
+    dirty,
+    lastCheckpoint: null, // Could search for special checkpoint refs
+    roadmapPosition: null, // Agent sets this after orient()
+    dirtyCommits: totalCommits,
   };
+
+  // Write cache
+  mkdirSync(stateDir, { recursive: true });
+  writeFileSync(statePath, JSON.stringify(state, null, 2));
+} catch (e) {
+  // Silently fail post-commit hook to avoid blocking commits
+  // (git best practice: hooks should not fail the operation)
+  process.exit(0);
 }
-
-// Write to .regent/git-state.json
-const state = getGitState();
-const stateFile = join(regentDir, 'git-state.json');
-writeFileSync(stateFile, JSON.stringify(state, null, 2));
-
-// Silent exit (normal hook behavior)
-process.exit(0);
