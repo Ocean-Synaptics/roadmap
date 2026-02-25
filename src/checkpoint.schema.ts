@@ -39,8 +39,8 @@ export function validateCheckpoint(c: unknown): c is Checkpoint {
     typeof ck.timestamp === 'number' &&
     typeof ck.roadmapPosition === 'string' &&
     Array.isArray(ck.artifacts) &&
-    ck.gitState &&
-    ck.metadata
+    typeof ck.gitState === 'object' && ck.gitState !== null &&
+    typeof ck.metadata === 'object' && ck.metadata !== null
   );
 }
 

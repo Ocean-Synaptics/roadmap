@@ -4,7 +4,8 @@
 
 import { readCheckpoint, readLatestCheckpoint, writeCheckpoint, generateCheckpointId, type Checkpoint, type Artifact, type GitState } from './checkpoint.schema.ts';
 import { execSync } from 'node:child_process';
-import { hashFile } from './protocol.ts';
+import { createHash, type BinaryLike } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 
 export class CheckpointManager {
   constructor(private repoRoot: string) {}
@@ -25,7 +26,7 @@ export class CheckpointManager {
     const artifactList: Artifact[] = [];
     for (const path of options.artifacts) {
       try {
-        const hash = await hashFile(path);
+        const hash = createHash('sha256').update(readFileSync(path) as BinaryLike).digest('hex');
         artifactList.push({ path, hash });
       } catch {
         // Skip unhashable files

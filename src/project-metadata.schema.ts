@@ -83,7 +83,7 @@ export function validateMetadataConsistency(metadata: ProjectMetadata): string[]
   const errors: string[] = [];
 
   // Init and term must not be identical
-  if (JSON.stringify(metadata.init.sort()) === JSON.stringify(metadata.term.sort())) {
+  if (JSON.stringify([...metadata.init].sort()) === JSON.stringify([...metadata.term].sort())) {
     errors.push('init and term must differ');
   }
 

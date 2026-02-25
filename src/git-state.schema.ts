@@ -53,7 +53,7 @@ export function validateGitState(s: unknown): s is GitState {
   return (
     typeof g.timestamp === 'number' &&
     typeof g.branch === 'string' &&
-    g.head &&
+    typeof g.head === 'object' && g.head !== null &&
     typeof (g.head as any).hash === 'string' &&
     typeof (g.head as any).subject === 'string' &&
     typeof g.clean === 'boolean' &&

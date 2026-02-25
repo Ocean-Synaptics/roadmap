@@ -27,7 +27,7 @@ export function generateBootstrapRoadmap(cfg: BootstrapConfig) {
   const outDir = cfg.outDir || process.cwd();
 
   // Build minimal roadmap: init → build → term
-  const roadmapDef = graph({
+  const roadmapDef = graph<'init' | 'build' | 'deployed'>({
     id: cfg.projectName,
     desc: cfg.projectDesc,
     init: 'init',

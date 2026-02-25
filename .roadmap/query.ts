@@ -190,8 +190,8 @@ export async function getReconciliationManifest(
   return {
     graph: dag,
     position: pos.position,
-    produces: pos.produces,
-    consumes: pos.consumes,
+    produces: [...pos.produces],
+    consumes: [...pos.consumes],
     remaining: pos.remaining.length,
     roadmapHash: dagHash,
   };

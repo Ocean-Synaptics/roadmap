@@ -1017,7 +1017,18 @@
       "deps": [
         "phase-11-term"
       ],
-      "validate": [],
+      "validate": [
+        {
+          "type": "function",
+          "target": "tsc",
+          "fn": "npx tsc --noEmit"
+        },
+        {
+          "type": "function",
+          "target": "vitest",
+          "fn": "npx vitest run --reporter=dot"
+        }
+      ],
       "idempotent": false
     },
     "version-spec": {

@@ -44,7 +44,7 @@ export async function checkpoint(
 export async function advance(
   repoRoot: string,
   nodeId: string,
-  dag: Graph,
+  dag: Graph<string>,
   handoff: FinalHandoff,
 ): Promise<void> {
   // Validate handoff is complete
@@ -148,7 +148,7 @@ async function updatePosition(repoRoot: string, position: string): Promise<void>
 
 async function updateBootstrapSignature(
   repoRoot: string,
-  dag: Graph,
+  dag: Graph<string>,
 ): Promise<void> {
   const { writeFile, mkdir } = await import('node:fs/promises');
   const { join } = await import('node:path');
@@ -181,7 +181,7 @@ async function updateBootstrapSignature(
  */
 export async function verifyBootstrapSignature(
   repoRoot: string,
-  dag: Graph,
+  dag: Graph<string>,
 ): Promise<boolean> {
   const { readFile } = await import('node:fs/promises');
   const { join } = await import('node:path');

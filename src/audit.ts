@@ -18,9 +18,9 @@ export interface AuditSession {
   readonly sessionId: string;
   readonly agent: string;
   readonly start: number;
-  readonly end?: number;
+  end?: number;
   readonly restoredFrom?: string;
-  readonly entries: AuditEntry[];
+  entries: AuditEntry[];
 }
 
 export class AuditTrail {

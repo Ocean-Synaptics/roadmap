@@ -266,7 +266,7 @@ export function orient<T extends string>(
 export function merge<T1 extends string, T2 extends string>(
   g1: Graph<T1>,
   g2: Graph<T2>,
-  connections: readonly Array<{ g1Node: string; g2Node: string; artifact: string }>,
+  connections: ReadonlyArray<{ g1Node: string; g2Node: string; artifact: string }>,
   initOverride?: string,
   termOverride?: string,
 ): Graph<T1 | T2> {
@@ -328,7 +328,7 @@ export function branch<T extends string>(
   // Forward pass: find all nodes reachable FROM fromNode
   const nodes = flat(g);
   const forward = new Set<string>();
-  const q = [fromNode];
+  const q: string[] = [fromNode];
   while (q.length) {
     const n = q.shift()!;
     if (forward.has(n)) continue;
@@ -436,7 +436,7 @@ export function analyze<T extends string>(g: Graph<T>, nodeId: string): ModifyAn
   return {
     dependents,
     orphaned,
-    produces: target.produces,
+    produces: [...target.produces],
     safe,
     reason,
   };
@@ -604,9 +604,17 @@ export async function validateNode<T extends string>(
       passed = false;
       evidence = 'schema validation not yet implemented';
     } else if (rule.type === 'function') {
-      // TODO: Implement function validation
-      passed = false;
-      evidence = 'function validation not yet implemented';
+      // Run shell command synchronously; exit 0 = pass, non-zero = fail
+      try {
+        const { execSync } = await import('node:child_process');
+        execSync(rule.fn, { stdio: 'pipe' });
+        passed = true;
+        evidence = `command passed: ${rule.fn}`;
+      } catch (e: any) {
+        passed = false;
+        const stderr = e.stderr?.toString().trim() || e.message || '';
+        evidence = `command failed: ${rule.fn} — ${stderr.slice(0, 200)}`;
+      }
     } else if (rule.type === 'manual-approval') {
       // Manual approval requires external sign-off
       passed = false;

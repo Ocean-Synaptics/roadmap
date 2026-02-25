@@ -63,7 +63,7 @@ export interface Brief {
  * No DAG introspection, no wandering.
  */
 export async function getBrief(
-  dag: Graph,
+  dag: Graph<string>,
   position: string,
   repoRoot: string,
 ): Promise<Brief> {
@@ -113,7 +113,7 @@ export async function getBrief(
   };
 }
 
-function countRemaining(dag: Graph, position: string): number {
+function countRemaining(dag: Graph<string>, position: string): number {
   // Simple count: nodes reachable from position to term
   const visited = new Set<string>();
   const queue = [position];
