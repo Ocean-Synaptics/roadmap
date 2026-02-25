@@ -5,7 +5,8 @@
 // @entry bin/roadmap
 
 import { readFileSync, existsSync, writeFileSync, appendFileSync, mkdirSync } from 'node:fs';
-import { join, resolve } from 'node:path';
+import { join, resolve, basename } from 'node:path';
+import { homedir } from 'node:os';
 import { execSync } from 'node:child_process';
 import {
   define, check, verify, order, parallelOrder, orient,
@@ -37,16 +38,26 @@ interface TrailEntry {
   ts: string;
   cmd: string;
   note: string;
+  repo: string;
   position?: string;
   dagId?: string;
   detail?: Record<string, unknown>;
 }
 
-function recordTrail(entry: TrailEntry) {
-  const trailPath = join(repoRoot, '.roadmap', 'trail.jsonl');
-  const dir = join(repoRoot, '.roadmap');
+const hasLocalDAG = existsSync(join(repoRoot, '.roadmap', 'head.json'));
+const globalTrailDir = join(homedir(), '.roadmap');
+const localTrailDir = join(repoRoot, '.roadmap');
+
+function appendToTrail(dir: string, entry: TrailEntry) {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  appendFileSync(trailPath, JSON.stringify(entry) + '\n');
+  appendFileSync(join(dir, 'trail.jsonl'), JSON.stringify(entry) + '\n');
+}
+
+function recordTrail(entry: TrailEntry) {
+  // Always write to global trail
+  appendToTrail(globalTrailDir, entry);
+  // Also write to local trail if this repo has a DAG
+  if (hasLocalDAG) appendToTrail(localTrailDir, entry);
 }
 
 async function main() {
@@ -87,6 +98,19 @@ async function main() {
 // --- Commands ---
 
 function cmdOrient(note: string) {
+  if (!hasLocalDAG) {
+    const result = { position: 'untracked', repo: basename(repoRoot), tracked: false };
+    recordTrail({
+      ts: new Date().toISOString(),
+      cmd: 'orient',
+      note,
+      repo: basename(repoRoot),
+      position: 'untracked',
+    });
+    json(result);
+    return;
+  }
+
   const dag = loadDAG();
   const pos = orient(dag, fileExists(repoRoot));
   const result = {
@@ -101,6 +125,7 @@ function cmdOrient(note: string) {
     ts: new Date().toISOString(),
     cmd: 'orient',
     note,
+    repo: basename(repoRoot),
     position: pos.position,
     dagId: dag.id,
     detail: { done: result.done, remaining: result.remaining, complete: result.complete },
@@ -114,7 +139,7 @@ function cmdDescribe(note: string) {
   const batches = parallelOrder(dag);
   const apiSurface = scanExports();
 
-  recordTrail({ ts: new Date().toISOString(), cmd: 'describe', note, position: pos.position, dagId: dag.id });
+  recordTrail({ ts: new Date().toISOString(), cmd: 'describe', note, repo: basename(repoRoot), position: pos.position, dagId: dag.id });
 
   json({
     id: dag.id,
@@ -146,7 +171,7 @@ async function cmdValidate(note: string) {
   const dag = loadDAG();
   const nodeId = args[1];
 
-  recordTrail({ ts: new Date().toISOString(), cmd: 'validate', note, dagId: dag.id, detail: { nodeId: nodeId || 'all' } });
+  recordTrail({ ts: new Date().toISOString(), cmd: 'validate', note, repo: basename(repoRoot), dagId: dag.id, detail: { nodeId: nodeId || 'all' } });
 
   if (nodeId) {
     const result = await validateNode(dag, nodeId, fileExists(repoRoot));
@@ -206,7 +231,7 @@ async function cmdExpand(note: string) {
   execSync(`git commit -m "${msg}"`, { cwd: repoRoot, stdio: 'pipe' });
   const hash = execSync('git rev-parse --short HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
 
-  recordTrail({ ts: new Date().toISOString(), cmd: 'expand', note, dagId: dagAfter.id, detail: { script: scriptPath, added, commit: hash } });
+  recordTrail({ ts: new Date().toISOString(), cmd: 'expand', note, repo: basename(repoRoot), dagId: dagAfter.id, detail: { script: scriptPath, added, commit: hash } });
 
   json({
     expanded: true,
@@ -264,7 +289,7 @@ function cmdBranch(note: string) {
 
   const hash = execSync('git rev-parse --short HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
 
-  recordTrail({ ts: new Date().toISOString(), cmd: 'branch', note, detail: { branch: branchName, dagFile: dagFile || null, commit: hash } });
+  recordTrail({ ts: new Date().toISOString(), cmd: 'branch', note, repo: basename(repoRoot), detail: { branch: branchName, dagFile: dagFile || null, commit: hash } });
 
   json({
     branch: branchName,
@@ -276,7 +301,7 @@ function cmdBranch(note: string) {
 function cmdParallel(note: string) {
   const dag = loadDAG();
   const batches = parallelOrder(dag);
-  recordTrail({ ts: new Date().toISOString(), cmd: 'parallel', note, dagId: dag.id });
+  recordTrail({ ts: new Date().toISOString(), cmd: 'parallel', note, repo: basename(repoRoot), dagId: dag.id });
 
   json({
     batches: batches.map((b, i) => ({ level: i, nodes: b, count: b.length })),
@@ -286,7 +311,10 @@ function cmdParallel(note: string) {
 }
 
 function cmdTrail() {
-  const trailPath = join(repoRoot, '.roadmap', 'trail.jsonl');
+  const useGlobal = args.includes('--global');
+  const dir = useGlobal ? globalTrailDir : (hasLocalDAG ? localTrailDir : globalTrailDir);
+  const trailPath = join(dir, 'trail.jsonl');
+  const source = useGlobal ? 'global' : (hasLocalDAG ? 'local' : 'global');
 
   if (args.includes('--archive')) {
     if (!existsSync(trailPath)) {
@@ -294,25 +322,35 @@ function cmdTrail() {
       return;
     }
     const lines = readFileSync(trailPath, 'utf-8').trim().split('\n').filter(Boolean);
-    execSync('git add .roadmap/trail.jsonl', { cwd: repoRoot, stdio: 'pipe' });
-    execSync(`git commit -m "roadmap: archive trail (${lines.length} entries)"`, { cwd: repoRoot, stdio: 'pipe' });
-    const hash = execSync('git rev-parse --short HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
-    writeFileSync(trailPath, '');
-    json({ archived: true, entries: lines.length, commit: hash });
+
+    if (source === 'local') {
+      // Local trail: commit to git then truncate
+      execSync('git add .roadmap/trail.jsonl', { cwd: repoRoot, stdio: 'pipe' });
+      execSync(`git commit -m "roadmap: archive trail (${lines.length} entries)"`, { cwd: repoRoot, stdio: 'pipe' });
+      const hash = execSync('git rev-parse --short HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
+      writeFileSync(trailPath, '');
+      json({ archived: true, source, entries: lines.length, commit: hash });
+    } else {
+      // Global trail: just truncate (no git repo to commit to)
+      writeFileSync(trailPath, '');
+      json({ archived: true, source, entries: lines.length });
+    }
     return;
   }
 
   if (!existsSync(trailPath)) {
-    json({ entries: [], count: 0 });
+    json({ entries: [], count: 0, source });
     return;
   }
   const lines = readFileSync(trailPath, 'utf-8').trim().split('\n').filter(Boolean);
   const entries = lines.map(l => JSON.parse(l));
 
   const limit = args.includes('--last') ? parseInt(args[args.indexOf('--last') + 1]) || 10 : undefined;
-  const filtered = limit ? entries.slice(-limit) : entries;
+  const repoFilter = args.includes('--repo') ? args[args.indexOf('--repo') + 1] : undefined;
+  let filtered = repoFilter ? entries.filter((e: any) => e.repo === repoFilter) : entries;
+  filtered = limit ? filtered.slice(-limit) : filtered;
 
-  json({ entries: filtered, count: entries.length });
+  json({ entries: filtered, count: entries.length, source });
 }
 
 function cmdHelp() {
@@ -325,8 +363,10 @@ Commands:
   expand <script.ts>  Run expansion script, validate DAG, commit
   branch <name> [dag] Create git branch with optional separate DAG
   parallel            Show parallel execution batches
-  trail [--last N]    Read the invocation trail
-  trail --archive     Commit trail to git, then truncate
+  trail [--last N]    Read the invocation trail (local if DAG exists, else global)
+  trail --global      Read the global cross-project trail (~/.roadmap/trail.jsonl)
+  trail --repo <name> Filter trail by repo name
+  trail --archive     Commit trail to git (local) or truncate (global)
   help                This message
 
 All commands (except help/trail) require --note "reason".
