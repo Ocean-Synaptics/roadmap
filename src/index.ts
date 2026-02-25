@@ -11,6 +11,7 @@ export {
   check,
   verify,
   order,
+  parallelOrder,
   orient,
   reconcile,
   merge,
@@ -21,6 +22,13 @@ export {
   validateNode,
   validateGraph,
 } from './protocol.ts';
+
+// Predicates for orient()
+export { fileExists, gitArtifactExists, compound } from './predicates.ts';
+
+// Typed errors
+export { RoadmapError } from './errors.ts';
+export type { ErrorCode, RoadmapErrorContext } from './errors.ts';
 
 // Recovery + execution
 export { CheckpointManager } from './checkpoint.ts';

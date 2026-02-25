@@ -220,6 +220,36 @@ export function order<T extends string>(g: Graph<T>): string[] {
   return out;
 }
 
+// --- parallelOrder: batched topological sort ---
+// Groups mutually independent nodes into concurrent execution batches.
+// Each batch can run in parallel; batches execute sequentially.
+
+export function parallelOrder<T extends string>(g: Graph<T>): string[][] {
+  const nodes = flat(g);
+  const valid = new Set(nodes.map(n => n.id));
+  const a = fwd(nodes);
+  const deg = new Map(nodes.map(n => [n.id, n.deps.filter(d => valid.has(d)).length]));
+  const batches: string[][] = [];
+
+  let ready = [...deg].filter(([, d]) => d === 0).map(([id]) => id);
+  while (ready.length) {
+    batches.push(ready.sort()); // sort for determinism
+    const next: string[] = [];
+    for (const n of ready) {
+      for (const s of a.get(n) ?? []) {
+        const d = deg.get(s)! - 1;
+        deg.set(s, d);
+        if (d === 0) next.push(s);
+      }
+    }
+    ready = next;
+  }
+
+  const visited = batches.flat().length;
+  if (visited < nodes.length) throw new Error('Cycle detected');
+  return batches;
+}
+
 // --- orient: agent reorientation ---
 // Given a graph and a filesystem probe, returns current position, what's done,
 // what to produce, what's available to consume, and what remains.
