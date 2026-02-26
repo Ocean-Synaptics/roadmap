@@ -1,6 +1,6 @@
 // @module protocol
-// @exports define, graph, check, verify, order, parallelOrder, orient, advanceBatch, reconcile, merge, branch, analyze, modify, modifyAndCommit, validateNode, validateBatch, validateGraph
-// @types NodeSpec, Graph, Orientation, Connection, Gap, ValidationRule, ValidationCheck, ValidationResult, ModifyAnalysis, ModificationRecord
+// @exports define, graph, check, verify, order, parallelOrder, batchConflicts, orient, advanceBatch, reconcile, merge, branch, analyze, modify, modifyAndCommit, validateNode, validateBatch, validateGraph
+// @types NodeSpec, Graph, Orientation, BatchConflict, Connection, Gap, ValidationRule, ValidationCheck, ValidationResult, ModifyAnalysis, ModificationRecord
 // @entry roadmap/protocol
 
 // --- Types ---
@@ -249,6 +249,58 @@ export function parallelOrder<T extends string>(g: Graph<T>): string[][] {
   const visited = batches.flat().length;
   if (visited < nodes.length) throw new Error('Cycle detected');
   return batches;
+}
+
+// --- batchConflicts: detect resource conflicts within parallel batches ---
+// Two nodes in the same batch that write the same file will clobber each other
+// if assigned to different agents. This finds those conflicts.
+
+export interface BatchConflict {
+  level: number;
+  file: string;
+  writers: string[];     // produces overlap: multiple nodes write same file
+  type: 'produces-overlap' | 'consumes-produces-race';
+}
+
+export function batchConflicts<T extends string>(g: Graph<T>): BatchConflict[] {
+  const batches = parallelOrder(g);
+  const nodes = flat(g);
+  const nm = new Map(nodes.map(n => [n.id, n]));
+  const conflicts: BatchConflict[] = [];
+
+  for (let level = 0; level < batches.length; level++) {
+    const batch = batches[level];
+    if (batch.length < 2) continue;
+
+    // Produces overlap: two nodes write the same file
+    const writers = new Map<string, string[]>();
+    for (const id of batch) {
+      for (const p of nm.get(id)!.produces) {
+        const w = writers.get(p) ?? [];
+        w.push(id);
+        writers.set(p, w);
+      }
+    }
+    for (const [file, w] of writers) {
+      if (w.length > 1) conflicts.push({ level, file, writers: w, type: 'produces-overlap' });
+    }
+
+    // Consumes-produces race: node A consumes what node B in same batch produces
+    const producedInBatch = new Map<string, string>();
+    for (const id of batch) {
+      for (const p of nm.get(id)!.produces) producedInBatch.set(p, id);
+    }
+    for (const id of batch) {
+      for (const c of nm.get(id)!.consumes) {
+        const producer = producedInBatch.get(c);
+        if (producer && producer !== id) {
+          conflicts.push({ level, file: c, writers: [producer, id], type: 'consumes-produces-race' });
+        }
+      }
+    }
+  }
+
+  return conflicts;
 }
 
 // --- orient: agent reorientation ---

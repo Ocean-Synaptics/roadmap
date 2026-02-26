@@ -9,7 +9,7 @@ import { join, resolve, basename } from 'node:path';
 import { homedir } from 'node:os';
 import { execSync } from 'node:child_process';
 import {
-  define, check, verify, order, parallelOrder, orient, reconcile,
+  define, check, verify, order, parallelOrder, batchConflicts, orient, reconcile,
   validateNode, validateGraph,
 } from '../src/protocol.ts';
 import { fileExists } from '../src/predicates.ts';
@@ -457,11 +457,19 @@ function cmdParallel(note: string) {
     detail: { crossRepo, showGraph },
   });
 
+  const showConflicts = args.includes('--conflicts');
+  const conflicts = batchConflicts(dag);
+
   const result: Record<string, any> = {
     batches: batches.map((b, i) => ({ level: i, nodes: b, count: b.length })),
     totalLevels: batches.length,
     maxParallelism: Math.max(...batches.map(b => b.length)),
   };
+
+  if (showConflicts || conflicts.length > 0) {
+    result.conflicts = conflicts;
+    result.conflictCount = conflicts.length;
+  }
 
   if (showGraph) {
     // Include full DAG structure
