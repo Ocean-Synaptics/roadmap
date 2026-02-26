@@ -16,6 +16,7 @@ import { fileExists } from '../src/predicates.ts';
 import { RoadmapError } from '../src/errors.ts';
 import { crossOrient } from '../src/lib/cross-orient.ts';
 import { discoverDependencies, resolveSiblingPath } from '../src/lib/dependency-resolver.ts';
+import { loadClaims, saveClaims, isExpired, activeClaims, annotateWithClaims } from '../src/lib/claims.ts';
 import type { Graph } from '../src/protocol.ts';
 import type { SiblingStatus } from '../src/lib/cross-orient.ts';
 
@@ -35,7 +36,7 @@ const { note: _note, positional: args } = extractNote(rawArgs);
 const cmd = args[0] || 'help';
 
 // Commands that don't require a note
-const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'trail', 'chart', 'install', 'dig']);
+const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'trail', 'chart', 'install', 'dig', 'claim']);
 
 interface TrailEntry {
   ts: string;
@@ -114,6 +115,7 @@ async function main() {
       case 'install':   return cmdInstall();
       case 'merge':     return await cmdMergeFrom();
       case 'retire':    return cmdRetire(note!);
+      case 'claim':     return cmdClaim();
       case 'dig':       return cmdDig();
       case 'help':
       case '--help':
@@ -158,6 +160,10 @@ async function cmdOrient(note: string) {
     if (node?.mode === 'plan') batchModes[nodeId] = 'plan';
   }
 
+  // Annotate batch nodes with claim status
+  const claimStore = loadClaims(repoRoot);
+  const claimAnnotations = annotateWithClaims(pos.position, claimStore);
+
   const result: Record<string, unknown> = {
     position: pos.position,
     level: pos.level,
@@ -170,6 +176,7 @@ async function cmdOrient(note: string) {
     complete: pos.remaining.length === 0,
   };
   if (Object.keys(batchModes).length) result.planNodes = batchModes;
+  if (Object.keys(claimAnnotations).length) result.claims = claimAnnotations;
   if (pos.preGate.length) result.preGate = pos.preGate;
 
   // Include blockedBy if there are blocking deps
@@ -575,6 +582,8 @@ async function cmdChart() {
   const retiredIds = retiredSet();
   const pos = await crossOrient(dag, repoRoot, undefined, retiredIds);
   const batches = parallelOrder(dag);
+  const claimStore = loadClaims(repoRoot);
+  const now = new Date();
   const nodeIds = Object.keys(dag.nodes);
   const doneSet = new Set(pos.done);
   const preGateSet = new Set(pos.preGate);
@@ -655,7 +664,22 @@ async function cmdChart() {
     const nodeList = batch.map(n => {
       const node = dag.nodes[n as keyof typeof dag.nodes] as any;
       const planTag = node?.mode === 'plan' ? '📋' : '';
-      if (pos.position.includes(n)) return `👉 ${planTag}${n}`;
+      if (pos.position.includes(n)) {
+        const claim = claimStore[n];
+        let claimTag = '';
+        if (claim) {
+          const expired = isExpired(claim, now);
+          if (!expired) {
+            const secsLeft = Math.max(0, Math.floor((new Date(claim.claimExpiry).getTime() - now.getTime()) / 1000));
+            const m = Math.floor(secsLeft / 60);
+            const s = String(secsLeft % 60).padStart(2, '0');
+            claimTag = ` [${claim.owner} ⏱${m}:${s}]`;
+          } else {
+            claimTag = ` [${claim.owner} ⌛expired]`;
+          }
+        }
+        return `👉 ${planTag}${n}${claimTag}`;
+      }
       if (retiredIds.has(n)) return `⏭️ ${n}`;
       if (doneSet.has(n)) return `✅ ${planTag}${n}`;
       if (preGateSet.has(n)) return `🔍 ${planTag}${n}`;
@@ -969,6 +993,144 @@ function cmdRetire(note: string) {
   json({ retired: toRetire, count: toRetire.length, cascade });
 }
 
+// --- claim: per-node ownership for parallel batch execution ---
+// roadmap claim <node-id> [--owner <name>] [--ttl <seconds>]
+// roadmap claim <node-id> --renew [--ttl <seconds>]   extend TTL; fails if expired
+// roadmap claim <node-id> --release
+// roadmap claim --list
+function cmdClaim() {
+  if (!hasLocalDAG) {
+    json({ error: 'No local DAG', fix: 'Run from a repo with .roadmap/head.json' });
+    process.exit(1);
+  }
+
+  const nodeId = args[1];
+
+  // --list: show all claims with expiry status
+  if (!nodeId || nodeId === '--list') {
+    const store = loadClaims(repoRoot);
+    const now = new Date();
+    const entries = Object.entries(store).map(([id, c]) => ({
+      nodeId: id,
+      owner: c.owner,
+      claimedAt: c.claimedAt,
+      claimExpiry: c.claimExpiry,
+      expired: isExpired(c, now),
+    }));
+    json({ claims: entries, count: entries.length });
+    return;
+  }
+
+  const dag = loadDAG();
+  const allNodes = Object.keys(dag.nodes);
+  if (!allNodes.includes(nodeId)) {
+    json({ error: `Node "${nodeId}" not found in DAG`, available: allNodes.slice(0, 10) });
+    process.exit(1);
+  }
+
+  // --release: remove claim
+  if (args.includes('--release')) {
+    const store = loadClaims(repoRoot);
+    if (!(nodeId in store)) {
+      json({ released: nodeId, note: 'no claim existed' });
+      return;
+    }
+    delete store[nodeId];
+    saveClaims(repoRoot, store);
+    json({ released: nodeId });
+    return;
+  }
+
+  // --renew: extend TTL; fails if claim expired or owner mismatch
+  if (args.includes('--renew')) {
+    const renewOwnerIdx = args.indexOf('--owner');
+    const renewOwner = renewOwnerIdx !== -1 ? args[renewOwnerIdx + 1]
+      : (process.env['AGENT_ID'] ?? process.env['USER'] ?? 'unknown');
+    const renewTtlIdx = args.indexOf('--ttl');
+    const renewTtlSeconds = renewTtlIdx !== -1 ? parseInt(args[renewTtlIdx + 1] ?? '300', 10) : 300;
+
+    const store = loadClaims(repoRoot);
+    const existing = store[nodeId];
+
+    if (!existing) {
+      json({ error: `No claim exists for "${nodeId}"`, fix: 'Use roadmap claim ' + nodeId + ' to create a new claim' });
+      process.exit(1);
+    }
+    if (isExpired(existing)) {
+      json({ error: `Claim for "${nodeId}" has expired — cannot renew`, expiredAt: existing.claimExpiry, fix: 'Another agent may have taken this node. Verify before re-claiming.' });
+      process.exit(1);
+    }
+    if (existing.owner !== renewOwner) {
+      json({ error: `Cannot renew: claim owned by "${existing.owner}", not "${renewOwner}"` });
+      process.exit(1);
+    }
+
+    const now = new Date();
+    const claimExpiry = new Date(now.getTime() + renewTtlSeconds * 1000).toISOString();
+    store[nodeId] = { ...existing, claimExpiry };
+    saveClaims(repoRoot, store);
+    json({ renewed: nodeId, owner: renewOwner, claimExpiry, ttlSeconds: renewTtlSeconds });
+    return;
+  }
+
+  // Validate node is in current batch
+  const pos = orient(dag, fileExists(repoRoot), retiredSet());
+  if (!pos.position.includes(nodeId)) {
+    json({
+      error: `Node "${nodeId}" is not in the current batch`,
+      currentBatch: pos.position,
+      fix: 'Only nodes in the current batch can be claimed',
+    });
+    process.exit(1);
+  }
+
+  // Parse --owner and --ttl
+  const ownerIdx = args.indexOf('--owner');
+  const owner = ownerIdx !== -1 ? args[ownerIdx + 1]
+    : (process.env['AGENT_ID'] ?? process.env['USER'] ?? 'unknown');
+
+  const ttlIdx = args.indexOf('--ttl');
+  const ttlSeconds = ttlIdx !== -1 ? parseInt(args[ttlIdx + 1] ?? '300', 10) : 300;
+  if (isNaN(ttlSeconds) || ttlSeconds <= 0) {
+    json({ error: 'Invalid --ttl value; must be a positive integer (seconds)' });
+    process.exit(1);
+  }
+
+  const now = new Date();
+  const store = loadClaims(repoRoot);
+  const existing = store[nodeId];
+
+  // Collision checks
+  if (existing) {
+    if (!isExpired(existing, now) && existing.owner !== owner) {
+      // Unexpired claim by a different agent
+      json({
+        error: `Node "${nodeId}" is already claimed`,
+        claimedBy: existing.owner,
+        claimExpiry: existing.claimExpiry,
+        fix: 'Wait for expiry or ask the owner to release it with: roadmap claim ' + nodeId + ' --release',
+      });
+      process.exit(1);
+    }
+    if (isExpired(existing, now) && existing.owner === owner) {
+      // Claim expired while same owner was away — require explicit re-claim acknowledgement
+      json({
+        error: `Your previous claim for "${nodeId}" has expired`,
+        expiredAt: existing.claimExpiry,
+        fix: 'Another agent may have worked on this node. If still needed, release and re-claim: roadmap claim ' + nodeId + ' --release && roadmap claim ' + nodeId,
+      });
+      process.exit(1);
+    }
+  }
+
+  const claimedAt = now.toISOString();
+  const claimExpiry = new Date(now.getTime() + ttlSeconds * 1000).toISOString();
+  store[nodeId] = { owner, claimedAt, claimExpiry };
+  saveClaims(repoRoot, store);
+
+  json({ claimed: nodeId, owner, claimedAt, claimExpiry, ttlSeconds });
+}
+
 function cmdDig() {
   const target = args[1];
   if (!target) {
@@ -1127,6 +1289,12 @@ Commands:
   retire <id> --cascade  Retire node + all transitively dependent nodes
   retire <id> --undo  Un-retire a previously retired node
   retire --list       Show all retired nodes
+  claim <node-id>     Claim a node for exclusive work (advisory lock)
+  claim <id> --owner <name>  Claim with explicit owner (default: $AGENT_ID or $USER)
+  claim <id> --ttl <sec>     Claim TTL in seconds (default: 300)
+  claim <id> --renew         Extend TTL; fails if claim expired or owner mismatch
+  claim <id> --release       Release a claim
+  claim --list        Show all claims with expiry status
   trail [--last N]    Read the invocation trail (local or global)
   trail --global      Cross-project trail (~/.roadmap/trail.jsonl)
   trail --repo <name> Filter trail by repo name
