@@ -99,6 +99,7 @@ async function main() {
   try {
     switch (cmd) {
       case 'orient':    return cmdOrient(note!);
+      case 'advance':   return await cmdAdvance(note!);
       case 'describe':  return cmdDescribe(note!);
       case 'validate':  return cmdValidate(note!);
       case 'expand':    return await cmdExpand(note!);
@@ -184,6 +185,69 @@ async function cmdOrient(note: string) {
     detail: trailDetail,
   });
   json(result);
+}
+
+async function cmdAdvance(note: string) {
+  if (!hasLocalDAG) {
+    json({ error: 'No roadmap tracked in this repo' });
+    return;
+  }
+
+  const { advanceBatch } = await import('../src/protocol.ts');
+  const dag = loadDAG();
+  const predicate = fileExists(repoRoot);
+
+  try {
+    // Get current position
+    const current = await import('../src/protocol.ts').then(m => m.orient(dag, predicate, retiredSet()));
+
+    // Validate batch is complete
+    if (!current.batchComplete) {
+      json({
+        error: 'Batch not complete',
+        currentBatch: current.position,
+        remaining: current.batchRemaining,
+      });
+      return;
+    }
+
+    // Check artifacts exist
+    const missingArtifacts: string[] = [];
+    for (const artifact of current.produces) {
+      if (!predicate(artifact)) {
+        missingArtifacts.push(artifact);
+      }
+    }
+
+    if (missingArtifacts.length > 0) {
+      json({
+        error: 'Required artifacts missing',
+        missing: missingArtifacts,
+      });
+      return;
+    }
+
+    // Advance to next batch
+    const next = await advanceBatch(dag, predicate, retiredSet());
+
+    recordTrail({
+      ts: new Date().toISOString(),
+      cmd: 'advance',
+      note,
+      repo: basename(repoRoot),
+      position: next.position,
+      dagId: dag.id,
+    });
+
+    json({
+      previousBatch: current.position,
+      nextBatch: next.position,
+      nextLevel: next.level,
+      complete: next.remaining.length === 0,
+    });
+  } catch (e: any) {
+    json({ error: e.message || 'Failed to advance batch' });
+  }
 }
 
 function cmdDescribe(note: string) {

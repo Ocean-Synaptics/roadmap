@@ -1,5 +1,5 @@
 // @module protocol
-// @exports define, graph, check, verify, order, parallelOrder, orient, reconcile, merge, branch, analyze, modify, modifyAndCommit, validateNode, validateGraph
+// @exports define, graph, check, verify, order, parallelOrder, orient, advanceBatch, reconcile, merge, branch, analyze, modify, modifyAndCommit, validateNode, validateBatch, validateGraph
 // @types NodeSpec, Graph, Orientation, Connection, Gap, ValidationRule, ValidationCheck, ValidationResult, ModifyAnalysis, ModificationRecord
 // @entry roadmap/protocol
 
@@ -728,6 +728,62 @@ export async function validateNode<T extends string>(
     checks,
     failedReason: allPassed ? undefined : `${checks.filter(c => !c.passed).length} validation(s) failed`,
   };
+}
+
+/**
+ * Validate a batch of nodes (all nodes in a parallel execution group).
+ * Batch validation is stricter than individual node validation:
+ * - All nodes must pass validation
+ * - All produced artifacts must exist (artifact materialization)
+ * Returns pass/fail for the entire batch
+ */
+export async function validateBatch<T extends string>(
+  g: Graph<T>,
+  batch: string[],
+  exists: (artifact: string) => boolean,
+): Promise<{
+  passed: boolean;
+  results: ValidationResult[];
+  summary: string;
+  missingArtifacts: string[];
+}> {
+  // Validate each node in the batch
+  const results: ValidationResult[] = [];
+  const missingArtifacts: string[] = [];
+
+  for (const nodeId of batch) {
+    const result = await validateNode(g, nodeId, exists);
+    results.push(result);
+  }
+
+  // Check that all produced artifacts exist (artifact materialization requirement)
+  for (const nodeId of batch) {
+    const node = g.nodes[nodeId as keyof typeof g.nodes] as any;
+    if (node && node.produces) {
+      for (const artifact of node.produces) {
+        if (!exists(artifact)) {
+          missingArtifacts.push(artifact);
+        }
+      }
+    }
+  }
+
+  const allNodesPass = results.every(r => r.passed);
+  const allArtifactsExist = missingArtifacts.length === 0;
+  const passed = allNodesPass && allArtifactsExist;
+
+  const summary = (() => {
+    if (passed) {
+      return `Batch complete: ${batch.length} node(s) validated, all artifacts present`;
+    }
+    const failedNodes = results.filter(r => !r.passed).length;
+    const issues: string[] = [];
+    if (failedNodes > 0) issues.push(`${failedNodes} node(s) failed validation`);
+    if (missingArtifacts.length > 0) issues.push(`${missingArtifacts.length} artifact(s) missing`);
+    return `Batch incomplete: ${issues.join(', ')}`;
+  })();
+
+  return { passed, results, summary, missingArtifacts };
 }
 
 /**
