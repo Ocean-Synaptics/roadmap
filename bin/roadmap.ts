@@ -520,10 +520,18 @@ function cmdTrail() {
     if (source === 'local') {
       // Local trail: commit to git then truncate
       execSync('git add .roadmap/trail.jsonl', { cwd: repoRoot, stdio: 'pipe' });
-      execSync(`git commit -m "roadmap: archive trail (${lines.length} entries)"`, { cwd: repoRoot, stdio: 'pipe' });
-      const hash = execSync('git rev-parse --short HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
-      writeFileSync(trailPath, '');
-      json({ archived: true, source, entries: lines.length, commit: hash });
+      try {
+        execSync('git diff --cached --quiet', { cwd: repoRoot, stdio: 'pipe' });
+        // No staged changes — trail already committed, just truncate
+        writeFileSync(trailPath, '');
+        json({ archived: true, source, entries: lines.length, commit: 'already-committed' });
+      } catch {
+        // Staged changes exist — commit then truncate
+        execSync(`git commit -m "roadmap: archive trail (${lines.length} entries)"`, { cwd: repoRoot, stdio: 'pipe' });
+        const hash = execSync('git rev-parse --short HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
+        writeFileSync(trailPath, '');
+        json({ archived: true, source, entries: lines.length, commit: hash });
+      }
     } else {
       // Global trail: just truncate (no git repo to commit to)
       writeFileSync(trailPath, '');
