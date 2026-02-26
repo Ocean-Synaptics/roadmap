@@ -522,7 +522,8 @@ async function cmdExpand(note: string) {
 
   // Snapshot before
   const dagBefore = loadDAG();
-  const nodesBefore = Object.keys(dagBefore.nodes).length;
+  const idsBefore = new Set(Object.keys(dagBefore.nodes));
+  const nodesBefore = idsBefore.size;
 
   // Set expansion type as env var so scripts can branch on it
   execSync(`node --experimental-strip-types ${resolved}`, {
@@ -533,8 +534,10 @@ async function cmdExpand(note: string) {
 
   // Snapshot after
   const dagAfter = loadDAG();
-  const nodesAfter = Object.keys(dagAfter.nodes).length;
-  const added = nodesAfter - nodesBefore;
+  const idsAfter = Object.keys(dagAfter.nodes);
+  const nodesAfter = idsAfter.length;
+  const addedIds = idsAfter.filter(id => !idsBefore.has(id));
+  const added = addedIds.length;
 
   // Structural expansions are idempotent — re-running should produce same graph.
   // Iteration expansions are one-shot — re-running adds another iteration payload.
@@ -555,7 +558,7 @@ async function cmdExpand(note: string) {
   execSync(`git commit -m "${msg}"`, { cwd: repoRoot, stdio: 'pipe' });
   const hash = execSync('git rev-parse --short HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
 
-  const posAfter = orient(dagAfter, fileExists(repoRoot));
+  const posAfter = orient(dagAfter, fileExists(repoRoot), retiredSet());
   recordTrail({ ts: new Date().toISOString(), cmd: 'expand', note, repo: basename(repoRoot), position: posAfter.position, level: posAfter.level, dagId: dagAfter.id, detail: { script: scriptPath, added, commit: hash, type: expansionType } });
 
   json({
@@ -565,6 +568,11 @@ async function cmdExpand(note: string) {
     nodesBefore,
     nodesAfter,
     added,
+    addedIds,
+    position: posAfter.position,
+    level: posAfter.level,
+    batchRemaining: posAfter.batchRemaining,
+    batchComplete: posAfter.batchComplete,
     commit: hash,
   });
 }
