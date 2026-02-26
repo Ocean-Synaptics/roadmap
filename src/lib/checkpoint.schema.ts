@@ -24,7 +24,7 @@ export interface CheckpointMetadata {
 export interface Checkpoint {
   readonly id: string; // cp-{timestamp}
   readonly timestamp: number; // ms since epoch
-  readonly roadmapPosition: string; // current node ID
+  readonly roadmapPosition: string[]; // current batch (array of node IDs)
   readonly phase: string; // human-readable phase name
   readonly artifacts: readonly Artifact[];
   readonly gitState: GitState;
@@ -34,10 +34,12 @@ export interface Checkpoint {
 export function validateCheckpoint(c: unknown): c is Checkpoint {
   if (!c || typeof c !== 'object') return false;
   const ck = c as Record<string, unknown>;
+  const validPosition = Array.isArray(ck.roadmapPosition) &&
+    ck.roadmapPosition.every(p => typeof p === 'string');
   return (
     typeof ck.id === 'string' &&
     typeof ck.timestamp === 'number' &&
-    typeof ck.roadmapPosition === 'string' &&
+    validPosition &&
     Array.isArray(ck.artifacts) &&
     typeof ck.gitState === 'object' && ck.gitState !== null &&
     typeof ck.metadata === 'object' && ck.metadata !== null

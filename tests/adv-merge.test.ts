@@ -172,7 +172,7 @@ describe('ADV-MERGE: merge(g1, g2, connections) combines DAGs', () => {
     const o = orient(merged, a => a === 'seed');
 
     // position should be term (gate is trivially done)
-    expect(o.position).toBe('term');
+    expect(m.position).toEqual(["term"]);
     expect(o.done).toContain('gate');
   });
 });

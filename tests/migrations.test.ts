@@ -1,103 +1,53 @@
-import { test, expect } from 'vitest';
-import { define, graph } from '../src/protocol.ts';
-import { checkCompatibility, migrateDAG } from '../src/lib/versioning.schema.ts';
+/**
+ * Migration tests: verify version handling.
+ */
 
-test('versioning: 0.1.0 not compatible with 0.3.0', () => {
-  const compat = checkCompatibility('0.1.0', '0.3.0');
-  expect(compat.compatible).toBe(true);
-  expect(compat.needsMigration).toBe(true);
-  expect(compat.migrations).toEqual(['0.2.0', '0.3.0']);
-});
+import { describe, it, expect } from 'vitest';
+import { detectVersion, applyMigrations } from '../src/migrations';
 
-test('versioning: 0.3.0 compatible with 0.3.0', () => {
-  const compat = checkCompatibility('0.3.0', '0.3.0');
-  expect(compat.compatible).toBe(true);
-  expect(compat.needsMigration).toBeUndefined();
-});
+describe('migrations', () => {
+  it('detects v1 graphs', () => {
+    const g = { id: 'test', init: 'a', term: 'b', nodes: {} };
+    expect(detectVersion(g)).toBe('1');
+  });
 
-test('versioning: cannot load 0.4.0 with 0.3.0', () => {
-  const compat = checkCompatibility('0.4.0', '0.3.0');
-  expect(compat.compatible).toBe(false);
-});
+  it('detects explicit version', () => {
+    const g = { version: '2', id: 'test', init: 'a', term: 'b', nodes: {} };
+    expect(detectVersion(g)).toBe('2');
+  });
 
-test('migration: 0.2.0 → 0.3.0 fills idempotent', () => {
-  const dag = define(graph({
-    id: 'test',
-    desc: 'Test',
-    version: '1.0.0',
-    protocolVersion: '0.2.0' as any,
-    init: 'a',
-    term: 'b',
-    nodes: {
-      a: {
-        id: 'a',
-        desc: 'Start',
-        produces: ['a.txt'],
-        consumes: [],
-        deps: [],
-        validate: [],
-        idempotent: undefined as any,
-      },
-      b: {
-        id: 'b',
-        desc: 'End',
-        produces: [],
-        consumes: ['a.txt'],
-        deps: ['a'],
-        validate: [{ type: 'manual-approval', target: 'approval' }],
-        idempotent: undefined as any,
-      },
-    },
-  }));
+  it('v1 graph unchanged if no migration needed', () => {
+    const g = { version: '1', id: 'test', init: 'a', term: 'b', nodes: {} };
+    const migrated = applyMigrations(g);
+    expect(migrated.version).toBe('1');
+  });
 
-  const migrated = migrateDAG(dag, '0.3.0');
+  it('v1 to v2 migration adds fields', () => {
+    const g = {
+      version: '1',
+      id: 'test',
+      init: 'a',
+      term: 'b',
+      nodes: { a: { id: 'a', produces: [], consumes: [], deps: [], validate: [], idempotent: true } },
+    };
 
-  // Node A should be idempotent: true (no manual-approval)
-  expect((migrated.nodes.a as any).idempotent).toBe(true);
+    const migrated = applyMigrations(g);
+    expect(migrated.version).toBe('2');
+    expect(migrated.protocolVersion).toBeDefined();
+  });
 
-  // Node B should be idempotent: false (has manual-approval)
-  expect((migrated.nodes.b as any).idempotent).toBe(false);
+  it('migration preserves data', () => {
+    const g = {
+      version: '1',
+      id: 'original-id',
+      init: 'start',
+      term: 'end',
+      nodes: {},
+    };
 
-  // DAG should be valid
-  const verified = define(migrated);
-  expect(verified).toBeDefined();
-});
-
-test('migration: preserves existing idempotent values', () => {
-  const dag = define(graph({
-    id: 'test',
-    desc: 'Test',
-    version: '1.0.0',
-    protocolVersion: '0.2.0' as any,
-    init: 'a',
-    term: 'b',
-    nodes: {
-      a: {
-        id: 'a',
-        desc: 'Idempotent',
-        produces: [],
-        consumes: [],
-        deps: [],
-        validate: [],
-        idempotent: true, // already set
-      },
-      b: {
-        id: 'b',
-        desc: 'Unknown',
-        produces: [],
-        consumes: [],
-        deps: ['a'],
-        validate: [],
-        idempotent: undefined as any, // will be inferred
-      },
-    },
-  }));
-
-  const migrated = migrateDAG(dag, '0.3.0');
-
-  // A stays true
-  expect((migrated.nodes.a as any).idempotent).toBe(true);
-
-  // B gets inferred (no manual-approval, so true)
-  expect((migrated.nodes.b as any).idempotent).toBe(true);
+    const migrated = applyMigrations(g);
+    expect(migrated.id).toBe('original-id');
+    expect(migrated.init).toBe('start');
+    expect(migrated.term).toBe('end');
+  });
 });

@@ -72,7 +72,10 @@ test('consumer: adopt roadmap + load + orient + checkpoint', async () => {
 
   const position = orient(dag, fsCheck);
   // First incomplete: either build or test (parallel deps from scaffold)
-  expect(['build', 'test']).toContain(position.position);
+  const isExpectedBatch = JSON.stringify(position.position) === JSON.stringify(['build', 'test']) ||
+                          JSON.stringify(position.position) === JSON.stringify(['build']) ||
+                          JSON.stringify(position.position) === JSON.stringify(['test']);
+  expect(isExpectedBatch).toBe(true);
   expect(position.remaining.length).toBeGreaterThan(0);
 
   // Checkpoint manager

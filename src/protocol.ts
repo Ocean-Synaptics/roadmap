@@ -249,11 +249,15 @@ export function parallelOrder<T extends string>(g: Graph<T>): string[][] {
 }
 
 // --- orient: agent reorientation ---
-// Given a graph and a filesystem probe, returns current position, what's done,
+// Given a graph and a filesystem probe, returns current batch position, what's done,
 // what to produce, what's available to consume, and what remains.
+// Position is a batch (array of nodes), not a single node.
 
 export interface Orientation {
-  position: string;
+  position: string[];         // batch: array of nodes that can run in parallel
+  level: number;              // batch index (0-based)
+  batchRemaining: string[];   // nodes in current batch that aren't done
+  batchComplete: boolean;     // all nodes in current batch validated + artifacts exist
   done: string[];
   produces: readonly string[];
   consumes: readonly string[];
@@ -263,28 +267,87 @@ export interface Orientation {
 export function orient<T extends string>(
   g: Graph<T>,
   exists: (artifact: string) => boolean,
+  retired?: ReadonlySet<string>,
 ): Orientation {
-  const seq = order(g);
+  const batches = parallelOrder(g);
   const nodes = flat(g);
   const nm = new Map(nodes.map(n => [n.id, n]));
   const done: string[] = [];
+  let currentBatchIdx = 0;
+  let currentBatch = batches[currentBatchIdx];
 
-  for (const id of seq) {
-    const node = nm.get(id)!;
-    if (!node.produces.length || node.produces.every(exists)) {
-      done.push(id);
-      continue;
+  for (const batch of batches) {
+    const batchIncomplete = batch.filter(id => {
+      if (retired?.has(id)) return false;
+      const node = nm.get(id)!;
+      return !(!node.produces.length || node.produces.every(exists));
+    });
+
+    if (batchIncomplete.length > 0) {
+      // This is the first incomplete batch
+      const batchDone = batch.filter(id => !batchIncomplete.includes(id));
+      const remainingBatches = batches.slice(batches.indexOf(batch) + 1).flat();
+      const batchProduces = batch.flatMap(id => nm.get(id)!.produces);
+      const batchConsumes = batch.flatMap(id => nm.get(id)!.consumes);
+
+      return {
+        position: batch,
+        level: batches.indexOf(batch),
+        batchRemaining: batchIncomplete,
+        batchComplete: false,
+        done: [...done, ...batchDone],
+        produces: batchProduces,
+        consumes: batchConsumes,
+        remaining: remainingBatches,
+      };
     }
-    return {
-      position: id,
-      done,
-      produces: node.produces,
-      consumes: node.consumes,
-      remaining: seq.slice(seq.indexOf(id) + 1),
-    };
+
+    // All nodes in this batch are done
+    done.push(...batch);
   }
 
-  return { position: g.term, done: done.filter(id => id !== g.term), produces: [], consumes: [], remaining: [] };
+  // All batches complete - position is term batch (which contains only term node)
+  return {
+    position: [g.term],
+    level: batches.length - 1,
+    batchRemaining: [],
+    batchComplete: true,
+    done: done.filter(id => id !== g.term),
+    produces: [],
+    consumes: [],
+    remaining: [],
+  };
+}
+
+// --- advanceBatch: move from current batch to next ---
+// Validates that current batch is complete (all nodes' artifacts exist),
+// then returns orientation for the next batch.
+// This is the only way to advance in the batch-level position model.
+
+export function advanceBatch<T extends string>(
+  g: Graph<T>,
+  exists: (artifact: string) => boolean,
+  retired?: ReadonlySet<string>,
+): Orientation {
+  const current = orient(g, exists, retired);
+
+  // Guard: current batch must be complete
+  if (!current.batchComplete) {
+    throw new Error(
+      `Cannot advance: batch not complete. Remaining nodes: ${current.batchRemaining.join(', ')}`
+    );
+  }
+
+  // Guard: all produced artifacts must exist (double-check)
+  for (const artifact of current.produces) {
+    if (!exists(artifact)) {
+      throw new Error(`Cannot advance: artifact not found: ${artifact}`);
+    }
+  }
+
+  // Since all artifacts now exist, calling orient() again will skip past
+  // the current batch and find the next incomplete batch
+  return orient(g, exists, retired);
 }
 
 // --- merge: combine two DAGs at reconcile() join points ---
@@ -677,7 +740,7 @@ export async function validateGraph<T extends string>(
 ): Promise<{
   passed: boolean;
   results: ValidationResult[];
-  summary: { total: number; passed: number; failed: number };
+  summary: { total: number; passed: number; failed: number; structuralPassed: number; structuralFailed: number; artifactPassed: number; artifactFailed: number };
 }> {
   const nodes = Object.keys(g.nodes);
   const results: ValidationResult[] = [];
@@ -687,11 +750,37 @@ export async function validateGraph<T extends string>(
     results.push(result);
   }
 
+  // Structural: define/check/verify (graph integrity)
+  let structuralPassed = 0;
+  let structuralFailed = 0;
+  try {
+    define(g);
+    check(g);
+    const verifyErrors = verify(g);
+    structuralPassed = verifyErrors.length === 0 ? nodes.length : nodes.length - verifyErrors.length;
+    structuralFailed = verifyErrors.length;
+  } catch {
+    structuralFailed = nodes.length;
+  }
+
+  // Artifact: artifact-exists rules only
+  let artifactPassed = 0;
+  let artifactFailed = 0;
+  for (const r of results) {
+    const artifactChecks = r.checks.filter(c => c.rule.type === 'artifact-exists');
+    artifactPassed += artifactChecks.filter(c => c.passed).length;
+    artifactFailed += artifactChecks.filter(c => !c.passed).length;
+  }
+
   const passed = results.every(r => r.passed);
   const summary = {
     total: results.length,
     passed: results.filter(r => r.passed).length,
     failed: results.filter(r => !r.passed).length,
+    structuralPassed,
+    structuralFailed,
+    artifactPassed,
+    artifactFailed,
   };
 
   return { passed, results, summary };

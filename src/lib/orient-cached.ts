@@ -32,17 +32,38 @@ export async function orientCached<T extends string>(
   // Try to read git-state.json
   const gitState = await readGitState(repoRoot);
 
-  // If cache is fresh and has a position, trust it
-  if (gitState && isFresh(gitState) && gitState.roadmapPosition) {
-    // Validate the position is still accurate (artifacts exist)
-    const node = g.nodes[gitState.roadmapPosition as T];
-    if (node && (!node.produces.length || node.produces.every(a => exists(a)))) {
-      // Position is still valid, return cached
+  // If cache is fresh and has a position, verify batch is still complete
+  if (gitState && isFresh(gitState) && gitState.roadmapPosition && gitState.roadmapPosition.length > 0) {
+    // Validate the batch: all nodes' artifacts must exist
+    const batch = gitState.roadmapPosition as T[];
+    const batchProduces: string[] = [];
+    const batchConsumes: string[] = [];
+    let batchComplete = true;
+
+    for (const nodeId of batch) {
+      const node = g.nodes[nodeId];
+      if (!node) {
+        batchComplete = false;
+        break;
+      }
+      if (node.produces.length > 0 && !node.produces.every(a => exists(a))) {
+        batchComplete = false;
+        break;
+      }
+      batchProduces.push(...node.produces);
+      batchConsumes.push(...node.consumes);
+    }
+
+    if (batchComplete) {
+      // Cached position is still valid
       return {
-        position: gitState.roadmapPosition as T,
-        produces: node.produces as string[],
-        consumes: node.consumes as string[],
+        position: batch,
+        level: 0, // We don't know the level from cache alone
+        batchRemaining: [],
+        batchComplete: true,
         done: [], // Could cache this too, but risky
+        produces: batchProduces,
+        consumes: batchConsumes,
         remaining: [],
       };
     }
@@ -58,7 +79,7 @@ export async function orientCached<T extends string>(
  */
 export async function updateRoadmapPosition(
   repoRoot: string,
-  position: string,
+  position: string[],
   note?: string,
 ): Promise<void> {
   const { readFile, writeFile } = await import('node:fs/promises');

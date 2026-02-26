@@ -52,7 +52,7 @@ describe('bin/roadmap CLI', () => {
       expect(result).toHaveProperty('done');
       expect(result).toHaveProperty('remaining');
       expect(result).toHaveProperty('complete');
-      expect(typeof result.position).toBe('string');
+      expect(Array.isArray(result.position)).toBe(true);
       expect(typeof result.done).toBe('number');
     });
   });

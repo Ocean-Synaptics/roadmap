@@ -39,8 +39,8 @@ export interface GitState {
   /** Most recent checkpoint commit hash (if any), else null */
   readonly lastCheckpoint: string | null;
 
-  /** Current position in roadmap.ts (from orient() or explicit set) */
-  readonly roadmapPosition: string | null;
+  /** Current position in roadmap.ts (from orient() or explicit set) — batch of nodes */
+  readonly roadmapPosition: string[] | null;
 
   /** Count of dirty commits (commits since last checkpoint or tag) */
   readonly dirtyCommits: number;
@@ -50,6 +50,8 @@ export interface GitState {
 export function validateGitState(s: unknown): s is GitState {
   if (!s || typeof s !== 'object') return false;
   const g = s as Record<string, unknown>;
+  const validPosition = g.roadmapPosition === null ||
+    (Array.isArray(g.roadmapPosition) && g.roadmapPosition.every(p => typeof p === 'string'));
   return (
     typeof g.timestamp === 'number' &&
     typeof g.branch === 'string' &&
@@ -57,7 +59,8 @@ export function validateGitState(s: unknown): s is GitState {
     typeof (g.head as any).hash === 'string' &&
     typeof (g.head as any).subject === 'string' &&
     typeof g.clean === 'boolean' &&
-    (!g.dirty || Array.isArray(g.dirty))
+    (!g.dirty || Array.isArray(g.dirty)) &&
+    validPosition
   );
 }
 

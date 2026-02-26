@@ -358,7 +358,7 @@ describe('orient: filesystem-state position', () => {
   it('returns init when no artifacts exist', () => {
     const g = define(linear());
     const o = orient(g, () => false);
-    expect(o.position).toBe('init');
+    expect(o.position).toEqual(['init']);
     expect(o.done).toEqual([]);
     expect(o.produces).toEqual(['init.txt']);
   });
@@ -367,7 +367,7 @@ describe('orient: filesystem-state position', () => {
     const g = define(linear());
     const have = new Set(['init.txt']);
     const o = orient(g, a => have.has(a));
-    expect(o.position).toBe('a');
+    expect(o.position).toEqual(['a']);
     expect(o.done).toEqual(['init']);
     expect(o.produces).toEqual(['a.txt']);
     expect(o.consumes).toEqual(['init.txt']);
@@ -377,7 +377,7 @@ describe('orient: filesystem-state position', () => {
     const g = define(linear());
     const have = new Set(['init.txt', 'a.txt', 'b.txt']);
     const o = orient(g, a => have.has(a));
-    expect(o.position).toBe('term');
+    expect(o.position).toEqual(['term']);
     expect(o.done).toContain('init');
     expect(o.done).toContain('a');
     expect(o.done).toContain('b');
@@ -415,7 +415,7 @@ describe('orient: filesystem-state position', () => {
     }));
     const have = new Set(['seed']);
     const o = orient(g, a => have.has(a));
-    expect(o.position).toBe('term');
+    expect(o.position).toEqual(['term']);
     expect(o.done).toContain('mid');
   });
 
@@ -423,7 +423,7 @@ describe('orient: filesystem-state position', () => {
     const g = define(diamond());
     const have = new Set(['root.txt', 'a.txt', 'b.txt']);
     const o = orient(g, a => have.has(a));
-    expect(o.position).toBe('c');
+    expect(o.position).toEqual(['c']);
     expect(o.done).toContain('a');
     expect(o.done).toContain('b');
   });

@@ -1,0 +1,59 @@
+{"ts":"2026-02-26T12:56:09.481Z","cmd":"orient","note":"test","repo":"roadmap","position":["batch-position-types","batch-validation-layer"],"dagId":"roadmap-adversarial","detail":{"done":114,"remaining":5,"complete":false}}
+{"ts":"2026-02-26T12:56:09.839Z","cmd":"describe","note":"test","repo":"roadmap","position":["init"],"dagId":"roadmap-adversarial"}
+{"ts":"2026-02-26T12:56:10.108Z","cmd":"sync","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:10.268Z","cmd":"describe","note":"test","repo":"roadmap","position":["init"],"dagId":"roadmap-adversarial"}
+{"ts":"2026-02-26T12:56:10.573Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":false}}
+{"ts":"2026-02-26T12:56:10.920Z","cmd":"validate","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"nodeId":"init"}}
+{"ts":"2026-02-26T12:56:11.079Z","cmd":"locate","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:11.209Z","cmd":"validate","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"nodeId":"all"}}
+{"ts":"2026-02-26T12:56:13.108Z","cmd":"sync","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:13.295Z","cmd":"locate","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:13.347Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":false}}
+{"ts":"2026-02-26T12:56:13.475Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":false}}
+{"ts":"2026-02-26T12:56:13.591Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":true}}
+{"ts":"2026-02-26T12:56:13.725Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":true}}
+{"ts":"2026-02-26T12:56:13.836Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":true}}
+{"ts":"2026-02-26T12:56:13.968Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":true,"showGraph":false}}
+{"ts":"2026-02-26T12:56:15.284Z","cmd":"locate","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:15.990Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":true,"showGraph":true}}
+{"ts":"2026-02-26T12:56:17.166Z","cmd":"sync","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:19.306Z","cmd":"sync","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:19.850Z","cmd":"locate","note":"test locate","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:21.362Z","cmd":"sync","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:21.638Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":false}}
+{"ts":"2026-02-26T12:56:21.679Z","cmd":"sync","note":"test sync","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:21.758Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":false}}
+{"ts":"2026-02-26T12:56:21.815Z","cmd":"parallel","note":"test parallel","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":true,"showGraph":true}}
+{"ts":"2026-02-26T12:56:21.869Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":true}}
+{"ts":"2026-02-26T12:56:21.987Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":true}}
+{"ts":"2026-02-26T12:56:22.096Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":true}}
+{"ts":"2026-02-26T12:56:22.199Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":true,"showGraph":false}}
+{"ts":"2026-02-26T12:56:23.967Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":true,"showGraph":true}}
+{"ts":"2026-02-26T12:56:24.999Z","cmd":"locate","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:26.553Z","cmd":"locate","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:26.642Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":true,"showGraph":true}}
+{"ts":"2026-02-26T12:56:27.109Z","cmd":"locate","note":"test locate","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:28.649Z","cmd":"sync","note":"test sync","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:28.725Z","cmd":"parallel","note":"test parallel","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":true,"showGraph":true}}
+{"ts":"2026-02-26T12:56:31.471Z","cmd":"locate","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:32.912Z","cmd":"locate","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:32.993Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":true,"showGraph":true}}
+{"ts":"2026-02-26T12:56:55.461Z","cmd":"locate","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:56.761Z","cmd":"locate","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:58.043Z","cmd":"locate","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:56:59.374Z","cmd":"sync","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:57:00.646Z","cmd":"sync","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:57:01.951Z","cmd":"sync","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:57:02.134Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":false}}
+{"ts":"2026-02-26T12:57:02.214Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":false}}
+{"ts":"2026-02-26T12:57:02.306Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":true}}
+{"ts":"2026-02-26T12:57:02.391Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":true}}
+{"ts":"2026-02-26T12:57:02.470Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":true}}
+{"ts":"2026-02-26T12:57:02.557Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":true,"showGraph":false}}
+{"ts":"2026-02-26T12:57:03.923Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":true,"showGraph":true}}
+{"ts":"2026-02-26T12:57:06.510Z","cmd":"locate","note":"test locate","repo":"roadmap"}
+{"ts":"2026-02-26T12:57:07.869Z","cmd":"sync","note":"test sync","repo":"roadmap"}
+{"ts":"2026-02-26T12:57:07.961Z","cmd":"parallel","note":"test parallel","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":true,"showGraph":true}}
+{"ts":"2026-02-26T12:57:10.564Z","cmd":"locate","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:57:11.889Z","cmd":"locate","note":"test","repo":"roadmap"}
+{"ts":"2026-02-26T12:57:11.975Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"crossRepo":true,"showGraph":true}}

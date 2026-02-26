@@ -24,7 +24,15 @@ export {
 } from './protocol.ts';
 
 // Predicates for orient()
-export { fileExists, gitArtifactExists, compound } from './predicates.ts';
+export { fileExists, gitArtifactExists, gitArtifactAt, siblingArtifactExists, compound, any } from './predicates.ts';
+
+// Cross-repo orient
+export { crossOrient } from './lib/cross-orient.ts';
+export type { CrossOrientation, SiblingStatus } from './lib/cross-orient.ts';
+
+// Git library
+export { repoInfo, artifactAtRef, archivedFiles, fileHistory, restore, stageAndCommit, createBranch, trackedFiles, isTracked, shortHash, isClean } from './lib/git.ts';
+export type { RepoInfo, FileHistory } from './lib/git.ts';
 
 // Typed errors
 export { RoadmapError } from './errors.ts';

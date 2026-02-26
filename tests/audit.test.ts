@@ -1,48 +1,98 @@
-import { test, expect } from 'vitest';
-import { AuditTrail } from '../src/lib/audit.ts';
+/**
+ * Audit trail tests: verify logging and querying of operations.
+ */
 
-test('audit: record entry', () => {
-  const trail = new AuditTrail('.');
-  trail.startSession('test-agent');
-  trail.record({
-    nodeId: 'build',
-    status: 'complete',
-    duration: 1000,
-    artifacts: [{ path: 'dist/index.js', hash: 'sha256:abc123' }],
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { AuditTrail } from '../src/audit';
+import fs from 'fs';
+import path from 'path';
+
+describe('audit trail', () => {
+  let trail: AuditTrail;
+  const testDir = '.roadmap-test';
+
+  beforeEach(() => {
+    if (!fs.existsSync(testDir)) {
+      fs.mkdirSync(testDir, { recursive: true });
+    }
+    trail = new AuditTrail(testDir);
   });
 
-  expect(trail.getArtifacts()).toHaveLength(1);
-  expect(trail.getArtifacts()[0].path).toBe('dist/index.js');
-});
+  afterEach(() => {
+    if (fs.existsSync(testDir)) {
+      fs.rmSync(testDir, { recursive: true });
+    }
+  });
 
-test('audit: multiple entries', () => {
-  const trail = new AuditTrail('.');
-  trail.startSession('agent-1');
-  trail.record({ nodeId: 'a', status: 'complete', duration: 100 });
-  trail.record({ nodeId: 'b', status: 'complete', duration: 200 });
-  trail.record({ nodeId: 'c', status: 'failed', duration: 50, error: 'timeout' });
+  it('logs orient operation', () => {
+    trail.logOrient({
+      position: 'phase-1',
+      produces: ['dist/app.js'],
+      consumes: ['src/main.ts'],
+      done: 5,
+      remaining: 10,
+    });
 
-  expect(trail.getFailedPhases()).toEqual(['c']);
-  expect(trail.getTotalDuration()).toBe(350);
-});
+    const entries = trail.readLocal();
+    expect(entries.length).toBe(1);
+    expect(entries[0].type).toBe('orient');
+  });
 
-test('audit: markdown formatting', () => {
-  const trail = new AuditTrail('.');
-  trail.startSession('test-agent');
-  trail.record({ nodeId: 'phase-1', status: 'complete', duration: 500 });
-  trail.record({ nodeId: 'phase-2', status: 'complete', duration: 300 });
+  it('logs modify operation', () => {
+    trail.logModify({ operation: 'add', nodeId: 'build' });
+    const entries = trail.readLocal();
+    expect(entries.length).toBe(1);
+    expect(entries[0].type).toBe('modify');
+  });
 
-  const md = (trail as any).formatMarkdown();
-  expect(md).toContain('test-agent');
-  expect(md).toContain('phase-1');
-  expect(md).toContain('phase-2');
-  expect(md).toContain('2 phases, 2 passed');
-});
+  it('logs checkpoint creation', () => {
+    trail.logCheckpoint({ label: 'v1.0.0', position: 'phase-2-term' });
+    const entries = trail.readLocal();
+    expect(entries.length).toBe(1);
+    expect(entries[0].type).toBe('checkpoint');
+  });
 
-test('audit: restoration tracking', () => {
-  const trail = new AuditTrail('.');
-  trail.startSession('recovered-agent', 'cp-20260225-101530');
+  it('logs error operation', () => {
+    trail.logError({ operation: 'orient', code: 'ERROR' });
+    const entries = trail.readLocal();
+    expect(entries[0].type).toBe('error');
+  });
 
-  expect((trail as any).session.restoredFrom).toBe('cp-20260225-101530');
-  expect((trail as any).formatMarkdown()).toContain('Restored from: cp-20260225-101530');
+  it('filters entries by type', () => {
+    trail.logOrient({ position: 'a', produces: [], consumes: [], done: 0, remaining: 1 });
+    trail.logModify({ operation: 'add', nodeId: 'x' });
+    trail.logOrient({ position: 'b', produces: [], consumes: [], done: 1, remaining: 0 });
+
+    const orients = trail.filterByType('orient');
+    expect(orients.length).toBe(2);
+  });
+
+  it('gets last N entries', () => {
+    for (let i = 0; i < 5; i++) {
+      trail.logOrient({ position: `p${i}`, produces: [], consumes: [], done: i, remaining: 5 - i });
+    }
+    const last2 = trail.last(2);
+    expect(last2.length).toBe(2);
+  });
+
+  it('handles empty trail', () => {
+    expect(trail.readLocal()).toEqual([]);
+    expect(trail.last(5)).toEqual([]);
+  });
+
+  it('includes timestamp in entries', () => {
+    trail.logOrient({ position: 'p1', produces: [], consumes: [], done: 1, remaining: 5 });
+    const entries = trail.readLocal();
+    expect(entries[0].timestamp).toBeDefined();
+    expect(typeof entries[0].timestamp).toBe('string');
+  });
+
+  it('archives local trail', () => {
+    trail.logOrient({ position: 'p1', produces: [], consumes: [], done: 1, remaining: 5 });
+    const trailPath = path.join(testDir, 'trail.jsonl');
+    expect(fs.existsSync(trailPath)).toBe(true);
+
+    trail.archive();
+    expect(fs.existsSync(trailPath)).toBe(false);
+  });
 });

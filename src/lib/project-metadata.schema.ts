@@ -23,6 +23,7 @@ export interface DependencySpec {
   readonly consumes: readonly string[];
   readonly phase: string;             // "init", "build", etc
   readonly mustComplete?: boolean;    // Block if not complete?
+  readonly siblingPath?: string;      // Override path resolution (for CI/containers)
 }
 
 export interface ProjectMetadata {

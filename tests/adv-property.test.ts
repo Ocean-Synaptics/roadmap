@@ -111,7 +111,7 @@ describe('P2 [core contract]: orient() position is g.term or has non-empty produ
     // Fixed:   skips gate, position = work (produces: ['work.out']).
     const o = orient(gateAtStart, a => a === 'init.out');
 
-    expect(o.position).toBe('work');
+    expect(o.position).toEqual(["work"]);
     expect(o.produces.length).toBeGreaterThan(0);
   });
 
@@ -119,7 +119,7 @@ describe('P2 [core contract]: orient() position is g.term or has non-empty produ
     const have = new Set(['init.out', 'pre.out']);
     const o = orient(gateInMiddle, a => have.has(a));
 
-    expect(o.position).toBe('post');
+    expect(o.position).toEqual(["post"]);
     expect(o.produces.length).toBeGreaterThan(0);
   });
 
@@ -127,7 +127,7 @@ describe('P2 [core contract]: orient() position is g.term or has non-empty produ
     // Three consecutive gates are all trivially done. Should land at work.
     const o = orient(gateChain, a => a === 'init.out');
 
-    expect(o.position).toBe('work');
+    expect(o.position).toEqual(["work"]);
     expect(o.produces.length).toBeGreaterThan(0);
   });
 
@@ -138,7 +138,7 @@ describe('P2 [core contract]: orient() position is g.term or has non-empty produ
     const have = new Set(['init.out', 'work.out']);
     const o = orient(gateAllDone, a => have.has(a));
 
-    expect(o.position).toBe('term');
+    expect(o.position).toEqual(["term"]);
   });
 
   it('invariant holds across all graph shapes and filesystem states', () => {
@@ -154,7 +154,7 @@ describe('P2 [core contract]: orient() position is g.term or has non-empty produ
     for (const g of fixtures) {
       for (const exists of states) {
         const o = orient(g, exists);
-        const p2 = o.position === g.term || o.produces.length > 0;
+        const p2 = o.position[0] === g.term || JSON.stringify(o.position) === JSON.stringify([g.term]) || o.produces.length > 0;
         expect(p2, `P2 violated: graph=${g.id}, position=${o.position}`).toBe(true);
       }
     }

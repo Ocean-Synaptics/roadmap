@@ -1,0 +1,12 @@
+{
+  "init": {
+    "reason": "artifacts archived to git history — init work complete in v0.5.0",
+    "ts": "2026-02-26T09:53:24.417Z",
+    "cascade": false
+  },
+  "reorient": {
+    "reason": "session gating postponed — unblock FR track (cli-surface, consumer-unblock)",
+    "ts": "2026-02-26T09:55:51.630Z",
+    "cascade": false
+  }
+}

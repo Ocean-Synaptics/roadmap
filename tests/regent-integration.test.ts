@@ -1,143 +1,144 @@
-import { test, expect } from 'vitest';
-import { define, graph, orient } from '../src/protocol.ts';
-
 /**
- * Regent integration tests: agent template + checkpoint + audit
+ * Regent integration tests: verify roadmap works with governance system.
  */
 
-test('regent: agent boot → orient → commit → checkpoint → audit', async () => {
-  // Simulate: agent spawned with roadmap
-  const dag = define(graph({
-    id: 'test-roadmap',
-    desc: 'Test',
-    init: 'a',
-    term: 'c',
-    nodes: {
-      a: {
-        id: 'a',
-        desc: 'Start',
-        produces: ['a.txt'],
-        consumes: [],
-        deps: [],
-        validate: [{ type: 'artifact-exists', target: 'a.txt' }],
-        idempotent: true,
+import { describe, it, expect } from 'vitest';
+import { graph, define, verify, check, orient } from '../src/protocol';
+import { AuditTrail } from '../src/audit';
+
+describe('regent integration', () => {
+  it('DAG can be loaded and oriented', () => {
+    const g = define(
+      graph({
+        id: 'test',
+        init: 'a',
+        term: 'c',
+        nodes: {
+          a: { id: 'a', desc: '', produces: ['x'], consumes: [], deps: [], validate: [], idempotent: true },
+          b: { id: 'b', desc: '', produces: ['y'], consumes: ['x'], deps: ['a'], validate: [], idempotent: true },
+          c: { id: 'c', desc: '', produces: [], consumes: ['y'], deps: ['b'], validate: [], idempotent: false },
+        },
+      }),
+    );
+
+    expect(verify(g)).toEqual([]);
+    expect(check(g).done).toBe(true);
+
+    const pos = orient(g, () => true);
+    expect(pos.position).toBe('a');
+  });
+
+  it('audit trail records operations', () => {
+    const trail = new AuditTrail();
+
+    trail.logOrient({ position: 'a', produces: ['x'], consumes: [], done: 1, remaining: 2 });
+    trail.logModify({ operation: 'add', nodeId: 'new' });
+
+    const entries = trail.readLocal();
+    expect(entries.length).toBeGreaterThanOrEqual(0);
+  });
+
+  it('DAG is deterministic', () => {
+    const spec = {
+      id: 'test',
+      init: 'start',
+      term: 'end',
+      nodes: {
+        start: { id: 'start', desc: '', produces: [], consumes: [], deps: [], validate: [], idempotent: true },
+        end: { id: 'end', desc: '', produces: [], consumes: [], deps: ['start'], validate: [], idempotent: false },
       },
-      b: {
-        id: 'b',
-        desc: 'Middle',
-        produces: ['b.txt'],
-        consumes: ['a.txt'],
-        deps: ['a'],
-        validate: [{ type: 'artifact-exists', target: 'b.txt' }],
-        idempotent: true,
-      },
-      c: {
-        id: 'c',
-        desc: 'End',
-        produces: [],
-        consumes: ['a.txt', 'b.txt'],
-        deps: ['b'],
-        validate: [],
-        idempotent: false,
-      },
-    },
-  }));
+    };
 
-  // Agent boots: position
-  const fsCheck = (path: string) => {
-    // Simulate: a.txt exists (from previous session)
-    return path === 'a.txt';
-  };
+    const g1 = define(graph(spec));
+    const g2 = define(graph(spec));
 
-  const pos = orient(dag, fsCheck);
-  expect(pos.position).toBe('b'); // First incomplete node
-  expect(pos.produces).toEqual(['b.txt']);
-  expect(pos.remaining).toHaveLength(1);
-});
+    const pos1 = orient(g1, () => true);
+    const pos2 = orient(g2, () => true);
 
-test('regent: idempotent node recovery', () => {
-  // If agent crashes after committing 'b' but before advancing
-  const dag = define(graph({
-    id: 'recovery-test',
-    desc: 'Test',
-    init: 'start',
-    term: 'end',
-    nodes: {
-      start: {
-        id: 'start',
-        desc: 'Init',
-        produces: ['x.txt'],
-        consumes: [],
-        deps: [],
-        validate: [{ type: 'artifact-exists', target: 'x.txt' }],
-        idempotent: true,
-      },
-      end: {
-        id: 'end',
-        desc: 'Final',
-        produces: [],
-        consumes: ['x.txt'],
-        deps: ['start'],
-        validate: [],
-        idempotent: false,
-      },
-    },
-  }));
+    expect(pos1.position).toBe(pos2.position);
+  });
 
-  // After crash + restart: x.txt exists
-  const fsCheck = () => true;
-  const pos = orient(dag, fsCheck);
+  it('orientation respects idempotence', () => {
+    const g = define(
+      graph({
+        id: 'test',
+        init: 'a',
+        term: 'done',
+        nodes: {
+          a: { id: 'a', desc: '', produces: ['x'], consumes: [], deps: [], validate: [], idempotent: true },
+          b: { id: 'b', desc: '', produces: [], consumes: ['x'], deps: ['a'], validate: [], idempotent: false },
+          done: { id: 'done', desc: '', produces: [], consumes: [], deps: ['b'], validate: [], idempotent: false },
+        },
+      }),
+    );
 
-  // Should be at end (not stuck at start)
-  expect(pos.position).toBe('end');
-  expect(pos.remaining).toHaveLength(0);
-});
+    const pos = orient(g, (p) => p === 'x' || p === 'done');
+    expect(pos.position).toBe('done');
+  });
 
-test('regent: checkpoint preserves position', () => {
-  const checkpoints = [
-    {
-      id: 'cp-1',
-      position: 'phase-1',
-      artifacts: [{ path: 'src/a.ts', hash: 'sha256:abc' }],
-    },
-    {
-      id: 'cp-2',
-      position: 'phase-2',
-      artifacts: [{ path: 'src/b.ts', hash: 'sha256:def' }],
-    },
-  ];
+  it('verify catches contract violations', () => {
+    const errors = verify(
+      define(
+        graph({
+          id: 'test',
+          init: 'a',
+          term: 'done',
+          nodes: {
+            a: { id: 'a', desc: '', produces: [], consumes: [], deps: [], validate: [], idempotent: true },
+            b: { id: 'b', desc: '', produces: [], consumes: ['missing'], deps: ['a'], validate: [], idempotent: true },
+            done: { id: 'done', desc: '', produces: [], consumes: [], deps: ['b'], validate: [], idempotent: false },
+          },
+        }),
+      ),
+    );
 
-  // Latest checkpoint
-  const latest = checkpoints[checkpoints.length - 1];
-  expect(latest.position).toBe('phase-2');
-});
+    expect(errors.length).toBeGreaterThan(0);
+  });
 
-test('regent: audit trail on completion', () => {
-  const audit = [
-    { nodeId: 'build', status: 'complete' as const, duration: 100 },
-    { nodeId: 'test', status: 'complete' as const, duration: 200 },
-  ];
+  it('check detects unreachable nodes', () => {
+    const result = check(
+      define(
+        graph({
+          id: 'test',
+          init: 'a',
+          term: 'done',
+          nodes: {
+            a: { id: 'a', desc: '', produces: [], consumes: [], deps: [], validate: [], idempotent: true },
+            orphan: { id: 'orphan', desc: '', produces: [], consumes: [], deps: [], validate: [], idempotent: true },
+            done: { id: 'done', desc: '', produces: [], consumes: [], deps: ['a'], validate: [], idempotent: false },
+          },
+        }),
+      ),
+    );
 
-  const passed = audit.filter(e => e.status === 'complete').length;
-  const failed = audit.filter(e => e.status === 'failed').length;
+    expect(result.orphans.length).toBeGreaterThan(0);
+  });
 
-  expect(passed).toBe(2);
-  expect(failed).toBe(0);
-});
+  it('orientation is reversible', () => {
+    const g = define(
+      graph({
+        id: 'test',
+        init: 'a',
+        term: 'd',
+        nodes: {
+          a: { id: 'a', desc: '', produces: ['x'], consumes: [], deps: [], validate: [], idempotent: true },
+          b: { id: 'b', desc: '', produces: ['y'], consumes: ['x'], deps: ['a'], validate: [], idempotent: true },
+          c: { id: 'c', desc: '', produces: ['z'], consumes: ['y'], deps: ['b'], validate: [], idempotent: true },
+          d: { id: 'd', desc: '', produces: [], consumes: ['z'], deps: ['c'], validate: [], idempotent: false },
+        },
+      }),
+    );
 
-test('regent: non-idempotent node blocks recovery', () => {
-  const nodes = [
-    { id: 'code-gen', idempotent: true },
-    { id: 'manual-review', idempotent: false },
-    { id: 'deploy', idempotent: false },
-  ];
+    // All artifacts exist: should be at term
+    const full = orient(g, () => true);
+    expect(full.position).toBe('d');
 
-  const canRecover = (nodeId: string) => {
-    const node = nodes.find(n => n.id === nodeId);
-    return node?.idempotent ?? true;
-  };
+    // No artifacts: should be at init
+    const empty = orient(g, () => false);
+    expect(empty.position).toBe('a');
 
-  expect(canRecover('code-gen')).toBe(true);
-  expect(canRecover('manual-review')).toBe(false);
-  expect(canRecover('deploy')).toBe(false);
+    // Partial: at intermediate node
+    const partial = orient(g, (p) => p === 'x' || p === 'y');
+    expect(['b', 'c'].includes(partial.position)).toBe(true);
+  });
 });

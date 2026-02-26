@@ -37,7 +37,7 @@ describe('ADV-ORIENT: empty-produces node is trivially done', () => {
 
     const o = orient(g, a => a === 'seed');
 
-    expect(o.position).toBe('term');
+    expect(o.position).toEqual(['term']);
     expect(o.done).toContain('init');
     expect(o.done).toContain('mid');
   });
@@ -80,7 +80,7 @@ describe('ADV-ORIENT: empty-produces node is trivially done', () => {
 
     const o = orient(g, a => a === 'seed');
 
-    expect(o.position).toBe('term');
+    expect(o.position).toEqual(["term"]);
     expect(o.done).toContain('gate-1');
     expect(o.done).toContain('gate-2');
   });
@@ -103,7 +103,7 @@ describe('ADV-ORIENT: empty-produces node is trivially done', () => {
 
     const o = orient(g, () => false);
 
-    expect(o.position).toBe('work');
+    expect(o.position).toEqual(["work"]);
     expect(o.done).toContain('init');
   });
 
@@ -127,7 +127,7 @@ describe('ADV-ORIENT: empty-produces node is trivially done', () => {
     const have = new Set(['init.txt']);
     const o = orient(g, a => have.has(a));
 
-    expect(o.position).toBe('work');
+    expect(o.position).toEqual(["work"]);
   });
 
   it('gate advances when upstream work completes', () => {
@@ -149,7 +149,7 @@ describe('ADV-ORIENT: empty-produces node is trivially done', () => {
     const have = new Set(['init.txt', 'output']);
     const o = orient(g, a => have.has(a));
 
-    expect(o.position).toBe('term');
+    expect(o.position).toEqual(["term"]);
     expect(o.done).toContain('work');
     expect(o.done).toContain('gate');
   });
@@ -173,7 +173,7 @@ describe('ADV-ORIENT: empty-produces node is trivially done', () => {
     // 'seed' exists but 'output' does not
     const o = orient(g, a => a === 'seed');
 
-    expect(o.position).toBe('work');
+    expect(o.position).toEqual(["work"]);
     expect(o.done).toContain('init');
     expect(o.done).not.toContain('work');
   });
@@ -193,7 +193,7 @@ describe('ADV-ORIENT: empty-produces node is trivially done', () => {
 
     const o = orient(g, () => true);
 
-    expect(o.position).toBe('term');
+    expect(o.position).toEqual(["term"]);
     expect(o.done).toContain('init');
     expect(o.done).toContain('work');
   });

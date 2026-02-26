@@ -113,11 +113,11 @@ describe('git-state-caching', () => {
 
     writeFileSync(join(regentDir, 'git-state.json'), JSON.stringify(initialState, null, 2));
 
-    // Update position
-    await updateRoadmapPosition(tmpRepo, 'git-state-spec');
+    // Update position (batch of one node)
+    await updateRoadmapPosition(tmpRepo, ['git-state-spec']);
 
     // Read back
     const state = await readGitState(tmpRepo);
-    expect(state?.roadmapPosition).toBe('git-state-spec');
+    expect(state?.roadmapPosition).toEqual(['git-state-spec']);
   });
 });

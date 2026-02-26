@@ -154,7 +154,7 @@ async function cmdOrient(note: string) {
     consumes: pos.consumes,
     done: pos.done.length,
     remaining: pos.remaining.length,
-    complete: pos.position === dag.term,
+    complete: pos.remaining.length === 0,
   };
 
   // Include blockedBy if there are blocking deps
@@ -199,7 +199,7 @@ function cmdDescribe(note: string) {
     desc: dag.desc,
     nodes: Object.keys(dag.nodes).length,
     position: pos.position,
-    complete: pos.position === dag.term,
+    complete: pos.remaining.length === 0,
     remaining: pos.remaining.length,
     parallelBatches: batches.length,
     entryPoints: {
@@ -542,7 +542,7 @@ async function cmdChart() {
 
     const levelEmoji = batchPct === 100 ? '✅' : batchDone > 0 ? '🔶' : '⬜';
     const nodeList = batch.map(n => {
-      if (n === pos.position) return `👉 ${n}`;
+      if (pos.position.includes(n)) return `👉 ${n}`;
       if (retiredIds.has(n)) return `⏭️ ${n}`;
       if (doneSet.has(n)) return `✅ ${n}`;
       return `⬜ ${n}`;

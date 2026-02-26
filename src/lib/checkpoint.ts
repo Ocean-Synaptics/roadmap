@@ -15,7 +15,7 @@ export class CheckpointManager {
    * Create and save checkpoint at current position
    */
   async saveCheckpoint(options: {
-    position: string;
+    position: string[];
     phase: string;
     artifacts: string[];
     agent: string;
@@ -79,7 +79,7 @@ export class CheckpointManager {
   /**
    * Restore from latest checkpoint if available and valid
    */
-  async restore(): Promise<{ position: string; checkpoint: Checkpoint } | null> {
+  async restore(): Promise<{ position: string[]; checkpoint: Checkpoint } | null> {
     const checkpoint = await readLatestCheckpoint(this.repoRoot);
     if (!checkpoint) return null;
 

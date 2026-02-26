@@ -2059,7 +2059,7 @@
       "produces": [],
       "consumes": [],
       "deps": [
-        "phase-15-term"
+        "phase-16-term"
       ],
       "validate": [
         {
@@ -2353,6 +2353,127 @@
       "deps": [
         "cli-cross-project",
         "git-hook-test-enforcement"
+      ],
+      "validate": [],
+      "idempotent": false
+    },
+    "batch-position-types": {
+      "id": "batch-position-types",
+      "desc": "Redefine Orientation type: position becomes string[] (batch, not node). Implement orient() returning batch, advanceBatch() for advancement. Breaking change to API. Updates: src/protocol.ts type system, orient() signature, new advanceBatch() function.",
+      "produces": [
+        "src/protocol.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "phase-15-term"
+      ],
+      "validate": [
+        {
+          "type": "function",
+          "target": "tsc",
+          "fn": "npx tsc --noEmit src/protocol.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "batch-validation-layer": {
+      "id": "batch-validation-layer",
+      "desc": "Add validateBatch() function to validate all nodes in a batch as unit. Check artifact materialization (all produces must exist). Ensures batch completeness before advancement. Updates: src/validation.ts, new validateBatch() export.",
+      "produces": [
+        "src/validation.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "phase-15-term"
+      ],
+      "validate": [
+        {
+          "type": "function",
+          "target": "tsc",
+          "fn": "npx tsc --noEmit src/validation.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "batch-cli-trail": {
+      "id": "batch-cli-trail",
+      "desc": "Update CLI commands: orient/advance for batch-level position. Update trail schema to record batch progressions (position: string[] instead of string). New cmdAdvance() function. Updates: bin/roadmap.ts, trail JSON format.",
+      "produces": [
+        "bin/roadmap.ts"
+      ],
+      "consumes": [
+        "src/protocol.ts"
+      ],
+      "deps": [
+        "batch-position-types"
+      ],
+      "validate": [
+        {
+          "type": "function",
+          "target": "tsc",
+          "fn": "npx tsc --noEmit bin/roadmap.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "batch-enforcement-hook": {
+      "id": "batch-enforcement-hook",
+      "desc": "Update pre-commit hook for batch-level enforcement: prevent commits unless entire batch validates AND all artifacts materialized. New validation: batchComplete + artifact-exists checks. Updates: hooks/pre-commit script.",
+      "produces": [
+        "hooks/pre-commit"
+      ],
+      "consumes": [
+        "src/validation.ts"
+      ],
+      "deps": [
+        "batch-validation-layer"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "hooks/pre-commit"
+        }
+      ],
+      "idempotent": true
+    },
+    "batch-position-tests": {
+      "id": "batch-position-tests",
+      "desc": "Comprehensive test rewrite for batch semantics: orient() returns array, advanceBatch() validation, artifact materialization, batch completion. Rewrite protocol.test.ts, add batch-specific tests. Coverage: linear DAGs, diamond DAGs, complex DAGs.",
+      "produces": [
+        "tests/protocol.test.ts",
+        "tests/batch-position.test.ts"
+      ],
+      "consumes": [
+        "src/protocol.ts",
+        "src/validation.ts",
+        "bin/roadmap.ts"
+      ],
+      "deps": [
+        "batch-position-types",
+        "batch-validation-layer",
+        "batch-cli-trail",
+        "batch-enforcement-hook"
+      ],
+      "validate": [
+        {
+          "type": "function",
+          "target": "vitest",
+          "fn": "npx vitest run tests/protocol.test.ts tests/batch-position.test.ts --reporter=dot"
+        }
+      ],
+      "idempotent": true
+    },
+    "phase-16-term": {
+      "id": "phase-16-term",
+      "desc": "Phase 16 complete: Batch-level position model enforced. Position is array (batch), not string (node). Cannot advance before entire batch complete. Trail records batch progressions. Pre-commit prevents partial batch commits. Breaking API change, but mechanically enforced.",
+      "produces": [],
+      "consumes": [
+        "tests/protocol.test.ts",
+        "tests/batch-position.test.ts",
+        "hooks/pre-commit"
+      ],
+      "deps": [
+        "batch-position-tests"
       ],
       "validate": [],
       "idempotent": false

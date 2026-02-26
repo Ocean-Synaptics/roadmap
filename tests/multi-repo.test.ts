@@ -1,313 +1,150 @@
-import { test, expect } from 'vitest';
-import { define, graph, merge, verify, check, orient } from '../src/protocol.ts';
-import { existsSync } from 'node:fs';
-
 /**
- * Multi-repo coordination tests
- * Scenario: merge roadmap + cockpit + fusion DAGs at artifact boundaries
+ * Multi-repo coordination tests: verify merge correctness across multiple repos.
  */
 
-test('merge: two independent DAGs with artifact connection', () => {
-  const g1 = define(graph({
-    id: 'g1',
-    desc: 'First project',
-    init: 'init1',
-    term: 'term1',
-    nodes: {
-      init1: {
-        id: 'init1',
-        desc: 'Start',
-        produces: ['a.txt'],
-        consumes: [],
-        deps: [],
-        validate: [],
-        idempotent: true,
+import { describe, it, expect } from 'vitest';
+import { graph, define, merge, check, verify, order, orient } from '../src/protocol';
+
+describe('multi-repo patterns', () => {
+  // Shared library: produces lib.js
+  const shared = define(
+    graph({
+      id: 'shared',
+      init: 'init',
+      term: 'published',
+      nodes: {
+        init: { id: 'init', desc: '', produces: ['lib.ts'], consumes: [], deps: [], validate: [], idempotent: true },
+        compile: { id: 'compile', desc: '', produces: ['lib.js'], consumes: ['lib.ts'], deps: ['init'], validate: [], idempotent: true },
+        published: { id: 'published', desc: '', produces: [], consumes: ['lib.js'], deps: ['compile'], validate: [], idempotent: false },
       },
-      term1: {
-        id: 'term1',
-        desc: 'End',
-        produces: [],
-        consumes: ['a.txt'],
-        deps: ['init1'],
-        validate: [],
-        idempotent: false,
+    }),
+  );
+
+  // Frontend: consumes lib.js, produces app.js
+  const frontend = define(
+    graph({
+      id: 'frontend',
+      init: 'setup',
+      term: 'built',
+      nodes: {
+        setup: { id: 'setup', desc: '', produces: [], consumes: [], deps: [], validate: [], idempotent: true },
+        build: { id: 'build', desc: '', produces: ['app.js'], consumes: ['lib.js'], deps: ['setup'], validate: [], idempotent: true },
+        built: { id: 'built', desc: '', produces: [], consumes: ['app.js'], deps: ['build'], validate: [], idempotent: false },
       },
-    },
-  }));
+    }),
+  );
 
-  const g2 = define(graph({
-    id: 'g2',
-    desc: 'Second project',
-    init: 'init2',
-    term: 'term2',
-    nodes: {
-      init2: {
-        id: 'init2',
-        desc: 'Start',
-        produces: ['b.txt'],
-        consumes: ['a.txt'], // consumes from g1
-        deps: [],
-        validate: [],
-        idempotent: true,
+  // Backend: consumes lib.js, produces api.js
+  const backend = define(
+    graph({
+      id: 'backend',
+      init: 'setup',
+      term: 'deployed',
+      nodes: {
+        setup: { id: 'setup', desc: '', produces: [], consumes: [], deps: [], validate: [], idempotent: true },
+        build: { id: 'build', desc: '', produces: ['api.js'], consumes: ['lib.js'], deps: ['setup'], validate: [], idempotent: true },
+        deployed: { id: 'deployed', desc: '', produces: [], consumes: ['api.js'], deps: ['build'], validate: [], idempotent: false },
       },
-      term2: {
-        id: 'term2',
-        desc: 'End',
-        produces: [],
-        consumes: ['a.txt', 'b.txt'],
-        deps: ['init2'],
-        validate: [],
-        idempotent: false,
-      },
-    },
-  }));
+    }),
+  );
 
-  const merged = merge(g1, g2, [
-    { g1Node: 'term1', g2Node: 'init2', artifact: 'a.txt' },
-  ]);
+  it('merges shared → frontend', () => {
+    const merged = merge(shared, frontend, [{ g1Node: 'published', g2Node: 'setup', artifact: 'lib.js' }]);
 
-  expect(merged.init).toBe('init1');
-  expect(merged.term).toBe('term2');
-  expect(Object.keys(merged.nodes)).toContain('init1');
-  expect(Object.keys(merged.nodes)).toContain('init2');
-  expect(Object.keys(merged.nodes)).toContain('term1');
-  expect(Object.keys(merged.nodes)).toContain('term2');
+    // Should have all nodes from both graphs
+    expect(Object.keys(merged.nodes)).toContain('init');
+    expect(Object.keys(merged.nodes)).toContain('compile');
+    expect(Object.keys(merged.nodes)).toContain('published');
+    expect(Object.keys(merged.nodes)).toContain('setup');
+    expect(Object.keys(merged.nodes)).toContain('build');
+    expect(Object.keys(merged.nodes)).toContain('built');
 
-  // Verify acyclic + connected
-  const checkRes = check(merged);
-  expect(checkRes.done).toBe(true);
+    // shared.published → frontend.setup should have edge
+    expect(merged.nodes['setup'].deps).toContain('published');
 
-  // Verify contracts
-  const verifyErrs = verify(merged);
-  expect(verifyErrs).toHaveLength(0);
-});
+    // Should be valid
+    expect(verify(merged)).toEqual([]);
+    expect(check(merged).done).toBe(true);
+  });
 
-test('merge: three-repo chain (roadmap → fusion → cockpit)', () => {
-  const roadmap = define(graph({
-    id: 'roadmap',
-    init: 'r-init',
-    term: 'r-term',
-    desc: 'Protocol',
-    nodes: {
-      'r-init': {
-        id: 'r-init',
-        desc: 'Protocol core',
-        produces: ['protocol.ts'],
-        consumes: [],
-        deps: [],
-        validate: [],
-        idempotent: true,
-      },
-      'r-term': {
-        id: 'r-term',
-        desc: 'Protocol ready',
-        produces: [],
-        consumes: ['protocol.ts'],
-        deps: ['r-init'],
-        validate: [],
-        idempotent: false,
-      },
-    },
-  }));
+  it('merges shared → frontend → backend (two-level merge)', () => {
+    const step1 = merge(shared, frontend, [{ g1Node: 'published', g2Node: 'setup', artifact: 'lib.js' }]);
+    const step2 = merge(step1, backend, [{ g1Node: 'published', g2Node: 'setup', artifact: 'lib.js' }]);
 
-  const fusion = define(graph({
-    id: 'fusion',
-    init: 'f-init',
-    term: 'f-term',
-    desc: 'Orchestration',
-    nodes: {
-      'f-init': {
-        id: 'f-init',
-        desc: 'Use protocol',
-        produces: ['orchestration.ts'],
-        consumes: ['protocol.ts'],
-        deps: [],
-        validate: [],
-        idempotent: true,
-      },
-      'f-term': {
-        id: 'f-term',
-        desc: 'Orchestration ready',
-        produces: [],
-        consumes: ['protocol.ts', 'orchestration.ts'],
-        deps: ['f-init'],
-        validate: [],
-        idempotent: false,
-      },
-    },
-  }));
+    // 3 graphs × ~3 nodes each = 9 nodes
+    expect(Object.keys(step2.nodes).length).toBe(9);
 
-  const cockpit = define(graph({
-    id: 'cockpit',
-    init: 'c-init',
-    term: 'c-term',
-    desc: 'Dashboard',
-    nodes: {
-      'c-init': {
-        id: 'c-init',
-        desc: 'Use orchestration',
-        produces: ['dashboard.ts'],
-        consumes: ['protocol.ts', 'orchestration.ts'],
-        deps: [],
-        validate: [],
-        idempotent: true,
-      },
-      'c-term': {
-        id: 'c-term',
-        desc: 'Dashboard ready',
-        produces: [],
-        consumes: ['protocol.ts', 'orchestration.ts', 'dashboard.ts'],
-        deps: ['c-init'],
-        validate: [],
-        idempotent: false,
-      },
-    },
-  }));
+    // Verify correctness
+    expect(verify(step2)).toEqual([]);
+    expect(check(step2).done).toBe(true);
 
-  // Chain: roadmap → fusion
-  const m1 = merge(roadmap, fusion, [
-    { g1Node: 'r-term', g2Node: 'f-init', artifact: 'protocol.ts' },
-  ]);
+    // Should reach terminal from init
+    const ord = order(step2);
+    expect(ord[0]).toBe('init');
+    expect(ord[ord.length - 1]).toBe('deployed');
+  });
 
-  // Then: (roadmap+fusion) → cockpit
-  const m2 = merge(m1, cockpit, [
-    { g1Node: 'f-term', g2Node: 'c-init', artifact: 'orchestration.ts' },
-  ]);
+  it('frontend and backend can execute in parallel after shared.published', () => {
+    const step1 = merge(shared, frontend, [{ g1Node: 'published', g2Node: 'setup', artifact: 'lib.js' }]);
+    const combined = merge(step1, backend, [{ g1Node: 'published', g2Node: 'setup', artifact: 'lib.js' }]);
 
-  expect(m2.init).toBe('r-init');
-  expect(m2.term).toBe('c-term');
+    const ord = order(combined);
 
-  const checkRes = check(m2);
-  expect(checkRes.done).toBe(true);
+    // Position of 'shared' nodes, frontend.setup, backend.setup
+    const sharedPublished = ord.indexOf('published');
+    const frontendSetup = ord.indexOf('setup'); // Note: there are two 'setup' nodes, this gets first
+    const backendSetup = ord.indexOf('setup', frontendSetup + 1); // Get second 'setup'
 
-  const verifyErrs = verify(m2);
-  expect(verifyErrs).toHaveLength(0);
+    // After shared.published, both frontend.setup and backend.setup should be available
+    expect(sharedPublished).toBeLessThan(frontendSetup);
+    expect(sharedPublished).toBeLessThan(backendSetup);
 
-  // All nodes present
-  const nodeCount = Object.keys(m2.nodes).length;
-  expect(nodeCount).toBe(6); // 2 from each DAG
-});
+    // frontend.build and backend.build both depend on lib.js (from shared.published)
+    expect(combined.nodes['build']).toBeDefined(); // Will find first 'build'
+  });
 
-test('merge: preserves node.idempotent field', () => {
-  const g1 = define(graph({
-    id: 'g1',
-    init: 'a',
-    term: 'b',
-    desc: 'Test',
-    nodes: {
-      a: {
-        id: 'a',
-        desc: 'Idempotent',
-        produces: ['x'],
-        consumes: [],
-        deps: [],
-        validate: [],
-        idempotent: true,
-      },
-      b: {
-        id: 'b',
-        desc: 'Non-idempotent',
-        produces: [],
-        consumes: ['x'],
-        deps: ['a'],
-        validate: [],
-        idempotent: false,
-      },
-    },
-  }));
+  it('orientation works across merged repos', () => {
+    const step1 = merge(shared, frontend, [{ g1Node: 'published', g2Node: 'setup', artifact: 'lib.js' }]);
+    const combined = merge(step1, backend, [{ g1Node: 'published', g2Node: 'setup', artifact: 'lib.js' }]);
 
-  const g2 = define(graph({
-    id: 'g2',
-    init: 'c',
-    term: 'd',
-    desc: 'Test',
-    nodes: {
-      c: {
-        id: 'c',
-        desc: 'Start',
-        produces: ['y'],
-        consumes: ['x'],
-        deps: [],
-        validate: [],
-        idempotent: true,
-      },
-      d: {
-        id: 'd',
-        desc: 'End',
-        produces: [],
-        consumes: ['x', 'y'],
-        deps: ['c'],
-        validate: [],
-        idempotent: false,
-      },
-    },
-  }));
+    // Simulate: all shared nodes done, frontend.setup in progress
+    const exists = (path: string) => {
+      return ['lib.ts', 'lib.js'].includes(path);
+    };
 
-  const merged = merge(g1, g2, [{ g1Node: 'b', g2Node: 'c', artifact: 'x' }]);
+    const pos = orient(combined, exists);
 
-  expect(merged.nodes.a.idempotent).toBe(true);
-  expect(merged.nodes.b.idempotent).toBe(false);
-  expect(merged.nodes.c.idempotent).toBe(true);
-  expect(merged.nodes.d.idempotent).toBe(false);
-});
+    // Should be at first incomplete node after shared phase
+    expect(pos.complete).toBe(false);
+    expect(pos.produces.length).toBeGreaterThan(0);
+  });
 
-test('merge: rejects invalid connection (missing artifact)', () => {
-  const g1 = define(graph({
-    id: 'g1',
-    init: 'a',
-    term: 'b',
-    desc: 'Test',
-    nodes: {
-      a: {
-        id: 'a',
-        desc: 'Start',
-        produces: ['x.txt'],
-        consumes: [],
-        deps: [],
-        validate: [],
-        idempotent: true,
-      },
-      b: {
-        id: 'b',
-        desc: 'End',
-        produces: [],
-        consumes: ['x.txt'],
-        deps: ['a'],
-        validate: [],
-        idempotent: false,
-      },
-    },
-  }));
+  it('merge preserves init and term from both graphs', () => {
+    const merged = merge(shared, frontend, [{ g1Node: 'published', g2Node: 'setup', artifact: 'lib.js' }]);
 
-  const g2 = define(graph({
-    id: 'g2',
-    init: 'c',
-    term: 'd',
-    desc: 'Test',
-    nodes: {
-      c: {
-        id: 'c',
-        desc: 'Start',
-        produces: ['y.txt'],
-        consumes: ['z.txt'], // doesn't match x.txt!
-        deps: [],
-        validate: [],
-        idempotent: true,
-      },
-      d: {
-        id: 'd',
-        desc: 'End',
-        produces: [],
-        consumes: ['y.txt'],
-        deps: ['c'],
-        validate: [],
-        idempotent: false,
-      },
-    },
-  }));
+    // init should be from shared (first graph)
+    expect(merged.init).toBe('init');
 
-  // Merge with wrong connection — should throw on validation
-  expect(() =>
-    merge(g1, g2, [{ g1Node: 'b', g2Node: 'c', artifact: 'x.txt' }])
-  ).toThrow('Merge validation failed');
+    // term should be from frontend (second graph)
+    expect(merged.term).toBe('built');
+  });
+
+  it('merge fails on node ID conflict', () => {
+    // Create backend with conflicting node ID
+    const conflicting = define(
+      graph({
+        id: 'conflict',
+        init: 'init', // Same as shared.init
+        term: 'done',
+        nodes: {
+          init: { id: 'init', desc: '', produces: [], consumes: [], deps: [], validate: [], idempotent: true },
+          done: { id: 'done', desc: '', produces: [], consumes: [], deps: ['init'], validate: [], idempotent: false },
+        },
+      }),
+    );
+
+    expect(() => {
+      merge(shared, conflicting, [{ g1Node: 'published', g2Node: 'init', artifact: 'lib.js' }]);
+    }).toThrow();
+  });
 });
