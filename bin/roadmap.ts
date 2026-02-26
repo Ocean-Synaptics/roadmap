@@ -1345,7 +1345,8 @@ function cmdHelp() {
   console.log(`roadmap — DAG expansion protocol CLI
 
 Commands:
-  orient              Current batch position + produces/consumes + dep status (JSON)
+  orient              Current batch position + produces/consumes + claims (JSON)
+  orient --assign     Round-robin assign batchRemaining to --owners (JSON)
   advance             Advance to next batch (requires current batch complete) (JSON)
   describe            Full API surface + project state (JSON)
   validate [node]     Run validation rules (all nodes or specific)
@@ -1380,27 +1381,61 @@ Commands:
   dig <path> --restore  Recover archived file to working tree
   help                This message
 
-All commands (except help/trail/chart/install/dig) require --note "reason".
+All commands (except help/trail/chart/install/dig/claim) require --note "reason".
+
+Agent Workflow:
+  1. orient --note "..."           → find current batch (position[], produces[], consumes[])
+  2. claim <node> / orient --assign → take ownership of node(s) in the batch
+  3. do work                       → produce the artifacts listed in produces[]
+  4. advance --note "..."          → validate batch complete, move to next batch
+
+  orient is the entry point. Run it first. It returns:
+    position[]       current batch (nodes runnable in parallel)
+    level            batch index (0 = init)
+    produces[]       artifacts this batch must create
+    consumes[]       artifacts available from prior batches
+    batchRemaining[] nodes in batch whose artifacts are still missing
+    batchComplete    true if all batch artifacts exist
+    claims           per-node { owner, claimedAt, claimExpiry, expired }
+    preGate[]        plan nodes workable before their deps close
+    planNodes        { nodeId: 'plan' } for plan-mode nodes in batch
+    blockedBy[]      cross-repo deps not yet satisfied
+
+  orient --assign --owners w1,w2,w3 [--ttl 900]
+    Round-robin assigns batchRemaining nodes to owners. Respects active claims
+    and avoids co-assigning nodes that share produced files (batchConflicts).
+    Returns assignments { nodeId: owner } and assignSkipped { nodeId: reason }.
+
+  claim semantics:
+    Advisory locks — expired claims are ignored, not enforced.
+    Claims scoped to current batch only (can't claim ahead of frontier).
+    Owner resolution: --owner flag > $AGENT_ID > $USER > 'unknown'.
+    --renew fails if claim expired (prevents stale agent re-claiming).
+    Default TTL: 300s. For long tasks, use --ttl or renew on a timer.
+
+  advance validates every node in the current batch before moving forward.
+  If any artifact is missing, advance fails with the list of incomplete nodes.
 
 Batch Model:
-  Position is expressed as a batch (array of nodes runnable in parallel).
-  Use orient to get current batch.
-  Use advance to move to next batch (validates current batch is complete).
-  Trail entries record position as string[] for batch tracking.
+  Position is a batch (string[]), not a single node.
+  parallelOrder() computes all batches; orient() finds the first incomplete one.
+  Plan nodes (mode: 'plan') complete when expansion children exist, not artifacts.
+  Trail entries record position as string[] with level index.
 
 Examples:
-  roadmap orient --note "session start"        # show current batch
-  roadmap advance --note "batch complete"      # move to next batch
+  roadmap orient --note "session start"
+  roadmap orient --assign --owners w1,w2,w3 --ttl 900 --note "dispatch"
+  roadmap claim node-a --owner worker-1 --ttl 600
+  roadmap claim node-a --renew --ttl 600
+  roadmap claim --list
+  roadmap advance --note "batch complete"
   roadmap chart
-  roadmap chart --deps                         # cross-repo progress view
-  roadmap merge --from ../donjon --note "check connections"
+  roadmap chart --deps
+  roadmap trail --global --last 5
+  roadmap trail --archived
+  roadmap trail --archived --read 2026-02-26
   roadmap retire phase-5-term --cascade --note "descoped"
-  roadmap retire --list                        # show retired nodes
-  roadmap dig                                  # list all archived files
-  roadmap dig docs/API.md                      # show commit history
-  roadmap dig docs/API.md --restore            # recover to working tree
-  roadmap install
-  roadmap trail --global --last 5              # recent trail entries with batch positions`);
+  roadmap dig docs/API.md --restore`);
 }
 
 // --- Helpers ---
