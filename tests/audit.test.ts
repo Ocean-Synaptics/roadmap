@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { AuditTrail } from '../src/audit.ts';
+import { AuditTrail } from '../src/lib/audit.ts';
 
 test('audit: record entry', () => {
   const trail = new AuditTrail('.');

@@ -11,8 +11,8 @@
  */
 
 import type { ProjectMetadata } from './project-metadata.schema.ts';
-import type { NodeSpec, Graph } from './protocol.ts';
-import { check, verify, define } from './protocol.ts';
+import type { NodeSpec, Graph } from '../protocol.ts';
+import { check, verify, define } from '../protocol.ts';
 
 export interface GeneratedDAG {
   sourceCode: string; // The roadmap.ts code

@@ -31,33 +31,33 @@ export { RoadmapError } from './errors.ts';
 export type { ErrorCode, RoadmapErrorContext } from './errors.ts';
 
 // Recovery + execution
-export { CheckpointManager } from './checkpoint.ts';
-export { AuditTrail } from './audit.ts';
+export { CheckpointManager } from './lib/checkpoint.ts';
+export { AuditTrail } from './lib/audit.ts';
 
 // Agent APIs (sealed, no DAG introspection)
 export {
   getBrief,
   loadHandoffJournal,
-} from './brief.ts';
+} from './lib/brief.ts';
 
 export {
   checkpoint,
   advance,
   verifyBootstrapSignature,
-} from './handoff.ts';
+} from './lib/handoff.ts';
 
 // Versioning + migration
 export {
   loadDAG,
   loadDAGFromFile,
-} from './versioning.ts';
+} from './lib/versioning.ts';
 
 export {
   checkCompatibility,
   migrateDAG,
-} from './versioning.schema.ts';
+} from './lib/versioning.schema.ts';
 
-export { DAGMigrator } from './migrations.ts';
+export { DAGMigrator } from './lib/migrations.ts';
 
 // Type exports
 export type {
@@ -76,17 +76,17 @@ export type {
 export type {
   GitState,
   Checkpoint,
-} from './checkpoint.schema.ts';
+} from './lib/checkpoint.schema.ts';
 
 export type {
   VersionInfo,
   CompatibilityResult,
-} from './versioning.schema.ts';
+} from './lib/versioning.schema.ts';
 
-export type { AuditEntry, AuditSession } from './audit.ts';
+export type { AuditEntry, AuditSession } from './lib/audit.ts';
 
 export type {
   Brief,
   FinalHandoff,
   InterimHandoff,
-} from './brief.ts';
+} from './lib/brief.ts';

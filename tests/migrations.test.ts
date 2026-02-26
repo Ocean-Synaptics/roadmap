@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest';
 import { define, graph } from '../src/protocol.ts';
-import { checkCompatibility, migrateDAG } from '../src/versioning.schema.ts';
+import { checkCompatibility, migrateDAG } from '../src/lib/versioning.schema.ts';
 
 test('versioning: 0.1.0 not compatible with 0.3.0', () => {
   const compat = checkCompatibility('0.1.0', '0.3.0');

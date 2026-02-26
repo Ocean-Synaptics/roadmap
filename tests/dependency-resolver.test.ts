@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { discoverDependencies } from '../src/dependency-resolver.ts';
+import { discoverDependencies } from '../src/lib/dependency-resolver.ts';
 
 test('resolver: discovers dependencies from metadata', async () => {
   const deps = await discoverDependencies('.');

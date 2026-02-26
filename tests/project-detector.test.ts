@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { getProjectType, requireProjectMetadata } from '../src/project-detector.ts';
+import { getProjectType, requireProjectMetadata } from '../src/lib/project-detector.ts';
 
 test('detector: reads project type from .roadmap.json', async () => {
   const projectType = await getProjectType('.');

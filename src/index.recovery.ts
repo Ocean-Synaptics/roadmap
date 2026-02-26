@@ -5,8 +5,8 @@
  * Does not include core DAG functions (use roadmap/protocol for those).
  */
 
-export { CheckpointManager } from './checkpoint.ts';
-export { AuditTrail } from './audit.ts';
+export { CheckpointManager } from './lib/checkpoint.ts';
+export { AuditTrail } from './lib/audit.ts';
 
-export type { GitState, Checkpoint } from './checkpoint.schema.ts';
-export type { AuditEntry, AuditSession } from './audit.ts';
+export type { GitState, Checkpoint } from './lib/checkpoint.schema.ts';
+export type { AuditEntry, AuditSession } from './lib/audit.ts';

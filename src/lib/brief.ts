@@ -3,7 +3,7 @@
 // @types Brief, FinalHandoff, InterimHandoff
 // @entry roadmap/agent
 
-import type { Graph } from './protocol.ts';
+import type { Graph } from '../protocol.ts';
 
 export interface InterimHandoff {
   /** ISO 8601 timestamp when checkpoint was created */

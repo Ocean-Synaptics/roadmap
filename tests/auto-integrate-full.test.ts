@@ -8,9 +8,9 @@
  */
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { generateRoadmapDAG, validateGeneratedDAG } from '../src/auto-integrate-gen';
+import { generateRoadmapDAG, validateGeneratedDAG } from '../src/lib/auto-integrate-gen';
 import { check, verify, define } from '../src/protocol';
-import type { ProjectMetadata } from '../src/project-metadata.schema';
+import type { ProjectMetadata } from '../src/lib/project-metadata.schema';
 import { readdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { mkdtemp, rmdir } from 'node:fs/promises';

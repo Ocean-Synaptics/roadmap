@@ -3,10 +3,9 @@ import { execSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import roadmap from '../roadmap.ts';
 import { orient } from '../src/protocol.ts';
-import { readGitState, isFresh, validateGitState } from '../src/git-state.schema.ts';
-import { orientCached, updateRoadmapPosition } from '../src/orient-cached.ts';
+import { readGitState, isFresh, validateGitState } from '../src/lib/git-state.schema.ts';
+import { orientCached, updateRoadmapPosition } from '../src/lib/orient-cached.ts';
 
 describe('git-state-caching', () => {
   let tmpRepo: string;

@@ -6,7 +6,7 @@
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { orient as liveOrient, type Graph, type Orientation } from './protocol.ts';
+import { orient as liveOrient, type Graph, type Orientation } from '../protocol.ts';
 import { readGitState, isFresh } from './git-state.schema.ts';
 
 /**

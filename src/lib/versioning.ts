@@ -3,7 +3,7 @@
 // @types (uses versioning.schema types)
 // @entry roadmap/versioning
 
-import { define as defineDAG, type Graph } from './protocol.ts';
+import { define as defineDAG, type Graph } from '../protocol.ts';
 import { checkCompatibility, migrateDAG, type ProtocolVersion } from './versioning.schema.ts';
 import { DAGMigrator } from './migrations.ts';
 

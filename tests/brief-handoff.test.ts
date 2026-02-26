@@ -12,12 +12,12 @@ import {
 import {
   getBrief,
   loadHandoffJournal,
-} from '../src/brief.ts';
+} from '../src/lib/brief.ts';
 import {
   checkpoint,
   advance,
   verifyBootstrapSignature,
-} from '../src/handoff.ts';
+} from '../src/lib/handoff.ts';
 
 describe('Agent APIs: brief + handoff', () => {
   let tmpDir: string;

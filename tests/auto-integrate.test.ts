@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { planIntegration } from '../src/auto-integrate.ts';
+import { planIntegration } from '../src/lib/auto-integrate.ts';
 
 test('auto-integrate: requires metadata to plan', async () => {
   // Without .roadmap.json, should throw error asking for metadata

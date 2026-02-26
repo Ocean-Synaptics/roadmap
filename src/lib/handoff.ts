@@ -3,7 +3,7 @@
 // @types (none — uses Brief types)
 // @entry roadmap/agent
 
-import type { Graph } from './protocol.ts';
+import type { Graph } from '../protocol.ts';
 import type { FinalHandoff, InterimHandoff } from './brief.ts';
 
 /**

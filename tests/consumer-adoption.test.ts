@@ -1,8 +1,8 @@
 import { test, expect } from 'vitest';
 import { orient, define, graph } from '../src/protocol.ts';
-import { loadDAG } from '../src/versioning.ts';
-import { CheckpointManager } from '../src/checkpoint.ts';
-import { AuditTrail } from '../src/audit.ts';
+import { loadDAG } from '../src/lib/versioning.ts';
+import { CheckpointManager } from '../src/lib/checkpoint.ts';
+import { AuditTrail } from '../src/lib/audit.ts';
 
 /**
  * Consumer adoption test: real project workflow

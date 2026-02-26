@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest';
-import { loadDAG } from '../src/versioning.ts';
+import { loadDAG } from '../src/lib/versioning.ts';
 import { define, graph } from '../src/protocol.ts';
 
 test('versioning: loadDAG auto-migrates 0.2.0 to 0.3.0', async () => {

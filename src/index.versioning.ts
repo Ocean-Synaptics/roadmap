@@ -5,8 +5,8 @@
  * Not needed for normal operation.
  */
 
-export { loadDAG, loadDAGFromFile } from './versioning.ts';
-export { checkCompatibility, migrateDAG } from './versioning.schema.ts';
-export { DAGMigrator } from './migrations.ts';
+export { loadDAG, loadDAGFromFile } from './lib/versioning.ts';
+export { checkCompatibility, migrateDAG } from './lib/versioning.schema.ts';
+export { DAGMigrator } from './lib/migrations.ts';
 
-export type { VersionInfo, CompatibilityResult } from './versioning.schema.ts';
+export type { VersionInfo, CompatibilityResult } from './lib/versioning.schema.ts';
