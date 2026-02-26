@@ -170,6 +170,89 @@ describe('expanded validation rule', () => {
   });
 });
 
+// --- Pre-gate: plan nodes workable before deps close ---
+
+describe('preGate', () => {
+  it('surfaces plan nodes from future batches', () => {
+    const g = define(graph({
+      id: 'test', desc: 'test', init: 'a', term: 'e',
+      nodes: {
+        a: { id: 'a', desc: 'start', produces: ['x'], consumes: [], deps: [], validate: [], idempotent: true },
+        b: { id: 'b', desc: 'execute', produces: ['y'], consumes: ['x'], deps: ['a'], validate: [], idempotent: true },
+        c: { id: 'c', desc: 'plan future', produces: [], consumes: ['y'], deps: ['b'], validate: [], idempotent: true, mode: 'plan' },
+        d: { id: 'd', desc: 'after plan', produces: ['z'], consumes: [], deps: ['c'], validate: [], idempotent: true, expandedFrom: 'c' },
+        e: { id: 'e', desc: 'end', produces: [], consumes: ['z'], deps: ['d'], validate: [], idempotent: false },
+      },
+    }));
+    // Position at b (x exists, y doesn't). c is a plan node in a future batch.
+    const pos = orient(g, makeExists(['x']));
+    expect(pos.position).toContain('b');
+    expect(pos.preGate).toContain('c');
+  });
+
+  it('excludes execute nodes from preGate', () => {
+    const g = define(graph({
+      id: 'test', desc: 'test', init: 'a', term: 'd',
+      nodes: {
+        a: { id: 'a', desc: 'start', produces: ['x'], consumes: [], deps: [], validate: [], idempotent: true },
+        b: { id: 'b', desc: 'execute', produces: ['y'], consumes: ['x'], deps: ['a'], validate: [], idempotent: true },
+        c: { id: 'c', desc: 'also execute', produces: ['z'], consumes: ['y'], deps: ['b'], validate: [], idempotent: true },
+        d: { id: 'd', desc: 'end', produces: [], consumes: ['z'], deps: ['c'], validate: [], idempotent: false },
+      },
+    }));
+    const pos = orient(g, makeExists(['x']));
+    expect(pos.preGate).toEqual([]);
+  });
+
+  it('filters out plan nodes with uncompleted plan deps', () => {
+    const g = define(graph({
+      id: 'test', desc: 'test', init: 'a', term: 'f',
+      nodes: {
+        a: { id: 'a', desc: 'start', produces: ['x'], consumes: [], deps: [], validate: [], idempotent: true },
+        b: { id: 'b', desc: 'execute', produces: ['y'], consumes: ['x'], deps: ['a'], validate: [], idempotent: true },
+        c: { id: 'c', desc: 'plan-1', produces: [], consumes: ['y'], deps: ['b'], validate: [], idempotent: true, mode: 'plan' },
+        d: { id: 'd', desc: 'plan-2 depends on plan-1', produces: [], consumes: [], deps: ['c'], validate: [], idempotent: true, mode: 'plan' },
+        e: { id: 'e', desc: 'exec', produces: ['z'], consumes: [], deps: ['d'], validate: [], idempotent: true, expandedFrom: 'd' },
+        f: { id: 'f', desc: 'end', produces: [], consumes: ['z'], deps: ['e'], validate: [], idempotent: false },
+      },
+    }));
+    // Position at b. c is plan (workable — only execute dep b is pending).
+    // d is plan but depends on c (plan) which is uncompleted → NOT in preGate.
+    const pos = orient(g, makeExists(['x']));
+    expect(pos.preGate).toContain('c');
+    expect(pos.preGate).not.toContain('d');
+  });
+
+  it('allows plan node when only execute deps are pending', () => {
+    const g = define(graph({
+      id: 'test', desc: 'test', init: 'a', term: 'e',
+      nodes: {
+        a: { id: 'a', desc: 'start', produces: ['x'], consumes: [], deps: [], validate: [], idempotent: true },
+        b: { id: 'b', desc: 'exec-1', produces: ['y'], consumes: ['x'], deps: ['a'], validate: [], idempotent: true },
+        c: { id: 'c', desc: 'exec-2', produces: ['z'], consumes: ['x'], deps: ['a'], validate: [], idempotent: true },
+        d: { id: 'd', desc: 'plan after exec', produces: [], consumes: ['y', 'z'], deps: ['b', 'c'], validate: [], idempotent: true, mode: 'plan' },
+        e: { id: 'e', desc: 'end', produces: [], consumes: [], deps: ['d'], validate: [], idempotent: false },
+      },
+    }));
+    // b and c are execute deps of d (plan). Both pending but execute → d IS in preGate.
+    const pos = orient(g, makeExists(['x']));
+    expect(pos.position).toEqual(expect.arrayContaining(['b', 'c']));
+    expect(pos.preGate).toContain('d');
+  });
+
+  it('preGate is empty when all batches complete', () => {
+    const g = define(graph({
+      id: 'test', desc: 'test', init: 'a', term: 'b',
+      nodes: {
+        a: { id: 'a', desc: 'start', produces: ['x'], consumes: [], deps: [], validate: [], idempotent: true },
+        b: { id: 'b', desc: 'end', produces: [], consumes: ['x'], deps: ['a'], validate: [], idempotent: false },
+      },
+    }));
+    const pos = orient(g, makeExists(['x']));
+    expect(pos.preGate).toEqual([]);
+  });
+});
+
 // --- Brief.mode ---
 
 describe('Brief mode field', () => {

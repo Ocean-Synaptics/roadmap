@@ -99,9 +99,17 @@ export async function getBrief(
       // Load journal (all interims + final)
       journal = await loadHandoffJournal(repoRoot, pred.id);
     } catch {
-      // No handoff yet (first node, or predecessor not completed)
+      // No handoff yet (first node, predecessor not completed, or pre-gate plan node)
     }
   }
+
+  // For plan nodes, include dep status so agents know what's pending
+  const pendingDeps = node.mode === 'plan'
+    ? node.deps.filter((d: string) => {
+        const depNode = dag.nodes[d as keyof typeof dag.nodes];
+        return depNode != null;
+      })
+    : [];
 
   return {
     position,
@@ -113,7 +121,8 @@ export async function getBrief(
     handoff: prevHandoff,
     handoffJournal: journal,
     remaining,
-  };
+    ...(pendingDeps.length > 0 ? { pendingDeps } : {}),
+  } as Brief;
 }
 
 function countRemaining(dag: Graph<string>, position: string): number {

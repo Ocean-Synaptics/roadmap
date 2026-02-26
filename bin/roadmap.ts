@@ -170,6 +170,7 @@ async function cmdOrient(note: string) {
     complete: pos.remaining.length === 0,
   };
   if (Object.keys(batchModes).length) result.planNodes = batchModes;
+  if (pos.preGate.length) result.preGate = pos.preGate;
 
   // Include blockedBy if there are blocking deps
   if (pos.blockedBy.length) {
@@ -568,6 +569,7 @@ async function cmdChart() {
   const batches = parallelOrder(dag);
   const nodeIds = Object.keys(dag.nodes);
   const doneSet = new Set(pos.done);
+  const preGateSet = new Set(pos.preGate);
   const totalNodes = nodeIds.length;
   const doneCount = pos.done.length;
   const pct = Math.round((doneCount / totalNodes) * 100);
@@ -625,6 +627,9 @@ async function cmdChart() {
   console.log(`${statusEmoji} ${dag.id} — ${dag.desc}`);
   console.log(`  ${bar} ${pct}% (${doneCount}/${totalNodes} nodes)`);
   console.log(`  📍 position: ${pos.position}`);
+  if (pos.preGate.length) {
+    console.log(`  🔍 ${pos.preGate.length} plan node(s) available for pre-gate investigation`);
+  }
   if (pos.deps.length && !showDeps) {
     console.log(`  📦 ${pos.deps.length} dep(s) — use --deps for cross-repo view`);
   }
@@ -645,6 +650,7 @@ async function cmdChart() {
       if (pos.position.includes(n)) return `👉 ${planTag}${n}`;
       if (retiredIds.has(n)) return `⏭️ ${n}`;
       if (doneSet.has(n)) return `✅ ${planTag}${n}`;
+      if (preGateSet.has(n)) return `🔍 ${planTag}${n}`;
       return `⬜ ${planTag}${n}`;
     }).join('  ');
 

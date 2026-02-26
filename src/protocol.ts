@@ -261,6 +261,7 @@ export interface Orientation {
   level: number;              // batch index (0-based)
   batchRemaining: string[];   // nodes in current batch that aren't done
   batchComplete: boolean;     // all nodes in current batch validated + artifacts exist
+  preGate: string[];          // plan nodes workable before deps close (investigation can start)
   done: string[];
   produces: readonly string[];
   consumes: readonly string[];
@@ -305,12 +306,33 @@ export function orient<T extends string>(
       const remainingBatches = batches.slice(batches.indexOf(batch) + 1).flat();
       const batchProduces = batch.flatMap(id => nm.get(id)!.produces);
       const batchConsumes = batch.flatMap(id => nm.get(id)!.consumes);
+      const doneSet = new Set([...done, ...batchDone]);
+
+      // Pre-gate: plan nodes in future batches workable before deps close.
+      // A plan node is pre-gate workable iff:
+      //   1. mode === 'plan'
+      //   2. Not already done or in current batch
+      //   3. None of its direct deps that are also plan nodes are uncompleted
+      //      (execute deps don't matter — code doesn't affect research direction)
+      const preGate: string[] = [];
+      for (const id of remainingBatches) {
+        const node = nm.get(id)!;
+        if (node.mode !== 'plan') continue;
+        if (retired?.has(id)) continue;
+        // Check plan-dep filter: all plan-mode deps must be done
+        const planDepsBlocking = node.deps.some(depId => {
+          const dep = nm.get(depId as string);
+          return dep?.mode === 'plan' && !doneSet.has(depId as string);
+        });
+        if (!planDepsBlocking) preGate.push(id);
+      }
 
       return {
         position: batch,
         level: batches.indexOf(batch),
         batchRemaining: batchIncomplete,
         batchComplete: false,
+        preGate,
         done: [...done, ...batchDone],
         produces: batchProduces,
         consumes: batchConsumes,
@@ -328,6 +350,7 @@ export function orient<T extends string>(
     level: batches.length - 1,
     batchRemaining: [],
     batchComplete: true,
+    preGate: [],
     done: done.filter(id => id !== g.term),
     produces: [],
     consumes: [],
