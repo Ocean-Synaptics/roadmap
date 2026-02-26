@@ -1299,20 +1299,39 @@ async function cmdComplete(note: string) {
   // 3. Reorient
   const posAfter = orient(dag, fileExists(repoRoot), retiredSet());
 
+  // 4. Auto-advance if this agent completed the last node in the batch.
+  // Suppress with --no-advance for orchestrators that want to gate manually.
+  let advanced: { previousBatch: string[]; nextBatch: string[]; nextLevel: number } | undefined;
+  const noAdvance = args.includes('--no-advance');
+  if (posAfter.batchComplete && !noAdvance && !posAfter.complete) {
+    try {
+      const { advanceBatch } = await import('../src/protocol.ts');
+      const next = await advanceBatch(dag, fileExists(repoRoot), retiredSet());
+      advanced = { previousBatch: posAfter.position, nextBatch: next.position, nextLevel: next.level };
+    } catch {
+      // advanceBatch failed (e.g. missing artifacts) — surface batchComplete without advancing
+    }
+  }
+
+  const finalPos = advanced
+    ? orient(dag, fileExists(repoRoot), retiredSet())
+    : posAfter;
+
   recordTrail({
     ts: new Date().toISOString(), cmd: 'complete', note,
-    repo: basename(repoRoot), position: posAfter.position, level: posAfter.level, dagId: dag.id,
-    detail: { nodeId, owner, checkpointId: checkpoint.id, batchComplete: posAfter.batchComplete },
+    repo: basename(repoRoot), position: finalPos.position, level: finalPos.level, dagId: dag.id,
+    detail: { nodeId, owner, checkpointId: checkpoint.id, batchComplete: posAfter.batchComplete, advanced: !!advanced },
   });
 
   json({
     completed: nodeId,
     owner,
     checkpointId: checkpoint.id,
-    position: posAfter.position,
-    batchComplete: posAfter.batchComplete,
-    batchRemaining: posAfter.batchRemaining,
-    ...(posAfter.batchComplete ? { hint: 'roadmap advance --note "batch done"' } : {}),
+    position: finalPos.position,
+    batchComplete: finalPos.batchComplete,
+    batchRemaining: finalPos.batchRemaining,
+    ...(advanced ? { advanced } : {}),
+    ...(posAfter.batchComplete && !advanced && !noAdvance ? { hint: 'roadmap advance --note "batch done"' } : {}),
   });
 }
 
@@ -2049,7 +2068,7 @@ Commands:
   orient --assign     Round-robin assign batchRemaining to --owners (JSON)
   advance             Advance to next batch (requires current batch complete) (JSON)
   commit --node <id>  Stage node's produces, commit with [node: X] trailer, update git-state
-  complete <node-id>  Atomic: claim → checkpoint → reorient (replaces 5-call sequence)
+  complete <node-id>  Atomic: claim → checkpoint → reorient → auto-advance if last in batch (--no-advance to suppress)
   checkpoint --label <name>  Save checkpoint (--note optional when --label given)
   checkpoint --list   List all checkpoints
   checkpoint --restore  Restore from latest valid checkpoint
