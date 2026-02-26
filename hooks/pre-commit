@@ -1,0 +1,70 @@
+#!/bin/bash
+
+# Pre-commit hook for test enforcement
+# Ensures that code changes in src/ and bin/ are accompanied by test additions
+# Can be bypassed with SKIP_TEST_CHECK=<reason> environment variable
+
+set -e
+
+REPO_ROOT=$(git rev-parse --show-toplevel)
+LOG_FILE="${REPO_ROOT}/.git/hooks.log"
+CONFIG_FILE="${REPO_ROOT}/.roadmap/hook-config.json"
+
+# Load config or use defaults
+ENABLED="true"
+TEST_PATTERN="tests/**/*.test.ts"
+SCOPE_FILTER="(src/|bin/)"
+
+if [ -f "$CONFIG_FILE" ]; then
+  # Use -r to strip JSON quotes from the output
+  ENABLED=$(jq -r 'if (.testEnforcement.enabled | type) == "null" then "true" else .testEnforcement.enabled | tostring end' "$CONFIG_FILE" 2>/dev/null || echo "true")
+  TEST_PATTERN=$(jq -r '.testEnforcement.testPattern // "tests/**/*.test.ts"' "$CONFIG_FILE" 2>/dev/null || echo "tests/**/*.test.ts")
+
+  # Build scope filter from config
+  # Example: ["src/", "bin/"] becomes (src/|bin/)
+  SCOPE_PARTS=$(jq -r '.testEnforcement.scope[]?' "$CONFIG_FILE" 2>/dev/null | sed 's:/$::' | paste -sd '|' - || echo 'src|bin')
+  [ -z "$SCOPE_PARTS" ] && SCOPE_PARTS="src|bin"
+  SCOPE_FILTER="($SCOPE_PARTS)/"
+else
+  SCOPE_FILTER="(src|bin)/"
+fi
+
+# If enforcement is disabled, pass through
+if [ "$ENABLED" = "false" ]; then
+  exit 0
+fi
+
+# Check for SKIP_TEST_CHECK bypass
+if [ -n "$SKIP_TEST_CHECK" ]; then
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] SKIP_TEST_CHECK: $SKIP_TEST_CHECK" >> "$LOG_FILE"
+  exit 0
+fi
+
+# Get all staged ADDED .ts files in configured scopes
+STAGED_SRC_FILES=$(git diff --cached --name-only --diff-filter=A | grep -E "${SCOPE_FILTER}.*\.ts$" || true)
+
+# If no source files were ADDED, allow the commit
+if [ -z "$STAGED_SRC_FILES" ]; then
+  exit 0
+fi
+
+# Check for test additions in staged area
+STAGED_TEST_FILES=$(git diff --cached --name-only --diff-filter=A | grep 'tests/.*\.test\.ts$' || true)
+
+# If tests were added, allow the commit
+if [ -n "$STAGED_TEST_FILES" ]; then
+  exit 0
+fi
+
+# Source files changed but no tests added - fail
+echo "❌ Pre-commit hook: Test enforcement failed"
+echo ""
+echo "Changed files in src/ or bin/:"
+echo "$STAGED_SRC_FILES" | sed 's/^/  /'
+echo ""
+echo "No test files were added. Please add tests to tests/ before committing."
+echo ""
+echo "To bypass this check (not recommended):"
+echo "  SKIP_TEST_CHECK='reason' git commit"
+echo ""
+exit 1

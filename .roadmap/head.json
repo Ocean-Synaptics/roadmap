@@ -35,6 +35,95 @@
       ],
       "idempotent": true
     },
+    "fr-predicates": {
+      "id": "fr-predicates",
+      "desc": "Cross-repo predicates: siblingArtifactExists(root), gitArtifactAt(root, ref), any() OR combinator",
+      "produces": [
+        "tests/predicates-cross-repo.test.ts"
+      ],
+      "consumes": [
+        "src/predicates.ts"
+      ],
+      "deps": [
+        "init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "tests/predicates-cross-repo.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "fr-cross-orient": {
+      "id": "fr-cross-orient",
+      "desc": "Async crossOrient: read .roadmap.json deps, parallel sibling orient, blockedBy field; fix orderByDependencies transitive BFS; handle missing dep repos gracefully",
+      "produces": [
+        "src/lib/cross-orient.ts",
+        "tests/cross-orient.test.ts"
+      ],
+      "consumes": [
+        "src/predicates.ts",
+        "src/lib/dependency-resolver.ts",
+        "src/lib/project-metadata.schema.ts"
+      ],
+      "deps": [
+        "fr-predicates"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "src/lib/cross-orient.ts"
+        },
+        {
+          "type": "artifact-exists",
+          "target": "tests/cross-orient.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "fr-cli-surface": {
+      "id": "fr-cli-surface",
+      "desc": "CLI: chart --deps (cross-repo progress), merge --from (diagnostic reconcile), trail dep context in breadcrumbs",
+      "produces": [
+        "tests/cli-cross-repo.test.ts"
+      ],
+      "consumes": [
+        "src/lib/cross-orient.ts"
+      ],
+      "deps": [
+        "fr-cross-orient"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "tests/cli-cross-repo.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "fr-consumer-unblock": {
+      "id": "fr-consumer-unblock",
+      "desc": "E2E validation: mono-fusion scenario — orient with blockedBy, chart --deps, merge --from ../sibling, trail deps, configurable siblingPath",
+      "produces": [
+        "tests/fr-consumer-e2e.test.ts"
+      ],
+      "consumes": [
+        "tests/cli-cross-repo.test.ts",
+        "tests/cross-orient.test.ts",
+        "tests/predicates-cross-repo.test.ts"
+      ],
+      "deps": [
+        "fr-cli-surface"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "tests/fr-consumer-e2e.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
     "reorient": {
       "id": "reorient",
       "desc": "Session entry gate: run boot.ts, verify orientation, confirm position, choose mode",
@@ -746,7 +835,8 @@
         "docs/decisions/merge-design.md"
       ],
       "deps": [
-        "phase-4.5-term"
+        "phase-4.5-term",
+        "fr-consumer-unblock"
       ],
       "validate": [
         {
@@ -1969,7 +2059,7 @@
       "produces": [],
       "consumes": [],
       "deps": [
-        "phase-13-term"
+        "phase-15-term"
       ],
       "validate": [
         {
@@ -2021,6 +2111,251 @@
       ],
       "validate": [],
       "idempotent": true
+    },
+    "git-library": {
+      "id": "git-library",
+      "desc": "Consolidate git operations: repoInfo, artifactAtRef, archivedFiles, fileHistory, restore, stageAndCommit, createBranch",
+      "produces": [
+        "src/lib/git.ts",
+        "tests/git-library.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "phase-4.5-term"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "src/lib/git.ts"
+        },
+        {
+          "type": "artifact-exists",
+          "target": "tests/git-library.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "consumer-categories": {
+      "id": "consumer-categories",
+      "desc": "Six consumer entry points: hooks, git, agent, developer, full, skills — each with targeted docs + API surface",
+      "produces": [
+        "src/index.hooks.ts",
+        "src/index.git.ts",
+        "src/index.agent.ts",
+        "src/index.developer.ts",
+        "docs/consumer-guide.md",
+        "tests/consumer-categories.test.ts"
+      ],
+      "consumes": [
+        "src/lib/git.ts",
+        "src/lib/cross-orient.ts"
+      ],
+      "deps": [
+        "phase-12-term",
+        "git-library"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "src/index.hooks.ts"
+        },
+        {
+          "type": "artifact-exists",
+          "target": "tests/consumer-categories.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "git-ops-impl": {
+      "id": "git-ops-impl",
+      "desc": "git-ops mechanical skill: read/write/log/diff/exists/list/commit operations. Cross-repo reads, local writes, atomic commits, --session-squash with env inference (CLAUDE_SESSION_ID or ROADMAP_SESSION_ID). Input via --stdin or --from-file.",
+      "produces": [
+        "~/.claude/skills/git-ops/SKILL.md"
+      ],
+      "consumes": [],
+      "deps": [
+        "phase-13-term"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "~/.claude/skills/git-ops/SKILL.md"
+        }
+      ],
+      "idempotent": true
+    },
+    "migration-script": {
+      "id": "migration-script",
+      "desc": "Migration script for early adopters (Mac + Linux): symlink MEMORY.md → /dev/null, create .roadmap/memory/ locally, initialize ~/.roadmap/memory/ as standalone git repo. Idempotent and platform-aware.",
+      "produces": [
+        "bin/migrate-memory.sh"
+      ],
+      "consumes": [],
+      "deps": [
+        "phase-13-term"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "bin/migrate-memory.sh"
+        }
+      ],
+      "idempotent": true
+    },
+    "memory-docs": {
+      "id": "memory-docs",
+      "desc": "Document per-agent and per-swarm memory patterns: self-orientation on spawn, learned patterns as guards, session-local memory, cross-repo context. Per-swarm: collective memory synthesis, memory-driven coordination, swarm-specific optimizations, memory as audit trail. Include examples in TypeScript.",
+      "produces": [
+        "docs/agent-memory-guide.md"
+      ],
+      "consumes": [
+        "docs/api-surface.md"
+      ],
+      "deps": [
+        "git-ops-impl"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "docs/agent-memory-guide.md"
+        }
+      ],
+      "idempotent": true
+    },
+    "memory-tests": {
+      "id": "memory-tests",
+      "desc": "Tests for git-ops skill (cross-repo reads, local write isolation, atomic commits, session squash, --stdin/--from-file) and migration script (idempotency, platform detection, symlink creation). Integration + unit tests.",
+      "produces": [
+        "tests/git-ops.test.ts",
+        "tests/migrate-memory.test.ts"
+      ],
+      "consumes": [
+        "~/.claude/skills/git-ops/SKILL.md",
+        "bin/migrate-memory.sh"
+      ],
+      "deps": [
+        "git-ops-impl",
+        "migration-script"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "tests/git-ops.test.ts"
+        },
+        {
+          "type": "artifact-exists",
+          "target": "tests/migrate-memory.test.ts"
+        },
+        {
+          "type": "function",
+          "target": "vitest",
+          "fn": "npx vitest run tests/git-ops.test.ts tests/migrate-memory.test.ts --reporter=dot"
+        }
+      ],
+      "idempotent": true
+    },
+    "phase-14-term": {
+      "id": "phase-14-term",
+      "desc": "Phase 14 complete: Agent memory infrastructure (git-ops skill, migration script, memory patterns, tests)",
+      "produces": [],
+      "consumes": [
+        "docs/agent-memory-guide.md",
+        "tests/git-ops.test.ts",
+        "tests/migrate-memory.test.ts"
+      ],
+      "deps": [
+        "memory-docs",
+        "memory-tests"
+      ],
+      "validate": [],
+      "idempotent": false
+    },
+    "locate-readmaps": {
+      "id": "locate-readmaps",
+      "desc": "Roadmap discovery skill: find all .roadmap/head.json files on machine, load+parse each, orient each one, return { name, path, dagId, position, complete, nodes, blockedBy }. Graceful failure on corrupted DAGs.",
+      "produces": [
+        "~/.claude/skills/roadmap-locate/SKILL.md"
+      ],
+      "consumes": [],
+      "deps": [
+        "phase-14-term"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "~/.claude/skills/roadmap-locate/SKILL.md"
+        },
+        {
+          "type": "function",
+          "target": "vitest",
+          "fn": "npx vitest run tests/roadmap-locate.test.ts --reporter=dot"
+        }
+      ],
+      "idempotent": true
+    },
+    "cli-cross-project": {
+      "id": "cli-cross-project",
+      "desc": "CLI commands for cross-repo coordination: `roadmap locate --all` (discover), `roadmap sync [--format json|tree]` (aggregate tasks), `roadmap parallel --cross-repo [--graph]` (show parallel batches across repos). Enables agents to see all available work and parallel fanout points.",
+      "produces": [
+        "tests/cli-cross-project.test.ts"
+      ],
+      "consumes": [
+        "~/.claude/skills/roadmap-locate/SKILL.md"
+      ],
+      "deps": [
+        "locate-readmaps"
+      ],
+      "validate": [
+        {
+          "type": "function",
+          "target": "vitest",
+          "fn": "npx vitest run tests/cli-cross-project.test.ts --reporter=dot"
+        }
+      ],
+      "idempotent": true
+    },
+    "git-hook-test-enforcement": {
+      "id": "git-hook-test-enforcement",
+      "desc": "Pre-commit hook enforcing test-writing: commit fails if src/*.ts changed but no tests/*.test.ts added. Allow bypass via SKIP_TEST_CHECK=<reason>. Store config in .roadmap/hook-config.json. Install via `roadmap install-hooks`. Configurable per-repo.",
+      "produces": [
+        "hooks/pre-commit",
+        ".roadmap/hook-config.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "phase-14-term"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "hooks/pre-commit"
+        },
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/hook-config.json"
+        },
+        {
+          "type": "function",
+          "target": "vitest",
+          "fn": "npx vitest run tests/test-enforcement.test.ts --reporter=dot"
+        }
+      ],
+      "idempotent": true
+    },
+    "phase-15-term": {
+      "id": "phase-15-term",
+      "desc": "Phase 15 complete: Cross-repo coordination infrastructure (discovery, aggregation, parallel scheduling, test enforcement). Agents can now see all roadmaps and work across them.",
+      "produces": [],
+      "consumes": [
+        "tests/cli-cross-project.test.ts",
+        "hooks/pre-commit"
+      ],
+      "deps": [
+        "cli-cross-project",
+        "git-hook-test-enforcement"
+      ],
+      "validate": [],
+      "idempotent": false
     }
   },
   "version": "0.3.0",

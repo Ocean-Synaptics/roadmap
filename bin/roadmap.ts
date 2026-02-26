@@ -9,12 +9,15 @@ import { join, resolve, basename } from 'node:path';
 import { homedir } from 'node:os';
 import { execSync } from 'node:child_process';
 import {
-  define, check, verify, order, parallelOrder, orient,
+  define, check, verify, order, parallelOrder, orient, reconcile,
   validateNode, validateGraph,
 } from '../src/protocol.ts';
 import { fileExists } from '../src/predicates.ts';
 import { RoadmapError } from '../src/errors.ts';
+import { crossOrient } from '../src/lib/cross-orient.ts';
+import { discoverDependencies, resolveSiblingPath } from '../src/lib/dependency-resolver.ts';
 import type { Graph } from '../src/protocol.ts';
+import type { SiblingStatus } from '../src/lib/cross-orient.ts';
 
 const rawArgs = process.argv.slice(2);
 const repoRoot = process.cwd();
@@ -47,6 +50,31 @@ interface TrailEntry {
 const hasLocalDAG = existsSync(join(repoRoot, '.roadmap', 'head.json'));
 const globalTrailDir = join(homedir(), '.roadmap');
 const localTrailDir = join(repoRoot, '.roadmap');
+const retiredPath = join(repoRoot, '.roadmap', 'retired.json');
+
+interface RetiredEntry {
+  reason: string;
+  ts: string;
+  cascade?: boolean;
+}
+
+function loadRetired(): Map<string, RetiredEntry> {
+  if (!existsSync(retiredPath)) return new Map();
+  try {
+    const data = JSON.parse(readFileSync(retiredPath, 'utf-8'));
+    return new Map(Object.entries(data));
+  } catch {
+    return new Map();
+  }
+}
+
+function saveRetired(retired: Map<string, RetiredEntry>): void {
+  writeFileSync(retiredPath, JSON.stringify(Object.fromEntries(retired), null, 2) + '\n');
+}
+
+function retiredSet(): Set<string> {
+  return new Set(loadRetired().keys());
+}
 
 function appendToTrail(dir: string, entry: TrailEntry) {
   if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
@@ -77,9 +105,13 @@ async function main() {
       case 'branch':    return cmdBranch(note!);
       case 'position':  return cmdOrient(note!); // alias
       case 'parallel':  return cmdParallel(note!);
+      case 'locate':    return cmdLocate(note!);
+      case 'sync':      return cmdSync(note!);
       case 'trail':     return cmdTrail();
       case 'chart':     return cmdChart();
       case 'install':   return cmdInstall();
+      case 'merge':     return await cmdMergeFrom();
+      case 'retire':    return cmdRetire(note!);
       case 'dig':       return cmdDig();
       case 'help':
       case '--help':
@@ -100,7 +132,7 @@ async function main() {
 
 // --- Commands ---
 
-function cmdOrient(note: string) {
+async function cmdOrient(note: string) {
   if (!hasLocalDAG) {
     const result = { position: 'untracked', repo: basename(repoRoot), tracked: false };
     recordTrail({
@@ -115,8 +147,8 @@ function cmdOrient(note: string) {
   }
 
   const dag = loadDAG();
-  const pos = orient(dag, fileExists(repoRoot));
-  const result = {
+  const pos = await crossOrient(dag, repoRoot, undefined, retiredSet());
+  const result: Record<string, unknown> = {
     position: pos.position,
     produces: pos.produces,
     consumes: pos.consumes,
@@ -124,6 +156,24 @@ function cmdOrient(note: string) {
     remaining: pos.remaining.length,
     complete: pos.position === dag.term,
   };
+
+  // Include blockedBy if there are blocking deps
+  if (pos.blockedBy.length) {
+    result.blockedBy = pos.blockedBy.map(s => ({
+      repo: s.repo, position: s.position, waiting: s.waiting, repoComplete: s.satisfied,
+    }));
+  }
+
+  // Trail entry with dep context (FR-6)
+  const trailDetail: Record<string, unknown> = {
+    done: pos.done.length, remaining: pos.remaining.length, complete: result.complete,
+  };
+  if (pos.deps.length) {
+    trailDetail.deps = pos.deps.map(s => ({
+      repo: s.repo, position: s.position, satisfied: s.satisfied,
+    }));
+  }
+
   recordTrail({
     ts: new Date().toISOString(),
     cmd: 'orient',
@@ -131,7 +181,7 @@ function cmdOrient(note: string) {
     repo: basename(repoRoot),
     position: pos.position,
     dagId: dag.id,
-    detail: { done: result.done, remaining: result.remaining, complete: result.complete },
+    detail: trailDetail,
   });
   json(result);
 }
@@ -304,13 +354,64 @@ function cmdBranch(note: string) {
 function cmdParallel(note: string) {
   const dag = loadDAG();
   const batches = parallelOrder(dag);
-  recordTrail({ ts: new Date().toISOString(), cmd: 'parallel', note, repo: basename(repoRoot), dagId: dag.id });
+  const showGraph = args.includes('--graph');
+  const crossRepo = args.includes('--cross-repo');
 
-  json({
+  recordTrail({
+    ts: new Date().toISOString(),
+    cmd: 'parallel',
+    note,
+    repo: basename(repoRoot),
+    dagId: dag.id,
+    detail: { crossRepo, showGraph },
+  });
+
+  const result: Record<string, any> = {
     batches: batches.map((b, i) => ({ level: i, nodes: b, count: b.length })),
     totalLevels: batches.length,
     maxParallelism: Math.max(...batches.map(b => b.length)),
-  });
+  };
+
+  if (showGraph) {
+    // Include full DAG structure
+    const nodes = Object.entries(dag.nodes).map(([id, spec]) => ({
+      id,
+      desc: spec.desc,
+      deps: spec.deps,
+      produces: spec.produces,
+      consumes: spec.consumes,
+    }));
+    result.graph = {
+      id: dag.id,
+      init: dag.init,
+      term: dag.term,
+      nodes,
+      edges: Object.entries(dag.nodes).flatMap(([id, spec]) =>
+        spec.deps.map(dep => ({ from: dep, to: id }))
+      ),
+    };
+  }
+
+  if (crossRepo) {
+    // Try to discover sibling roadmaps and their parallel structure
+    const skillPath = join(homedir(), '.claude/skills/roadmap-locate/backend.ts');
+    try {
+      const output = execSync(`npx tsx ${skillPath}`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+      const discovered = JSON.parse(output);
+      const siblings = (discovered.roadmaps || []).filter((rm: any) => rm.path !== repoRoot);
+      result.crossRepoSiblings = siblings.map((rm: any) => ({
+        name: rm.name,
+        path: rm.path,
+        position: rm.position,
+        complete: rm.complete,
+        blockedBy: rm.blockedBy,
+      }));
+    } catch {
+      result.crossRepoSiblings = [];
+    }
+  }
+
+  json(result);
 }
 
 function cmdTrail() {
@@ -356,20 +457,65 @@ function cmdTrail() {
   json({ entries: filtered, count: entries.length, source });
 }
 
-function cmdChart() {
+async function cmdChart() {
   if (!hasLocalDAG) {
     console.log('📭 No roadmap in this repo. Run `roadmap install` to set up.');
     return;
   }
 
+  const showDeps = args.includes('--deps');
   const dag = loadDAG();
-  const pos = orient(dag, fileExists(repoRoot));
+  const retiredIds = retiredSet();
+  const pos = await crossOrient(dag, repoRoot, undefined, retiredIds);
   const batches = parallelOrder(dag);
   const nodeIds = Object.keys(dag.nodes);
   const doneSet = new Set(pos.done);
   const totalNodes = nodeIds.length;
   const doneCount = pos.done.length;
   const pct = Math.round((doneCount / totalNodes) * 100);
+
+  // Show dependency repos first if --deps
+  if (showDeps && pos.deps.length) {
+    for (const sib of pos.deps) {
+      if (!sib.repoExists) {
+        console.log(`\n  📭 ${sib.repo} — repo not found at ${sib.path}`);
+        continue;
+      }
+      if (!sib.dagExists) {
+        console.log(`\n  📭 ${sib.repo} — no roadmap (untracked)`);
+        continue;
+      }
+
+      // Load sibling DAG for chart rendering
+      try {
+        const sibDagContent = readFileSync(join(sib.path, '.roadmap/head.json'), 'utf-8');
+        const sibDag = JSON.parse(sibDagContent) as Graph<string>;
+        const sibPos = orient(sibDag, fileExists(sib.path));
+        const sibNodes = Object.keys(sibDag.nodes).length;
+        const sibDone = sibPos.done.length;
+        const sibPct = Math.round((sibDone / sibNodes) * 100);
+        const sibBarLen = 30;
+        const sibFilled = Math.round((sibDone / sibNodes) * sibBarLen);
+        const sibBar = '█'.repeat(sibFilled) + '░'.repeat(sibBarLen - sibFilled);
+        const sibEmoji = sibPct === 100 ? '🏁' : sibPct > 75 ? '🔥' : sibPct > 50 ? '⚡' : sibPct > 25 ? '🚧' : '🌱';
+
+        console.log('');
+        console.log(`${sibEmoji} ${sibDag.id} — ${sibDag.desc}`);
+        console.log(`  ${sibBar} ${sibPct}% (${sibDone}/${sibNodes} nodes)`);
+        console.log(`  📍 position: ${sibPos.position}`);
+      } catch {
+        console.log(`\n  📭 ${sib.repo} — failed to load DAG`);
+      }
+    }
+
+    // Show blocking status
+    if (pos.blockedBy.length) {
+      console.log('');
+      for (const b of pos.blockedBy) {
+        console.log(`  ⏳ blocked by: ${b.repo} → ${b.waiting.join(', ')} (${b.repo} at ${b.position})`);
+      }
+    }
+  }
 
   // Overall progress bar
   const barLen = 30;
@@ -381,6 +527,9 @@ function cmdChart() {
   console.log(`${statusEmoji} ${dag.id} — ${dag.desc}`);
   console.log(`  ${bar} ${pct}% (${doneCount}/${totalNodes} nodes)`);
   console.log(`  📍 position: ${pos.position}`);
+  if (pos.deps.length && !showDeps) {
+    console.log(`  📦 ${pos.deps.length} dep(s) — use --deps for cross-repo view`);
+  }
   console.log('');
 
   // Per-batch progress
@@ -394,6 +543,7 @@ function cmdChart() {
     const levelEmoji = batchPct === 100 ? '✅' : batchDone > 0 ? '🔶' : '⬜';
     const nodeList = batch.map(n => {
       if (n === pos.position) return `👉 ${n}`;
+      if (retiredIds.has(n)) return `⏭️ ${n}`;
       if (doneSet.has(n)) return `✅ ${n}`;
       return `⬜ ${n}`;
     }).join('  ');
@@ -412,6 +562,69 @@ function cmdChart() {
     }
   }
   console.log('');
+}
+
+async function cmdMergeFrom() {
+  if (!hasLocalDAG) {
+    json({ error: 'No local DAG', fix: 'Run from a repo with .roadmap/head.json' });
+    process.exit(1);
+  }
+
+  const fromIdx = args.indexOf('--from');
+  if (fromIdx === -1 || !args[fromIdx + 1]) {
+    json({ error: 'Missing --from <path>', fix: 'roadmap merge --from ../sibling --note "reason"' });
+    process.exit(1);
+  }
+
+  const siblingPath = resolve(repoRoot, args[fromIdx + 1]);
+  const sibDagPath = join(siblingPath, '.roadmap/head.json');
+  if (!existsSync(sibDagPath)) {
+    json({ error: `No DAG at ${siblingPath}`, fix: 'Sibling repo needs .roadmap/head.json' });
+    process.exit(1);
+  }
+
+  const localDag = loadDAG();
+  const sibDag = JSON.parse(readFileSync(sibDagPath, 'utf-8')) as Graph<string>;
+
+  // Find artifact connections: where sibling produces satisfy local consumes
+  const localNodes = Object.values(localDag.nodes) as any[];
+  const sibNodes = Object.values(sibDag.nodes) as any[];
+
+  const sibProduces = new Set(sibNodes.flatMap((n: any) => n.produces));
+  const connections: Array<{ localNode: string; siblingNode: string; artifact: string }> = [];
+
+  for (const ln of localNodes) {
+    for (const consumed of ln.consumes) {
+      if (sibProduces.has(consumed)) {
+        const producer = sibNodes.find((sn: any) => sn.produces.includes(consumed));
+        if (producer) {
+          connections.push({ localNode: ln.id, siblingNode: producer.id, artifact: consumed });
+        }
+      }
+    }
+  }
+
+  // Also find where local produces satisfy sibling consumes (reverse)
+  const localProduces = new Set(localNodes.flatMap((n: any) => n.produces));
+  const reverseConnections: Array<{ localNode: string; siblingNode: string; artifact: string }> = [];
+
+  for (const sn of sibNodes) {
+    for (const consumed of sn.consumes) {
+      if (localProduces.has(consumed)) {
+        const producer = localNodes.find((ln: any) => ln.produces.includes(consumed));
+        if (producer) {
+          reverseConnections.push({ localNode: producer.id, siblingNode: sn.id, artifact: consumed });
+        }
+      }
+    }
+  }
+
+  json({
+    local: { id: localDag.id, nodes: Object.keys(localDag.nodes).length },
+    sibling: { id: sibDag.id, path: siblingPath, nodes: Object.keys(sibDag.nodes).length },
+    connections: { siblingToLocal: connections, localToSibling: reverseConnections },
+    summary: `${connections.length} artifact(s) flow sibling→local, ${reverseConnections.length} flow local→sibling`,
+  });
 }
 
 function cmdInstall() {
@@ -494,8 +707,149 @@ ${ANCHOR_END}`;
   console.log(`   bin: ${binPath}`);
 }
 
+function cmdInstallHooks(note: string): void {
+  // Resolve hook script path relative to this script
+  const scriptDir = resolve(import.meta.dirname || join(repoRoot, 'bin'));
+  const hookSrc = join(scriptDir, '..', 'hooks', 'pre-commit');
+  const hookDest = join(repoRoot, '.git', 'hooks', 'pre-commit');
+  const configDest = join(repoRoot, '.roadmap', 'hook-config.json');
+
+  if (!existsSync(hookSrc)) {
+    throw new RoadmapError('NODE_NOT_FOUND', {
+      attempted: hookSrc,
+      fix: 'Hook script missing at hooks/pre-commit',
+    }, `Hook script not found: ${hookSrc}`);
+  }
+
+  // Copy hook script to .git/hooks/
+  const hookContent = readFileSync(hookSrc, 'utf-8');
+  writeFileSync(hookDest, hookContent);
+  execSync(`chmod +x ${hookDest}`, { stdio: 'pipe' });
+
+  // Create config if missing
+  if (!existsSync(configDest)) {
+    const defaultConfig = {
+      testEnforcement: {
+        enabled: true,
+        scope: ['src/', 'bin/'],
+        testPattern: 'tests/**/*.test.ts',
+      },
+    };
+    const configDir = resolve(configDest, '..');
+    if (!existsSync(configDir)) mkdirSync(configDir, { recursive: true });
+    writeFileSync(configDest, JSON.stringify(defaultConfig, null, 2) + '\n');
+  }
+
+  recordTrail({
+    ts: new Date().toISOString(),
+    cmd: 'install-hooks',
+    note,
+    repo: basename(repoRoot),
+    detail: { hookDest, configDest },
+  });
+
+  console.log(`✅ Installed pre-commit hook at ${hookDest}`);
+  console.log(`   Config: ${configDest}`);
+}
+
 function escapeRegex(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function cmdRetire(note: string) {
+  if (!hasLocalDAG) {
+    json({ error: 'No local DAG', fix: 'Run from a repo with .roadmap/head.json' });
+    process.exit(1);
+  }
+
+  const nodeId = args[1];
+  if (!nodeId) {
+    json({ error: 'Missing node ID', fix: 'roadmap retire <node-id> --note "reason"' });
+    process.exit(1);
+  }
+
+  // --list: show currently retired nodes
+  if (nodeId === '--list') {
+    const retired = loadRetired();
+    if (!retired.size) {
+      json({ retired: [], count: 0 });
+      return;
+    }
+    json({
+      retired: [...retired.entries()].map(([id, e]) => ({ id, reason: e.reason, ts: e.ts, cascade: e.cascade })),
+      count: retired.size,
+    });
+    return;
+  }
+
+  // --undo: un-retire a node
+  if (args.includes('--undo')) {
+    const retired = loadRetired();
+    if (!retired.has(nodeId)) {
+      json({ error: `Node "${nodeId}" is not retired` });
+      process.exit(1);
+    }
+    retired.delete(nodeId);
+    saveRetired(retired);
+    recordTrail({
+      ts: new Date().toISOString(), cmd: 'retire', note,
+      repo: basename(repoRoot), dagId: loadDAG().id,
+      detail: { nodeId, action: 'undo' },
+    });
+    json({ undone: nodeId });
+    return;
+  }
+
+  const dag = loadDAG();
+  const allNodes = Object.keys(dag.nodes);
+
+  if (!allNodes.includes(nodeId)) {
+    json({ error: `Node "${nodeId}" not found in DAG`, available: allNodes.slice(0, 10) });
+    process.exit(1);
+  }
+
+  const retired = loadRetired();
+  const cascade = args.includes('--cascade');
+  const toRetire = [nodeId];
+
+  // Cascade: find all nodes whose only path to term goes through nodeId
+  if (cascade) {
+    const nodes = allNodes.map(id => (dag.nodes as any)[id]);
+    for (const n of nodes) {
+      if (n.id === nodeId || n.id === dag.init || n.id === dag.term) continue;
+      // A node is cascade-retired if ALL its deps include a retired node (directly or transitively)
+      if (n.deps.includes(nodeId) && !toRetire.includes(n.id)) {
+        toRetire.push(n.id);
+      }
+    }
+    // Transitive: keep expanding until stable
+    let changed = true;
+    while (changed) {
+      changed = false;
+      for (const n of nodes) {
+        if (toRetire.includes(n.id) || n.id === dag.init || n.id === dag.term) continue;
+        const allDepsRetired = n.deps.length > 0 && n.deps.every((d: string) => toRetire.includes(d) || retired.has(d));
+        if (allDepsRetired) {
+          toRetire.push(n.id);
+          changed = true;
+        }
+      }
+    }
+  }
+
+  const ts = new Date().toISOString();
+  for (const id of toRetire) {
+    retired.set(id, { reason: note, ts, cascade: cascade && id !== nodeId });
+  }
+  saveRetired(retired);
+
+  recordTrail({
+    ts, cmd: 'retire', note,
+    repo: basename(repoRoot), dagId: dag.id,
+    detail: { retired: toRetire, cascade },
+  });
+
+  json({ retired: toRetire, count: toRetire.length, cascade });
 }
 
 function cmdDig() {
@@ -558,17 +912,88 @@ function cmdDig() {
   console.log(`\nUse: roadmap dig ${target} --restore to recover`);
 }
 
+function cmdLocate(note: string) {
+  const skillPath = join(homedir(), '.claude/skills/roadmap-locate/backend.ts');
+  try {
+    const output = execSync(`npx tsx ${skillPath}`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+    const result = JSON.parse(output);
+    recordTrail({ ts: new Date().toISOString(), cmd: 'locate', note, repo: basename(repoRoot) });
+    json(result);
+  } catch (e) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      fix: 'Check ~/.claude/skills/roadmap-locate/backend.ts exists and is valid',
+      entry: 'bin/roadmap',
+    }, `Locate skill failed: ${e instanceof Error ? e.message : String(e)}`);
+  }
+}
+
+function cmdSync(note: string) {
+  const format = args.includes('--format') ? args[args.indexOf('--format') + 1] || 'json' : 'json';
+  if (!['json', 'tree'].includes(format)) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      fix: 'Use --format json or --format tree',
+      entry: 'bin/roadmap',
+    }, `Invalid format: ${format}`);
+  }
+
+  const skillPath = join(homedir(), '.claude/skills/roadmap-locate/backend.ts');
+  let allRoadmaps: any[];
+  try {
+    const output = execSync(`npx tsx ${skillPath}`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
+    const result = JSON.parse(output);
+    allRoadmaps = result.roadmaps || [];
+  } catch (e) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      fix: 'Check locate skill',
+      entry: 'bin/roadmap',
+    }, `Failed to discover roadmaps: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  recordTrail({ ts: new Date().toISOString(), cmd: 'sync', note, repo: basename(repoRoot) });
+
+  if (format === 'tree') {
+    console.log('\n🗺️  Available Roadmaps');
+    for (const rm of allRoadmaps) {
+      const status = rm.complete ? '✅' : '⏳';
+      const prog = Math.round((rm.totalNodes - (rm.blockedBy?.length || 0)) / rm.totalNodes * 100);
+      console.log(`\n${status} ${rm.name} (${rm.path})`);
+      console.log(`   Position: ${rm.position} (${prog}%)`);
+      console.log(`   Total nodes: ${rm.totalNodes}`);
+      if (rm.blockedBy && rm.blockedBy.length) {
+        console.log(`   Blocked by: ${rm.blockedBy.join(', ')}`);
+      }
+    }
+    console.log('');
+  } else {
+    json({
+      roadmaps: allRoadmaps,
+      count: allRoadmaps.length,
+      timestamp: new Date().toISOString(),
+    });
+  }
+}
+
 function cmdHelp() {
   console.log(`roadmap — DAG expansion protocol CLI
 
 Commands:
-  orient              Current position + produces/consumes (JSON)
+  orient              Current position + produces/consumes + dep status (JSON)
   describe            Full API surface + project state (JSON)
   validate [node]     Run validation rules (all nodes or specific)
   expand <script.ts>  Run expansion script, validate DAG, commit
   branch <name> [dag] Create git branch with optional separate DAG
-  parallel            Show parallel execution batches
+  parallel            Show parallel execution batches (current repo)
+  parallel --cross-repo  Show parallel structure with sibling repos
+  parallel --graph    Include full DAG structure in output
+  locate --all        Discover all .roadmap/head.json files on machine
+  sync [--format fmt] Aggregate tasks from all discovered roadmaps (json|tree)
   chart               Pretty-print progress chart with emoji bars
+  chart --deps        Cross-repo chart: show dependency repo positions
+  merge --from <path> Diagnostic: show artifact connections to sibling DAG
+  retire <node-id>    Skip/retire a node (treated as done by orient)
+  retire <id> --cascade  Retire node + all transitively dependent nodes
+  retire <id> --undo  Un-retire a previously retired node
+  retire --list       Show all retired nodes
   trail [--last N]    Read the invocation trail (local or global)
   trail --global      Cross-project trail (~/.roadmap/trail.jsonl)
   trail --repo <name> Filter trail by repo name
@@ -583,6 +1008,10 @@ All commands (except help/trail/chart/install/dig) require --note "reason".
 Examples:
   roadmap orient --note "session start"
   roadmap chart
+  roadmap chart --deps                # cross-repo progress view
+  roadmap merge --from ../donjon --note "check connections"
+  roadmap retire phase-5-term --cascade --note "descoped"
+  roadmap retire --list               # show retired nodes
   roadmap dig                         # list all archived files
   roadmap dig docs/API.md             # show commit history
   roadmap dig docs/API.md --restore   # recover to working tree
