@@ -1,1 +1,2 @@
-{"ts":"2026-02-26T10:36:26.280Z","cmd":"orient","note":"committing phase 8-13 work","repo":"roadmap","position":"term","dagId":"roadmap-adversarial","detail":{"done":104,"remaining":0,"complete":true}}
+{"ts":"2026-02-26T10:47:22.672Z","cmd":"orient","note":"test blockedBy reporting","repo":"roadmap","position":"term","dagId":"roadmap-adversarial","detail":{"done":104,"remaining":0,"complete":true}}
+{"ts":"2026-02-26T10:47:41.176Z","cmd":"orient","note":"FR-2 already shipped — document cross-repo blocking","repo":"roadmap","position":"term","dagId":"roadmap-adversarial","detail":{"done":104,"remaining":0,"complete":true}}
