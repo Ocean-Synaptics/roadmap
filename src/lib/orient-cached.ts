@@ -51,7 +51,7 @@ export async function orientCached<T extends string>(
         break;
       }
       batchProduces.push(...node.produces);
-      batchConsumes.push(...node.consumes);
+      batchConsumes.push(...node.consumes.map(c => typeof c === 'string' ? c : c.artifact));
     }
 
     if (batchComplete) {

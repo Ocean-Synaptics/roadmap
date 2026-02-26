@@ -39,7 +39,7 @@ RoadmapError(code, ctx)  typed error with fix suggestion
 NodeSpec<TAll, TSelf>   { id, desc, produces, consumes, deps, validate, idempotent, mode?, expandedFrom? }
 Graph<T>                { id, desc, init, term, nodes: { [N in T]: NodeSpec<T, N> } }
 Orientation             { position: string[], level, batchRemaining, batchComplete, preGate, done, produces, consumes, remaining }
-ValidationRule          'artifact-exists' | 'artifact-schema' | 'function' | 'manual-approval' | 'expanded'
+ValidationRule          'artifact-exists' | 'artifact-schema' | 'function' | 'manual-approval' | 'expanded' | 'shell'
 RoadmapError            { code: ErrorCode, context: { fix, entry, ... } }
 Brief                   { position, mode, produces, consumes, description, pattern, handoffs }
 FinalHandoff            { summary, keyDecisions, gotchas, timestamp }

@@ -84,9 +84,10 @@ export async function getBrief(
 
   // Find predecessor in DAG (node that outputs what current node consumes)
   const deps = Object.values(dag.nodes).filter((n) =>
-    node.consumes.some((c) =>
-      n.produces.includes(c),
-    ),
+    node.consumes.some((c) => {
+      const artifact = typeof c === 'string' ? c : c.artifact;
+      return n.produces.includes(artifact);
+    }),
   );
 
   if (deps.length > 0) {
@@ -115,7 +116,7 @@ export async function getBrief(
     position,
     mode: node.mode ?? 'execute',
     produces: node.produces.slice(0, 5),
-    consumes: node.consumes.slice(0, 5),
+    consumes: node.consumes.map(c => typeof c === 'string' ? c : c.artifact).slice(0, 5),
     description: node.desc.slice(0, 150),
     pattern: inferPattern(node.id, node.mode),
     handoff: prevHandoff,

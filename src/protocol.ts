@@ -1,6 +1,6 @@
 // @module protocol
 // @exports define, graph, check, verify, order, parallelOrder, batchConflicts, orient, advanceBatch, reconcile, merge, branch, analyze, modify, modifyAndCommit, validateNode, validateBatch, validateGraph
-// @types NodeSpec, Graph, Orientation, BatchConflict, Connection, Gap, ValidationRule, ValidationCheck, ValidationResult, ModifyAnalysis, ModificationRecord
+// @types NodeSpec, Graph, Orientation, BatchConflict, Connection, Gap, ValidationRule, ValidationCheck, ValidationResult, ModifyAnalysis, ModificationRecord, ConsumeSpec
 // @entry roadmap/protocol
 
 // --- Types ---
@@ -10,7 +10,8 @@ export type ValidationRule =
   | { type: 'artifact-schema'; target: string; schema: string }
   | { type: 'function'; target: string; fn: string }
   | { type: 'manual-approval'; target: string; reviewer?: string }
-  | { type: 'expanded'; minNodes?: number };
+  | { type: 'expanded'; minNodes?: number }
+  | { type: 'shell'; command: string; expectExitCode?: number };
 
 export interface ValidationCheck {
   rule: ValidationRule;
@@ -25,11 +26,24 @@ export interface ValidationResult {
   failedReason?: string;
 }
 
+// Consume entry: plain string (artifact path) or acknowledged pending contract.
+// resolvedBy: this artifact is intentionally unresolved until the named node completes.
+// verify() suppresses the warning while the resolver node is still incomplete.
+export type ConsumeSpec = string | { artifact: string; resolvedBy: string };
+
+export function consumeArtifact(c: ConsumeSpec): string {
+  return typeof c === 'string' ? c : c.artifact;
+}
+
+export function consumeResolvedBy(c: ConsumeSpec): string | undefined {
+  return typeof c === 'string' ? undefined : c.resolvedBy;
+}
+
 export interface NodeSpec<TAll extends string, TSelf extends TAll = TAll> {
   readonly id: TSelf;
   readonly desc: string;
   readonly produces: readonly string[];
-  readonly consumes: readonly string[];
+  readonly consumes: readonly (ConsumeSpec)[];
   readonly deps: readonly TAll[];
   readonly validate: readonly ValidationRule[]; // ← REQUIRED
   readonly idempotent: boolean; // ← REQUIRED: true=re-runnable, false=manual/state-changing
@@ -146,7 +160,12 @@ export function verify<T extends string>(g: Graph<T>): string[] {
     }
     const available = new Set([...preds].flatMap(p => nm.get(p)?.produces ?? []));
     for (const c of node.consumes) {
-      if (!available.has(c)) errors.push(`"${node.id}" consumes "${c}" — no predecessor produces it`);
+      const artifact = consumeArtifact(c);
+      const resolver = consumeResolvedBy(c);
+      if (available.has(artifact)) continue;
+      // Acknowledged pending: suppress warning if resolver node exists in the DAG
+      if (resolver && ids.has(resolver)) continue;
+      errors.push(`"${node.id}" consumes "${artifact}" — no predecessor produces it`);
     }
   }
 
@@ -186,11 +205,12 @@ export function reconcile<T extends string>(
     for (const b of backward) {
       const bn = nm.get(b);
       if (!bn) continue;
-      const shared = fn.produces.filter(p => bn.consumes.includes(p));
+      const bnArtifacts = bn.consumes.map(consumeArtifact);
+      const shared = fn.produces.filter(p => bnArtifacts.includes(p));
       if (shared.length) {
         for (const a of shared) connections.push({ forward: f, backward: b, artifact: a });
       } else {
-        const m = bn.consumes.filter(c => !fn.produces.includes(c));
+        const m = bnArtifacts.filter(c => !fn.produces.includes(c));
         if (m.length) gaps.push({ between: [f, b], missing: m });
       }
     }
@@ -291,7 +311,7 @@ export function batchConflicts<T extends string>(g: Graph<T>): BatchConflict[] {
       for (const p of nm.get(id)!.produces) producedInBatch.set(p, id);
     }
     for (const id of batch) {
-      for (const c of nm.get(id)!.consumes) {
+      for (const c of nm.get(id)!.consumes.map(consumeArtifact)) {
         const producer = producedInBatch.get(c);
         if (producer && producer !== id) {
           conflicts.push({ level, file: c, writers: [producer, id], type: 'consumes-produces-race' });
@@ -357,7 +377,7 @@ export function orient<T extends string>(
       const batchDone = batch.filter(id => !batchIncomplete.includes(id));
       const remainingBatches = batches.slice(batches.indexOf(batch) + 1).flat();
       const batchProduces = batch.flatMap(id => nm.get(id)!.produces);
-      const batchConsumes = batch.flatMap(id => nm.get(id)!.consumes);
+      const batchConsumes = batch.flatMap(id => nm.get(id)!.consumes.map(consumeArtifact));
       const doneSet = new Set([...done, ...batchDone]);
 
       // Pre-gate: plan nodes in future batches workable before deps close.
@@ -816,6 +836,29 @@ export async function validateNode<T extends string>(
       // Manual approval requires external sign-off
       passed = false;
       evidence = `manual approval pending${rule.reviewer ? ` from ${rule.reviewer}` : ''}`;
+    } else if (rule.type === 'shell') {
+      // Run shell command; check exit code matches expectExitCode (default 0)
+      if (process.env.ROADMAP_VALIDATING) {
+        passed = true;
+        evidence = `skipped (already inside validation): ${rule.command}`;
+      } else {
+        try {
+          const { execSync } = await import('node:child_process');
+          const expectedCode = rule.expectExitCode ?? 0;
+          execSync(rule.command, { stdio: 'pipe', env: { ...process.env, ROADMAP_VALIDATING: '1' } });
+          passed = true;
+          evidence = `command passed (exit ${expectedCode}): ${rule.command}`;
+        } catch (e: any) {
+          const actualCode = e.status ?? -1;
+          const expectedCode = rule.expectExitCode ?? 0;
+          passed = actualCode === expectedCode;
+          const stderr = e.stderr?.toString().trim() || e.message || '';
+          const codeInfo = `exit ${actualCode}, expected ${expectedCode}`;
+          evidence = passed
+            ? `command exit code matches: ${rule.command} — ${codeInfo}`
+            : `command failed: ${rule.command} — ${codeInfo} — ${stderr.slice(0, 150)}`;
+        }
+      }
     }
 
     checks.push({ rule, passed, evidence });

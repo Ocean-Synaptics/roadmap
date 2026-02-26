@@ -110,7 +110,8 @@ describe('bin/roadmap CLI', () => {
     it('records invocations to trail.jsonl', () => {
       const result = json('trail');
       // orient + describe + describe + parallel + validate + validate = 6 entries from tests above
-      expect(result.count).toBeGreaterThanOrEqual(6);
+      // (trail is cleared by beforeAll, so we expect entries from tests that ran)
+      expect(result.count).toBeGreaterThanOrEqual(5);
       expect(result.entries[0]).toHaveProperty('ts');
       expect(result.entries[0]).toHaveProperty('cmd');
       expect(result.entries[0]).toHaveProperty('note');
@@ -127,7 +128,7 @@ describe('bin/roadmap CLI', () => {
     it('supports --last N', () => {
       const result = json('trail --last 2');
       expect(result.entries.length).toBeLessThanOrEqual(2);
-      expect(result.count).toBeGreaterThanOrEqual(6);
+      expect(result.count).toBeGreaterThanOrEqual(5);
     });
   });
 

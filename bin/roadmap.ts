@@ -17,6 +17,7 @@ import { RoadmapError } from '../src/errors.ts';
 import { crossOrient } from '../src/lib/cross-orient.ts';
 import { discoverDependencies, resolveSiblingPath } from '../src/lib/dependency-resolver.ts';
 import { loadClaims, saveClaims, isExpired, activeClaims, annotateWithClaims, assignBatch } from '../src/lib/claims.ts';
+import { parseTasksMd, tasksToDAG } from '../src/lib/speckit-import.ts';
 import type { Graph } from '../src/protocol.ts';
 import type { SiblingStatus } from '../src/lib/cross-orient.ts';
 
@@ -36,7 +37,13 @@ const { note: _note, positional: args } = extractNote(rawArgs);
 const cmd = args[0] || 'help';
 
 // Commands that don't require a note
+// Special case: orient/position with --check is note-exempt (silent polling)
 const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'trail', 'chart', 'install', 'dig', 'claim']);
+const isOrientCheck = (cmd === 'orient' || cmd === 'position') && args.includes('--check');
+if (isOrientCheck) {
+  NOTE_EXEMPT.add('orient');
+  NOTE_EXEMPT.add('position');
+}
 
 interface TrailEntry {
   ts: string;
@@ -100,13 +107,13 @@ async function main() {
 
   try {
     switch (cmd) {
-      case 'orient':    return cmdOrient(note!);
+      case 'orient':    return cmdOrient(note);
       case 'advance':   return await cmdAdvance(note!);
       case 'describe':  return cmdDescribe(note!);
       case 'validate':  return cmdValidate(note!);
       case 'expand':    return await cmdExpand(note!);
       case 'branch':    return cmdBranch(note!);
-      case 'position':  return cmdOrient(note!); // alias
+      case 'position':  return cmdOrient(note); // alias
       case 'parallel':  return cmdParallel(note!);
       case 'locate':    return cmdLocate(note!);
       case 'sync':      return cmdSync(note!);
@@ -116,6 +123,7 @@ async function main() {
       case 'merge':     return await cmdMergeFrom();
       case 'retire':    return cmdRetire(note!);
       case 'claim':     return cmdClaim();
+      case 'import':    return cmdImport(note!);
       case 'dig':       return cmdDig();
       case 'help':
       case '--help':
@@ -136,16 +144,19 @@ async function main() {
 
 // --- Commands ---
 
-async function cmdOrient(note: string) {
+async function cmdOrient(note: string | undefined) {
+  const isCheck = args.includes('--check');
   if (!hasLocalDAG) {
     const result = { position: 'untracked', repo: basename(repoRoot), tracked: false };
-    recordTrail({
-      ts: new Date().toISOString(),
-      cmd: 'orient',
-      note,
-      repo: basename(repoRoot),
-      position: 'untracked',
-    });
+    if (!isCheck) {
+      recordTrail({
+        ts: new Date().toISOString(),
+        cmd: 'orient',
+        note: note ?? '',
+        repo: basename(repoRoot),
+        position: 'untracked',
+      });
+    }
     json(result);
     return;
   }
@@ -218,29 +229,31 @@ async function cmdOrient(note: string) {
     }));
   }
 
-  // Trail entry with batch context
-  const trailDetail: Record<string, unknown> = {
-    done: pos.done.length,
-    remaining: pos.remaining.length,
-    complete: result.complete,
-    batchRemaining: pos.batchRemaining.length,
-  };
-  if (pos.deps.length) {
-    trailDetail.deps = pos.deps.map(s => ({
-      repo: s.repo, position: s.position, satisfied: s.satisfied,
-    }));
-  }
+  // Trail entry with batch context (skip if --check)
+  if (!isCheck) {
+    const trailDetail: Record<string, unknown> = {
+      done: pos.done.length,
+      remaining: pos.remaining.length,
+      complete: result.complete,
+      batchRemaining: pos.batchRemaining.length,
+    };
+    if (pos.deps.length) {
+      trailDetail.deps = pos.deps.map(s => ({
+        repo: s.repo, position: s.position, satisfied: s.satisfied,
+      }));
+    }
 
-  recordTrail({
-    ts: new Date().toISOString(),
-    cmd: 'orient',
-    note,
-    repo: basename(repoRoot),
-    position: pos.position,
-    level: pos.level,
-    dagId: dag.id,
-    detail: trailDetail,
-  });
+    recordTrail({
+      ts: new Date().toISOString(),
+      cmd: 'orient',
+      note: note ?? '',
+      repo: basename(repoRoot),
+      position: pos.position,
+      level: pos.level,
+      dagId: dag.id,
+      detail: trailDetail,
+    });
+  }
   json(result);
 }
 
@@ -1205,6 +1218,64 @@ function cmdClaim() {
   json({ claimed: nodeId, owner, claimedAt, claimExpiry, ttlSeconds });
 }
 
+// --- import: parse spec-kit tasks.md into candidate roadmap DAG ---
+// roadmap import --from speckit <file.md> --id <dag-id> [--desc "..."]
+function cmdImport(note: string) {
+  const fromIdx = args.indexOf('--from');
+  if (fromIdx === -1 || args[fromIdx + 1] !== 'speckit') {
+    json({ error: 'Missing --from speckit', fix: 'roadmap import --from speckit tasks.md --id my-project --note "..."' });
+    process.exit(1);
+  }
+
+  const filePath = args[fromIdx + 2];
+  if (!filePath || !existsSync(filePath)) {
+    json({ error: `File not found: ${filePath}`, fix: 'Provide a path to a markdown tasks file' });
+    process.exit(1);
+  }
+
+  const idIdx = args.indexOf('--id');
+  const dagId = idIdx !== -1 ? args[idIdx + 1] : basename(filePath, '.md');
+  if (!dagId) {
+    json({ error: 'Missing --id', fix: 'roadmap import --from speckit tasks.md --id my-project --note "..."' });
+    process.exit(1);
+  }
+
+  const descIdx = args.indexOf('--desc');
+  const dagDesc = descIdx !== -1 ? args[descIdx + 1] : undefined;
+
+  const content = readFileSync(filePath, 'utf-8');
+  const tasks = parseTasksMd(content);
+  if (tasks.length === 0) {
+    json({ error: 'No tasks found in file', fix: 'Use format: - [P0] task-id: description' });
+    process.exit(1);
+  }
+
+  const dag = tasksToDAG(tasks, { dagId, dagDesc });
+
+  // Write to .roadmap/head.json
+  const outDir = join(repoRoot, '.roadmap');
+  if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+  const outPath = join(outDir, 'head.json');
+  writeFileSync(outPath, JSON.stringify(dag, null, 2) + '\n');
+
+  recordTrail({
+    ts: new Date().toISOString(), cmd: 'import', note,
+    repo: basename(repoRoot), position: ['init'], level: 0, dagId,
+    detail: { source: filePath, tasks: tasks.length, nodes: Object.keys(dag.nodes).length },
+  });
+
+  json({
+    imported: true,
+    dagId,
+    source: filePath,
+    tasks: tasks.length,
+    nodes: Object.keys(dag.nodes).length,
+    init: dag.init,
+    term: dag.term,
+    path: outPath,
+  });
+}
+
 function cmdDig() {
   const target = args[1];
   if (!target) {
@@ -1346,6 +1417,7 @@ function cmdHelp() {
 
 Commands:
   orient              Current batch position + produces/consumes + claims (JSON)
+  orient --check      Same as orient but no trail entry (for frequent polling)
   orient --assign     Round-robin assign batchRemaining to --owners (JSON)
   advance             Advance to next batch (requires current batch complete) (JSON)
   describe            Full API surface + project state (JSON)
@@ -1370,6 +1442,7 @@ Commands:
   claim <id> --renew         Extend TTL; fails if claim expired or owner mismatch
   claim <id> --release       Release a claim
   claim --list        Show all claims with expiry status
+  import --from speckit <file.md> --id <dag-id>  Parse tasks.md → roadmap DAG
   trail [--last N]    Read the invocation trail (local or global)
   trail --global      Cross-project trail (~/.roadmap/trail.jsonl)
   trail --repo <name> Filter trail by repo name
@@ -1381,13 +1454,16 @@ Commands:
   dig <path> --restore  Recover archived file to working tree
   help                This message
 
-All commands (except help/trail/chart/install/dig/claim) require --note "reason".
+All commands (except help/trail/chart/install/dig/claim/orient) require --note "reason".
+  orient --check is note-exempt for swarm agents that reorient without trail pollution.
 
 Agent Workflow:
   1. orient --note "..."           → find current batch (position[], produces[], consumes[])
   2. claim <node> / orient --assign → take ownership of node(s) in the batch
   3. do work                       → produce the artifacts listed in produces[]
   4. advance --note "..."          → validate batch complete, move to next batch
+
+  For polling without trail clutter: orient --check (no --note required, no trail entry)
 
   orient is the entry point. Run it first. It returns:
     position[]       current batch (nodes runnable in parallel)

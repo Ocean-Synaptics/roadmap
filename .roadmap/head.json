@@ -2063,14 +2063,12 @@
       ],
       "validate": [
         {
-          "type": "function",
-          "target": "tsc",
-          "fn": "npx tsc --noEmit"
+          "type": "shell",
+          "command": "npx tsc --noEmit"
         },
         {
-          "type": "function",
-          "target": "vitest",
-          "fn": "npx vitest run --reporter=dot"
+          "type": "shell",
+          "command": "npx vitest run --reporter=dot"
         }
       ],
       "idempotent": false
