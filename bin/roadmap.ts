@@ -42,8 +42,9 @@ interface TrailEntry {
   cmd: string;
   note: string;
   repo: string;
-  position?: string;
+  position?: string | string[];  // batch position (string[]) or legacy string
   dagId?: string;
+  level?: number;  // batch level index
   detail?: Record<string, unknown>;
 }
 
@@ -151,8 +152,11 @@ async function cmdOrient(note: string) {
   const pos = await crossOrient(dag, repoRoot, undefined, retiredSet());
   const result: Record<string, unknown> = {
     position: pos.position,
+    level: pos.level,
     produces: pos.produces,
     consumes: pos.consumes,
+    batchRemaining: pos.batchRemaining,
+    batchComplete: pos.batchComplete,
     done: pos.done.length,
     remaining: pos.remaining.length,
     complete: pos.remaining.length === 0,
@@ -165,9 +169,12 @@ async function cmdOrient(note: string) {
     }));
   }
 
-  // Trail entry with dep context (FR-6)
+  // Trail entry with batch context
   const trailDetail: Record<string, unknown> = {
-    done: pos.done.length, remaining: pos.remaining.length, complete: result.complete,
+    done: pos.done.length,
+    remaining: pos.remaining.length,
+    complete: result.complete,
+    batchRemaining: pos.batchRemaining.length,
   };
   if (pos.deps.length) {
     trailDetail.deps = pos.deps.map(s => ({
@@ -181,6 +188,7 @@ async function cmdOrient(note: string) {
     note,
     repo: basename(repoRoot),
     position: pos.position,
+    level: pos.level,
     dagId: dag.id,
     detail: trailDetail,
   });
@@ -256,13 +264,15 @@ function cmdDescribe(note: string) {
   const batches = parallelOrder(dag);
   const apiSurface = scanExports();
 
-  recordTrail({ ts: new Date().toISOString(), cmd: 'describe', note, repo: basename(repoRoot), position: pos.position, dagId: dag.id });
+  recordTrail({ ts: new Date().toISOString(), cmd: 'describe', note, repo: basename(repoRoot), position: pos.position, level: pos.level, dagId: dag.id });
 
   json({
     id: dag.id,
     desc: dag.desc,
     nodes: Object.keys(dag.nodes).length,
     position: pos.position,
+    level: pos.level,
+    batchComplete: pos.batchComplete,
     complete: pos.remaining.length === 0,
     remaining: pos.remaining.length,
     parallelBatches: batches.length,
@@ -287,8 +297,9 @@ function cmdDescribe(note: string) {
 async function cmdValidate(note: string) {
   const dag = loadDAG();
   const nodeId = args[1];
+  const pos = orient(dag, fileExists(repoRoot));
 
-  recordTrail({ ts: new Date().toISOString(), cmd: 'validate', note, repo: basename(repoRoot), dagId: dag.id, detail: { nodeId: nodeId || 'all' } });
+  recordTrail({ ts: new Date().toISOString(), cmd: 'validate', note, repo: basename(repoRoot), position: pos.position, level: pos.level, dagId: dag.id, detail: { nodeId: nodeId || 'all' } });
 
   if (nodeId) {
     const result = await validateNode(dag, nodeId, fileExists(repoRoot));
@@ -348,7 +359,8 @@ async function cmdExpand(note: string) {
   execSync(`git commit -m "${msg}"`, { cwd: repoRoot, stdio: 'pipe' });
   const hash = execSync('git rev-parse --short HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
 
-  recordTrail({ ts: new Date().toISOString(), cmd: 'expand', note, repo: basename(repoRoot), dagId: dagAfter.id, detail: { script: scriptPath, added, commit: hash } });
+  const posAfter = orient(dagAfter, fileExists(repoRoot));
+  recordTrail({ ts: new Date().toISOString(), cmd: 'expand', note, repo: basename(repoRoot), position: posAfter.position, level: posAfter.level, dagId: dagAfter.id, detail: { script: scriptPath, added, commit: hash } });
 
   json({
     expanded: true,
@@ -406,7 +418,9 @@ function cmdBranch(note: string) {
 
   const hash = execSync('git rev-parse --short HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
 
-  recordTrail({ ts: new Date().toISOString(), cmd: 'branch', note, repo: basename(repoRoot), detail: { branch: branchName, dagFile: dagFile || null, commit: hash } });
+  const dagAfterBranch = loadDAG();
+  const posBranch = orient(dagAfterBranch, fileExists(repoRoot));
+  recordTrail({ ts: new Date().toISOString(), cmd: 'branch', note, repo: basename(repoRoot), position: posBranch.position, level: posBranch.level, dagId: dagAfterBranch.id, detail: { branch: branchName, dagFile: dagFile || null, commit: hash } });
 
   json({
     branch: branchName,
@@ -420,12 +434,15 @@ function cmdParallel(note: string) {
   const batches = parallelOrder(dag);
   const showGraph = args.includes('--graph');
   const crossRepo = args.includes('--cross-repo');
+  const pos = orient(dag, fileExists(repoRoot));
 
   recordTrail({
     ts: new Date().toISOString(),
     cmd: 'parallel',
     note,
     repo: basename(repoRoot),
+    position: pos.position,
+    level: pos.level,
     dagId: dag.id,
     detail: { crossRepo, showGraph },
   });
@@ -855,9 +872,11 @@ function cmdRetire(note: string) {
     }
     retired.delete(nodeId);
     saveRetired(retired);
+    const dag = loadDAG();
+    const pos = orient(dag, fileExists(repoRoot));
     recordTrail({
       ts: new Date().toISOString(), cmd: 'retire', note,
-      repo: basename(repoRoot), dagId: loadDAG().id,
+      repo: basename(repoRoot), position: pos.position, level: pos.level, dagId: dag.id,
       detail: { nodeId, action: 'undo' },
     });
     json({ undone: nodeId });
@@ -907,9 +926,10 @@ function cmdRetire(note: string) {
   }
   saveRetired(retired);
 
+  const pos = orient(dag, fileExists(repoRoot));
   recordTrail({
     ts, cmd: 'retire', note,
-    repo: basename(repoRoot), dagId: dag.id,
+    repo: basename(repoRoot), position: pos.position, level: pos.level, dagId: dag.id,
     detail: { retired: toRetire, cascade },
   });
 
@@ -981,7 +1001,13 @@ function cmdLocate(note: string) {
   try {
     const output = execSync(`npx tsx ${skillPath}`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] });
     const result = JSON.parse(output);
-    recordTrail({ ts: new Date().toISOString(), cmd: 'locate', note, repo: basename(repoRoot) });
+    if (hasLocalDAG) {
+      const dag = loadDAG();
+      const pos = orient(dag, fileExists(repoRoot));
+      recordTrail({ ts: new Date().toISOString(), cmd: 'locate', note, repo: basename(repoRoot), position: pos.position, level: pos.level });
+    } else {
+      recordTrail({ ts: new Date().toISOString(), cmd: 'locate', note, repo: basename(repoRoot), position: 'untracked' });
+    }
     json(result);
   } catch (e) {
     throw new RoadmapError('VALIDATION_FAILED', {
@@ -1013,7 +1039,16 @@ function cmdSync(note: string) {
     }, `Failed to discover roadmaps: ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  recordTrail({ ts: new Date().toISOString(), cmd: 'sync', note, repo: basename(repoRoot) });
+  let trailEntry: TrailEntry = { ts: new Date().toISOString(), cmd: 'sync', note, repo: basename(repoRoot) };
+  if (hasLocalDAG) {
+    const dag = loadDAG();
+    const pos = orient(dag, fileExists(repoRoot));
+    trailEntry.position = pos.position;
+    trailEntry.level = pos.level;
+  } else {
+    trailEntry.position = 'untracked';
+  }
+  recordTrail(trailEntry);
 
   if (format === 'tree') {
     console.log('\n🗺️  Available Roadmaps');
@@ -1041,7 +1076,8 @@ function cmdHelp() {
   console.log(`roadmap — DAG expansion protocol CLI
 
 Commands:
-  orient              Current position + produces/consumes + dep status (JSON)
+  orient              Current batch position + produces/consumes + dep status (JSON)
+  advance             Advance to next batch (requires current batch complete) (JSON)
   describe            Full API surface + project state (JSON)
   validate [node]     Run validation rules (all nodes or specific)
   expand <script.ts>  Run expansion script, validate DAG, commit
@@ -1069,18 +1105,25 @@ Commands:
 
 All commands (except help/trail/chart/install/dig) require --note "reason".
 
+Batch Model:
+  Position is expressed as a batch (array of nodes runnable in parallel).
+  Use orient to get current batch.
+  Use advance to move to next batch (validates current batch is complete).
+  Trail entries record position as string[] for batch tracking.
+
 Examples:
-  roadmap orient --note "session start"
+  roadmap orient --note "session start"        # show current batch
+  roadmap advance --note "batch complete"      # move to next batch
   roadmap chart
-  roadmap chart --deps                # cross-repo progress view
+  roadmap chart --deps                         # cross-repo progress view
   roadmap merge --from ../donjon --note "check connections"
   roadmap retire phase-5-term --cascade --note "descoped"
-  roadmap retire --list               # show retired nodes
-  roadmap dig                         # list all archived files
-  roadmap dig docs/API.md             # show commit history
-  roadmap dig docs/API.md --restore   # recover to working tree
+  roadmap retire --list                        # show retired nodes
+  roadmap dig                                  # list all archived files
+  roadmap dig docs/API.md                      # show commit history
+  roadmap dig docs/API.md --restore            # recover to working tree
   roadmap install
-  roadmap trail --global --last 5`);
+  roadmap trail --global --last 5              # recent trail entries with batch positions`);
 }
 
 // --- Helpers ---
