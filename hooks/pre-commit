@@ -51,20 +51,57 @@ fi
 # Check for test additions in staged area
 STAGED_TEST_FILES=$(git diff --cached --name-only --diff-filter=A | grep 'tests/.*\.test\.ts$' || true)
 
-# If tests were added, allow the commit
-if [ -n "$STAGED_TEST_FILES" ]; then
+# If tests were added, move to batch validation check
+# Otherwise fail the test enforcement check
+if [ -z "$STAGED_TEST_FILES" ]; then
+  # Source files changed but no tests added - fail
+  echo "❌ Pre-commit hook: Test enforcement failed"
+  echo ""
+  echo "Changed files in src/ or bin/:"
+  echo "$STAGED_SRC_FILES" | sed 's/^/  /'
+  echo ""
+  echo "No test files were added. Please add tests to tests/ before committing."
+  echo ""
+  echo "To bypass this check (not recommended):"
+  echo "  SKIP_TEST_CHECK='reason' git commit"
+  echo ""
+  exit 1
+fi
+
+# --- Batch validation enforcement (Phase 16) ---
+
+ROADMAP_FILE="${REPO_ROOT}/.roadmap/head.json"
+
+# Only enforce if roadmap exists
+if [ ! -f "$ROADMAP_FILE" ]; then
   exit 0
 fi
 
-# Source files changed but no tests added - fail
-echo "❌ Pre-commit hook: Test enforcement failed"
-echo ""
-echo "Changed files in src/ or bin/:"
-echo "$STAGED_SRC_FILES" | sed 's/^/  /'
-echo ""
-echo "No test files were added. Please add tests to tests/ before committing."
-echo ""
-echo "To bypass this check (not recommended):"
-echo "  SKIP_TEST_CHECK='reason' git commit"
-echo ""
-exit 1
+# Check for SKIP_BATCH_COMMIT bypass
+if [ -n "$SKIP_BATCH_COMMIT" ]; then
+  echo "[$(date +'%Y-%m-%d %H:%M:%S')] SKIP_BATCH_COMMIT: $SKIP_BATCH_COMMIT" >> "$LOG_FILE"
+  exit 0
+fi
+
+# Get current batch status via roadmap orient
+ORIENT_OUTPUT=$(cd "$REPO_ROOT" && node --experimental-strip-types bin/roadmap.ts orient --note "pre-commit" 2>/dev/null | jq -r '.batchComplete // false' 2>/dev/null || echo "false")
+
+if [ "$ORIENT_OUTPUT" = "false" ]; then
+  POSITION=$(cd "$REPO_ROOT" && node --experimental-strip-types bin/roadmap.ts orient --note "pre-commit" 2>/dev/null | jq -r '.position | join(", ")' 2>/dev/null || echo "unknown")
+  REMAINING=$(cd "$REPO_ROOT" && node --experimental-strip-types bin/roadmap.ts orient --note "pre-commit" 2>/dev/null | jq -r '.batchRemaining | join(", ")' 2>/dev/null || echo "unknown")
+
+  echo "❌ Pre-commit hook: Batch validation failed"
+  echo ""
+  echo "Current batch is incomplete:"
+  echo "  Position: $POSITION"
+  echo "  Remaining work: $REMAINING"
+  echo ""
+  echo "Complete all nodes in the batch before committing."
+  echo ""
+  echo "To bypass this check (not recommended):"
+  echo "  SKIP_BATCH_COMMIT='reason' git commit"
+  echo ""
+  exit 1
+fi
+
+exit 0
