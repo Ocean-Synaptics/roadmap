@@ -9,7 +9,8 @@ import { createHash, type BinaryLike } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 
 export class CheckpointManager {
-  constructor(private repoRoot: string) {}
+  private repoRoot: string;
+  constructor(repoRoot: string) { this.repoRoot = repoRoot; }
 
   /**
    * Create and save checkpoint at current position

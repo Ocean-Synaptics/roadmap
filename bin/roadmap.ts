@@ -45,8 +45,8 @@ if (isOrientCheck) {
   NOTE_EXEMPT.add('orient');
   NOTE_EXEMPT.add('position');
 }
-// checkpoint --list and --restore are read-only queries
-if (cmd === 'checkpoint' && (args.includes('--list') || args.includes('--restore'))) {
+// checkpoint --list/--restore are read-only; --label is note-optional (claim is the evidence trail)
+if (cmd === 'checkpoint' && (args.includes('--list') || args.includes('--restore') || args.includes('--label'))) {
   NOTE_EXEMPT.add('checkpoint');
 }
 
@@ -132,6 +132,7 @@ async function main() {
       case 'import':    return cmdImport(note!);
       case 'show':      return cmdShow();
       case 'commit':    return cmdCommit(note!);
+      case 'complete':  return await cmdComplete(note!);
       case 'checkpoint': return cmdCheckpoint(note);
       case 'diff':      return cmdDiff();
       case 'dig':       return cmdDig();
@@ -236,10 +237,17 @@ async function cmdOrient(note: string | undefined) {
   if (args.includes('--ready')) {
     const ready = readyNodes(dag, fileExists(repoRoot), retiredSet());
     const active = activeClaims(claimStore);
+    const callingOwner = process.env['AGENT_ID'] ?? process.env['USER'] ?? '';
     result.ready = ready.map(n => ({
       ...n,
       claimable: !(n.id in active),
     }));
+    // myClaims: current-batch nodes this owner already holds — lets agent confirm
+    // ownership without a separate claim list call.
+    result.myClaims = pos.batchRemaining.filter(id => {
+      const c = claimStore[id];
+      return c && !isExpired(c) && c.owner === callingOwner;
+    });
   }
 
   // --next: lookahead for orchestrator pre-warming
@@ -1150,13 +1158,112 @@ async function cmdCheckpoint(note: string | undefined) {
     success: true,
   });
 
+  const trailNote = note ?? `checkpoint: ${label}`;
   recordTrail({
-    ts: new Date().toISOString(), cmd: 'checkpoint', note,
+    ts: new Date().toISOString(), cmd: 'checkpoint', note: trailNote,
     repo: basename(repoRoot), position: pos.position, level: pos.level, dagId: dag.id,
     detail: { label, checkpointId: checkpoint.id, artifacts: existingArtifacts.length },
   });
 
   json({ created: true, label, checkpointId: checkpoint.id, position: pos.position, artifacts: existingArtifacts.length });
+}
+
+// roadmap complete <node-id> --owner <agent> [--ttl <s>] --note "reason"
+// Atomically: claim node → write checkpoint → reorient.
+// Replaces the 5-call sequence: claim + checkpoint --label + orient + (advance?) + trail.
+async function cmdComplete(note: string) {
+  if (!hasLocalDAG) {
+    json({ error: 'No roadmap in this repo.' });
+    process.exit(1);
+  }
+
+  const nodeId = args[1];
+  if (!nodeId) {
+    json({ error: 'Missing node ID', fix: 'roadmap complete <node-id> --note "reason"' });
+    process.exit(1);
+  }
+
+  const dag = loadDAG();
+  const allNodes = Object.keys(dag.nodes);
+  if (!allNodes.includes(nodeId)) {
+    json({ error: `Node "${nodeId}" not found`, available: allNodes.slice(0, 10) });
+    process.exit(1);
+  }
+
+  const ownerIdx = args.indexOf('--owner');
+  const owner = ownerIdx !== -1 ? args[ownerIdx + 1]
+    : (process.env['AGENT_ID'] ?? process.env['USER'] ?? 'unknown');
+
+  const ttlIdx = args.indexOf('--ttl');
+  const ttlSeconds = ttlIdx !== -1 ? parseInt(args[ttlIdx + 1] ?? '300', 10) : 300;
+
+  // 1. Claim — idempotent if this owner already holds it
+  const claimStore = loadClaims(repoRoot);
+  const existing = claimStore[nodeId];
+  const pos = orient(dag, fileExists(repoRoot), retiredSet());
+
+  if (!pos.position.includes(nodeId) && !pos.batchRemaining.includes(nodeId)) {
+    json({
+      error: `Node "${nodeId}" is not in the current batch`,
+      currentBatch: pos.position,
+      fix: 'complete only works on nodes in the current batch',
+    });
+    process.exit(1);
+  }
+
+  if (!existing || isExpired(existing) || existing.owner === owner) {
+    // Claim (or re-claim for same owner)
+    const now = new Date();
+    const claimExpiry = new Date(now.getTime() + ttlSeconds * 1000).toISOString();
+    claimStore[nodeId] = { owner, claimedAt: now.toISOString(), claimExpiry };
+    saveClaims(repoRoot, claimStore);
+  } else {
+    // Active claim by different owner
+    json({
+      error: `Node "${nodeId}" is claimed by "${existing.owner}"`,
+      claimExpiry: existing.claimExpiry,
+      fix: 'Wait for the claim to expire or coordinate with the owner',
+    });
+    process.exit(1);
+  }
+
+  // 2. Checkpoint
+  const allProduces: string[] = [];
+  for (const nid of (pos.done ?? [])) {
+    const n = (dag.nodes as Record<string, any>)[nid];
+    if (n?.produces) allProduces.push(...n.produces);
+  }
+  const existingArtifacts = allProduces.filter(p => existsSync(join(repoRoot, p)));
+
+  const { CheckpointManager } = await import('../src/lib/checkpoint.ts');
+  const mgr = new CheckpointManager(repoRoot);
+  const checkpoint = await mgr.saveCheckpoint({
+    position: pos.position,
+    phase: `complete:${nodeId}`,
+    artifacts: existingArtifacts.map(p => join(repoRoot, p)),
+    agent: owner,
+    duration: 0,
+    success: true,
+  });
+
+  // 3. Reorient
+  const posAfter = orient(dag, fileExists(repoRoot), retiredSet());
+
+  recordTrail({
+    ts: new Date().toISOString(), cmd: 'complete', note,
+    repo: basename(repoRoot), position: posAfter.position, level: posAfter.level, dagId: dag.id,
+    detail: { nodeId, owner, checkpointId: checkpoint.id, batchComplete: posAfter.batchComplete },
+  });
+
+  json({
+    completed: nodeId,
+    owner,
+    checkpointId: checkpoint.id,
+    position: posAfter.position,
+    batchComplete: posAfter.batchComplete,
+    batchRemaining: posAfter.batchRemaining,
+    ...(posAfter.batchComplete ? { hint: 'roadmap advance --note "batch done"' } : {}),
+  });
 }
 
 function cmdCommit(note: string) {
@@ -1892,7 +1999,8 @@ Commands:
   orient --assign     Round-robin assign batchRemaining to --owners (JSON)
   advance             Advance to next batch (requires current batch complete) (JSON)
   commit --node <id>  Stage node's produces, commit with [node: X] trailer, update git-state
-  checkpoint --label <name>  Save checkpoint at current position (recovery point)
+  complete <node-id>  Atomic: claim → checkpoint → reorient (replaces 5-call sequence)
+  checkpoint --label <name>  Save checkpoint (--note optional when --label given)
   checkpoint --list   List all checkpoints
   checkpoint --restore  Restore from latest valid checkpoint
   describe            Full API surface + project state (JSON)
@@ -1945,10 +2053,11 @@ Agent Workflow:
   3. show <node>                     → get full node spec (no head.json read needed)
   4. do work                         → produce the artifacts listed in produces[]
   5. commit --node <id> --message "" → stage produces, commit with [node: X] trailer
-  6. advance --note "..."            → validate batch complete, move to next batch
-  7. checkpoint --label "..."        → save recovery point at batch boundary
+  6. complete <node-id> --note "..." → atomic claim + checkpoint + reorient (preferred over steps 2+7)
+  7. advance --note "..."            → validate batch complete, move to next batch
 
   For polling without trail clutter: orient --check (no --note required, no trail entry)
+  orient --ready includes myClaims[] — current-batch nodes you already hold, so no extra claim call needed.
 
   orient is the entry point. Run it first. It returns:
     position[]       current batch (nodes runnable in parallel)

@@ -28,7 +28,8 @@ export class AuditTrail {
   private session: AuditSession | null = null;
   private entries: AuditEntry[] = [];
 
-  constructor(private repoRoot: string) {}
+  private repoRoot: string;
+  constructor(repoRoot: string) { this.repoRoot = repoRoot; }
 
   /**
    * Start audit session
