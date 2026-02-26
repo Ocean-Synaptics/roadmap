@@ -1,7 +1,11 @@
-{"ts":"2026-02-26T09:58:01.882Z","cmd":"orient","note":"test","repo":"roadmap","position":"fix-reconcile","dagId":"roadmap-adversarial","detail":{"done":9,"remaining":95,"complete":false}}
-{"ts":"2026-02-26T09:58:01.976Z","cmd":"describe","note":"test","repo":"roadmap","position":"init","dagId":"roadmap-adversarial"}
-{"ts":"2026-02-26T09:58:02.055Z","cmd":"describe","note":"test","repo":"roadmap","position":"init","dagId":"roadmap-adversarial"}
-{"ts":"2026-02-26T09:58:02.129Z","cmd":"parallel","note":"test","repo":"roadmap","dagId":"roadmap-adversarial"}
-{"ts":"2026-02-26T09:58:02.199Z","cmd":"validate","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"nodeId":"init"}}
-{"ts":"2026-02-26T09:58:02.268Z","cmd":"validate","note":"test","repo":"roadmap","dagId":"roadmap-adversarial","detail":{"nodeId":"all"}}
-{"ts":"2026-02-26T09:58:08.281Z","cmd":"orient","note":"git-library + consumer-categories added","repo":"roadmap","position":"fix-reconcile","dagId":"roadmap-adversarial","detail":{"done":9,"remaining":95,"complete":false}}
+{"ts":"2026-02-26T09:59:43.836Z","cmd":"orient","note":"session start — work on the roadmap","repo":"roadmap","position":"fix-reconcile","dagId":"roadmap-adversarial","detail":{"done":9,"remaining":95,"complete":false}}
+{"ts":"2026-02-26T10:00:29.956Z","cmd":"orient","note":"completed fix-reconcile: reconcile gap.missing semantics","repo":"roadmap","position":"fix-orient","dagId":"roadmap-adversarial","detail":{"done":10,"remaining":94,"complete":false}}
+{"ts":"2026-02-26T10:00:55.184Z","cmd":"orient","note":"completed fix-orient: gate node advancement in orient()","repo":"roadmap","position":"consumer-integration","dagId":"roadmap-adversarial","detail":{"done":12,"remaining":92,"complete":false}}
+{"ts":"2026-02-26T10:02:26.015Z","cmd":"orient","note":"completed consumer-integration: smoke test for real consumer projects","repo":"roadmap","position":"merge-spec","dagId":"roadmap-adversarial","detail":{"done":14,"remaining":90,"complete":false}}
+{"ts":"2026-02-26T10:02:55.689Z","cmd":"orient","note":"completed merge-spec: merge design document","repo":"roadmap","position":"branch-spec","dagId":"roadmap-adversarial","detail":{"done":18,"remaining":86,"complete":false}}
+{"ts":"2026-02-26T10:03:33.163Z","cmd":"orient","note":"completed branch-spec: branch design document","repo":"roadmap","position":"skill-finalize","dagId":"roadmap-adversarial","detail":{"done":22,"remaining":82,"complete":false}}
+{"ts":"2026-02-26T10:04:11.734Z","cmd":"orient","note":"completed skill-finalize: comprehensive SKILL.md documentation","repo":"roadmap","position":"readme-write","dagId":"roadmap-adversarial","detail":{"done":23,"remaining":81,"complete":false}}
+{"ts":"2026-02-26T10:04:49.039Z","cmd":"orient","note":"completed readme-write: comprehensive README","repo":"roadmap","position":"example-create","dagId":"roadmap-adversarial","detail":{"done":24,"remaining":80,"complete":false}}
+{"ts":"2026-02-26T10:05:20.201Z","cmd":"orient","note":"completed example-create: simple project roadmap and test examples","repo":"roadmap","position":"release-prepare","dagId":"roadmap-adversarial","detail":{"done":25,"remaining":79,"complete":false}}
+{"ts":"2026-02-26T10:05:40.719Z","cmd":"orient","note":"completed release-prepare: version 0.2.0","repo":"roadmap","position":"spec-system","dagId":"roadmap-adversarial","detail":{"done":27,"remaining":77,"complete":false}}
+{"ts":"2026-02-26T10:06:28.657Z","cmd":"orient","note":"completed spec-system: comprehensive system specification","repo":"roadmap","position":"briefing-files","dagId":"roadmap-adversarial","detail":{"done":28,"remaining":76,"complete":false}}
