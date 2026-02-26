@@ -54,6 +54,21 @@ async function main() {
       console.log('\n4️⃣  (Dry-run: skipping file write)');
     }
 
+    // Step 5: Install git hooks
+    if (!dryRun) {
+      console.log('\n5️⃣  Installing git hooks...');
+      try {
+        // Import and run install-hooks
+        const { execSync } = require('child_process');
+        execSync('npx ts-node bin/install-hooks.ts', {
+          cwd: repoRoot,
+          stdio: 'inherit',
+        });
+      } catch (err) {
+        console.warn('   ⚠️  Hook installation failed (non-fatal)');
+      }
+    }
+
     console.log('\n✅ Integration ready!');
     console.log(`   Next: roadmap orient --note "bootstrap"`);
 
