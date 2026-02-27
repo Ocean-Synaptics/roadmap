@@ -511,10 +511,12 @@ async function cmdAdvance(note: string) {
   const { advanceBatch } = await import('../src/protocol.ts');
   const dag = loadDAG();
   const predicate = fileExists(repoRoot);
+  const completions = loadCompletions(repoRoot);
+  const completedIds = getCompletedNodeIds(completions);
 
   try {
-    // Get current position
-    const current = await import('../src/protocol.ts').then(m => m.orient(dag, predicate, retiredSet()));
+    // Get current position (including explicit completions)
+    const current = orient(dag, predicate, retiredSet(), completedIds);
 
     // Validate batch is complete
     if (!current.batchComplete) {
@@ -542,8 +544,8 @@ async function cmdAdvance(note: string) {
       return;
     }
 
-    // Advance to next batch
-    const next = await advanceBatch(dag, predicate, retiredSet());
+    // Advance to next batch (with completed nodes)
+    const next = await advanceBatch(dag, predicate, retiredSet(), completedIds);
 
     recordTrail({
       ts: new Date().toISOString(),
@@ -1441,7 +1443,9 @@ async function cmdComplete(note: string) {
   // 1. Claim — idempotent if this owner already holds it
   const claimStore = loadClaims(repoRoot);
   const existing = claimStore[nodeId];
-  const pos = orient(dag, fileExists(repoRoot), retiredSet());
+  const completions = loadCompletions(repoRoot);
+  const completedIds = getCompletedNodeIds(completions);
+  const pos = orient(dag, fileExists(repoRoot), retiredSet(), completedIds);
 
   if (!pos.position.includes(nodeId) && !pos.batchRemaining.includes(nodeId)) {
     json({
@@ -1551,9 +1555,23 @@ async function cmdComplete(note: string) {
 
     if (!validationResult.passed) {
       // Check for intent failures with expandOnFail before rejecting
-      if (intentJudgments) {
+      // Auto-expand if expandOnFail: true, even without explicit judgment data
+      const nodeSpec = (dag.nodes as Record<string, any>)[nodeId];
+      const expandOnFailRules = ((nodeSpec?.validate ?? []) as any[]).filter((r: any) => r.type === 'intent' && r.expandOnFail === true);
+      const shouldAutoExpand = expandOnFailRules.length > 0 && !intentJudgments;
+
+      if (intentJudgments || shouldAutoExpand) {
         const { extractIntentFailures, generateIntentExpansion, detectStall, buildEscalation } = await import('../src/lib/intent-expansion.ts');
-        const intentFailures = extractIntentFailures(validationResult.checks, intentJudgments);
+
+        // If auto-expanding, synthesize minimum judgment data (confidence 0 = needs work)
+        const judgmentsToUse = intentJudgments ?? expandOnFailRules.map(r => ({
+          statement: r.statement,
+          confidence: 0,
+          reasoning: 'Auto-expanded due to expandOnFail: true',
+          evidence: [],
+        }));
+
+        const intentFailures = extractIntentFailures(validationResult.checks, judgmentsToUse);
 
         if (intentFailures.length > 0) {
           const nodeSpec = (dag.nodes as Record<string, any>)[nodeId];

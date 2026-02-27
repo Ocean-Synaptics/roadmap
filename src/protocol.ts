@@ -491,6 +491,7 @@ export function orient<T extends string>(
   g: Graph<T>,
   exists: (artifact: string) => boolean,
   retired?: ReadonlySet<string>,
+  completed?: ReadonlySet<string>,
 ): Orientation {
   const batches = parallelOrder(g);
   const nodes = flat(g);
@@ -510,6 +511,7 @@ export function orient<T extends string>(
   for (const batch of batches) {
     const batchIncomplete = batch.filter(id => {
       if (retired?.has(id)) return false;
+      if (completed?.has(id)) return false; // node explicitly marked complete
       const node = nm.get(id)!;
       // Plan node completion: done when expansion children exist in graph
       if (node.mode === 'plan') {
