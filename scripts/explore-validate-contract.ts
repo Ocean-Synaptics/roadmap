@@ -171,6 +171,33 @@ function printAPIReference() {
 `);
 }
 
+const API_SURFACE = {
+  observations: [
+    { name: 'checkVisible', params: ['page: Page', 'selector: string', 'label: string'], returns: 'ObservationResult', desc: 'Element is visible in viewport' },
+    { name: 'checkInteractive', params: ['page: Page', 'selector: string', 'label: string'], returns: 'ObservationResult', desc: 'Element visible AND enabled' },
+    { name: 'checkCount', params: ['page: Page', 'selector: string', 'minCount: number', 'label: string'], returns: 'ObservationResult', desc: 'DOM match count >= threshold' },
+    { name: 'checkContrast', params: ['page: Page', 'textSelector: string', 'bgSelector: string', 'minRatio: number', 'label: string'], returns: 'ObservationResult', desc: 'WCAG AA contrast ratio' },
+    { name: 'checkText', params: ['page: Page', 'selector: string', 'label: string'], returns: 'ObservationResult', desc: 'Extract & validate text' },
+    { name: 'checkStyle', params: ['page: Page', 'selector: string', 'property: string', 'label: string'], returns: 'ObservationResult', desc: 'CSS property value' },
+    { name: 'checkSize', params: ['page: Page', 'selector: string', 'minWidth: number', 'minHeight: number', 'label: string'], returns: 'ObservationResult', desc: 'Element dimensions' },
+    { name: 'checkAttribute', params: ['page: Page', 'selector: string', 'attrName: string', 'expectedValue: string', 'label: string'], returns: 'ObservationResult', desc: 'HTML attribute value' },
+    { name: 'checkClass', params: ['page: Page', 'selector: string', 'className: string', 'label: string'], returns: 'ObservationResult', desc: 'CSS class presence' },
+    { name: 'checkOverflow', params: ['page: Page', 'selector: string', 'label: string'], returns: 'ObservationResult', desc: 'Scrollable overflow state' }
+  ],
+  types: {
+    ObservationResult: { id: 'string', pass: 'boolean', evidence: 'string', value: 'string | number | boolean | undefined' },
+    ExploreResult: { observations: 'ObservationResult[]', duration: 'number' },
+    SpecClarifiedJson: { features: 'SpecFeature[]', gaps: 'unknown[]', confidence: 'number', generated: 'string', source: 'object' },
+    SpecFeature: { id: 'string', selector: 'string', observation: 'string', evidence: 'string', minCount: 'number?', minRatio: 'number?', expectedValue: 'string?', cssProperty: 'string?', minWidth: 'number?', minHeight: 'number?', attrName: 'string?', className: 'string?' }
+  },
+  cdpSetup: {
+    electron: 'npm run electron:dev',
+    chrome: 'chrome --remote-debugging-port=9222 http://localhost:5173',
+    chromium: 'chromium --remote-debugging-port=9222 http://localhost:5173',
+    env: { CDP_URL: 'http://localhost:9222', CDP_PORT: '9222' }
+  }
+};
+
 function printError(title: string, message: string, actionItems?: string[]) {
   console.error(`\n❌ ${title}`);
   console.error(`   ${message}\n`);
@@ -189,6 +216,10 @@ function printError(title: string, message: string, actionItems?: string[]) {
   console.error('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
   printAPIReference();
+
+  // Also output API as JSON for machine consumption
+  console.error('\n📋 API Surface (JSON):');
+  console.error(JSON.stringify(API_SURFACE, null, 2));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -428,5 +459,10 @@ run().catch((err) => {
   console.error('⚠️  DO NOT READ SOURCE CODE OR INVESTIGATE FURTHER');
   console.error('    All required information is in the messages above.\n');
   printAPIReference();
+
+  // Output API as JSON for machine consumption
+  console.error('\n📋 API Surface (JSON):');
+  console.error(JSON.stringify(API_SURFACE, null, 2));
+
   process.exit(1);
 });
