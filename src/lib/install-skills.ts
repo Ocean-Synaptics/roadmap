@@ -27,14 +27,21 @@ export interface InstallAllOpts {
 // ── SkillTemplate ─────────────────────────────────────────────────────────────
 
 export class SkillTemplate {
-  constructor(
-    public readonly id: string,
-    public readonly title: string,
-    public readonly description: string,
-    public readonly steps: SkillStep[],
-    public readonly args?: string,
-    public readonly contract?: string,
-  ) {}
+  readonly id: string;
+  readonly title: string;
+  readonly description: string;
+  readonly steps: SkillStep[];
+  readonly args?: string;
+  readonly contract?: string;
+
+  constructor(id: string, title: string, description: string, steps: SkillStep[], args?: string, contract?: string) {
+    this.id = id;
+    this.title = title;
+    this.description = description;
+    this.steps = steps;
+    this.args = args;
+    this.contract = contract;
+  }
 
   render(context: { roadmapBin: string }): string {
     const lines: string[] = [];
