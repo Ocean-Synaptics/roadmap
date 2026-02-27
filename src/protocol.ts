@@ -1,6 +1,6 @@
 // @module protocol
 // @exports define, graph, check, verify, order, parallelOrder, batchConflicts, orient, advanceBatch, readyNodes, nextBatch, criticalPath, reconcile, merge, branch, analyze, modify, modifyAndCommit, validateNode, validateBatch, validateGraph
-// @types NodeSpec, Graph, Orientation, ReadyNode, NextBatch, BatchConflict, Connection, Gap, ValidationRule, ValidationCheck, ValidationResult, ModifyAnalysis, ModificationRecord, ConsumeSpec, RuntimeExploreRule, ObservationSpec, ObservationResult, ExploreResult
+// @types NodeSpec, Graph, Orientation, ReadyNode, NextBatch, BatchConflict, Connection, Gap, ValidationRule, ValidationCheck, ValidationResult, ModifyAnalysis, ModificationRecord, ConsumeSpec, RuntimeExploreRule, ObservationSpec, ObservationResult, ExploreResult, IntentFailure, ConvergenceLimits, EscalationResult, IntentDiagnosis
 // @entry roadmap/protocol
 
 // --- Types ---
@@ -15,7 +15,7 @@ export type ValidationRule =
   | { type: 'build-produces'; command: string; outputs: string[] }
   | { type: 'launch-check'; command: string; timeout?: number; successSignal?: string }
   | { type: 'spec-conformance'; spec: string; stories: number[]; criteria?: number[] }
-  | { type: 'intent'; statement: string; confidence: number; evaluator: 'self' | 'council'; context?: string[] }
+  | { type: 'intent'; statement: string; confidence: number; evaluator: 'self' | 'council'; context?: string[]; expandOnFail?: boolean; maxExpansionDepth?: number }
   | { type: 'runtime-explore'; script: string; launch?: string; port?: number; timeout?: number; observations: ObservationSpec[] };
 
 // LLM-provided judgment for one intent statement.
@@ -60,6 +60,35 @@ export interface ValidationResult {
   passed: boolean;
   checks: ValidationCheck[];
   failedReason?: string;
+  expansionStatus?: 'expanding' | 'escalated'; // set when expandOnFail triggers
+  failingIntents?: IntentFailure[];             // populated when expansionStatus is set
+  escalation?: EscalationResult;                // populated when expansionStatus === 'escalated'
+}
+
+// Intent failure captured for expansion
+export interface IntentFailure {
+  statement: string;
+  achieved: number;    // actual confidence
+  threshold: number;   // required confidence
+  reasoning: string;
+  evidence: string[];
+  context?: string[];  // from intent rule — scopes fix node produces
+}
+
+// Convergence limits for intent-driven expansion
+export interface ConvergenceLimits {
+  maxExpansionDepth: number;    // hard recursion limit (default: 3)
+  stallThreshold: number;       // min confidence improvement per level (default: 0.05)
+  maxExpansionCost?: number;    // USD budget cap (optional)
+}
+
+// Escalation when expansion cannot converge
+export interface EscalationResult {
+  node: string;
+  statement: string;
+  history: Array<{ depth: number; confidence: number }>;
+  diagnosis: string;
+  action: string;
 }
 
 // Consume entry: plain string (artifact path) or acknowledged pending contract.
@@ -89,6 +118,17 @@ export interface NodeSpec<TAll extends string, TSelf extends TAll = TAll> {
   readonly loopTarget?: string; // re-entry node when convergence check fails (soft loop)
   readonly convergenceCheck?: { readonly maxCoverageDelta?: number; readonly requireEmptyProposals?: boolean; readonly minWallClockDeltaMs?: number }; // loop termination criteria
   readonly ambient?: readonly string[]; // agent reads these for context; not a dep, not validated, never gates readiness
+  readonly _intentDiagnosis?: IntentDiagnosis; // provenance: what failing intent triggered this fix node's creation
+}
+
+// Intent expansion provenance — attached to fix nodes created by intent-driven expansion
+export interface IntentDiagnosis {
+  statement: string;
+  achievedConfidence: number;
+  threshold: number;
+  reasoning: string;
+  evidence: string[];
+  expansionDepth: number; // 0 = first expansion, 1 = expansion of expansion, ...
 }
 
 export interface EmitGalleryNodeSpec {
@@ -1243,6 +1283,33 @@ export async function validateNode<T extends string>(
 
     checks.push({ rule, passed, evidence });
     if (!passed) allPassed = false;
+  }
+
+  // Collect failing intents with expandOnFail for expansion
+  const failingIntents: IntentFailure[] = [];
+  for (const c of checks) {
+    if (c.rule.type !== 'intent' || c.passed || c.intentStatus !== 'evaluated') continue;
+    const rule = c.rule as { type: 'intent'; statement: string; confidence: number; context?: string[]; expandOnFail?: boolean };
+    if (!rule.expandOnFail) continue;
+    failingIntents.push({
+      statement: rule.statement,
+      achieved: c.judgment!.confidence,
+      threshold: rule.confidence,
+      reasoning: c.judgment!.reasoning,
+      evidence: c.judgment!.evidence ?? [],
+      context: rule.context,
+    });
+  }
+
+  if (failingIntents.length > 0) {
+    return {
+      nodeId,
+      passed: false,
+      checks,
+      failedReason: `${failingIntents.length} intent(s) failed with expandOnFail — expansion required`,
+      expansionStatus: 'expanding',
+      failingIntents,
+    };
   }
 
   return {
