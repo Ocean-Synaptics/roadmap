@@ -28,6 +28,7 @@ import { compilePrompts } from '../src/lib/compile-prompts.ts';
 import { recordEvaluation, judgmentToRecord } from '../src/lib/intent-evaluator.ts';
 import { buildGallery } from '../src/lib/gallery-templates/index.ts';
 import { estimateCost } from '../src/lib/cost-estimator.ts';
+import { installAll, extractVersionHash, readPackageVersion, computeSkillHash } from '../src/lib/install-skills.ts';
 import type { Graph } from '../src/protocol.ts';
 import type { SiblingStatus } from '../src/lib/cross-orient.ts';
 
@@ -1655,10 +1656,145 @@ async function cmdMergeFrom() {
 }
 
 function cmdInstall() {
-  // Resolve the absolute path to this CLI
   const scriptDir = resolve(import.meta.dirname || join(repoRoot, 'bin'));
   const binPath = join(scriptDir, 'roadmap');
 
+  const useSkills = args.includes('--skills') || args.includes('--update');
+  const useCheck = args.includes('--check');
+  const noClaudeMd = args.includes('--no-claude-md');
+  const constraintsPath = args.includes('--constraints')
+    ? args[args.indexOf('--constraints') + 1]
+    : undefined;
+
+  // --check: report stale skills without modifying
+  if (useCheck) {
+    return cmdInstallCheck(binPath);
+  }
+
+  // --skills / --update: install skill files + slim CLAUDE.md
+  if (useSkills) {
+    return cmdInstallSkills(binPath, noClaudeMd, constraintsPath);
+  }
+
+  // Legacy mode: prose protocol in CLAUDE.md
+  return cmdInstallLegacy(binPath);
+}
+
+function cmdInstallCheck(binPath: string): void {
+  const skillsDir = join(repoRoot, '.claude', 'commands');
+  if (!existsSync(skillsDir)) {
+    console.log('No skills installed (missing .claude/commands/)');
+    return;
+  }
+
+  const version = readPackageVersion();
+  const files = readdirSync(skillsDir).filter(f => f.startsWith('roadmap-') && f.endsWith('.md'));
+  if (files.length === 0) {
+    console.log('No roadmap skills found in .claude/commands/');
+    return;
+  }
+
+  let staleCount = 0;
+  for (const file of files) {
+    const content = readFileSync(join(skillsDir, file), 'utf-8');
+    const installed = extractVersionHash(content);
+    const id = file.replace(/^roadmap-/, '').replace(/\.md$/, '');
+    const current = computeSkillHash(id, version);
+
+    if (!installed) {
+      console.log(`  ? ${file} — no version hash`);
+      staleCount++;
+    } else if (installed !== current) {
+      console.log(`  ⚠ ${file} — stale (installed: ${installed}, current: ${current})`);
+      staleCount++;
+    } else {
+      console.log(`  ✓ ${file} — up to date`);
+    }
+  }
+
+  if (staleCount > 0) {
+    console.log(`\n${staleCount} skill(s) need update. Run: roadmap install --update`);
+  } else {
+    console.log('\nAll skills up to date.');
+  }
+}
+
+function cmdInstallSkills(binPath: string, noClaudeMd: boolean, constraintsPath?: string): void {
+  const targetDir = join(repoRoot, '.claude', 'commands');
+  const result = installAll({
+    targetDir,
+    roadmapBin: binPath,
+    constraints: constraintsPath,
+  });
+
+  console.log(`Installed ${result.installed.length} skill(s) to ${targetDir}:`);
+  for (const p of result.installed) {
+    console.log(`  + ${basename(p)}`);
+  }
+  if (result.constraintsInstalled) {
+    console.log(`  (constraints extracted from ${constraintsPath})`);
+  }
+
+  // Update CLAUDE.md with slim protocol pointer table
+  if (!noClaudeMd) {
+    const claudeMdPath = join(repoRoot, '.claude', 'CLAUDE.md');
+    writeSlimProtocol(claudeMdPath);
+  }
+
+  console.log(`   bin: ${binPath}`);
+}
+
+function writeSlimProtocol(claudeMdPath: string): void {
+  const ANCHOR_START = '<!-- ROADMAP-PROTOCOL-START -->';
+  const ANCHOR_END = '<!-- ROADMAP-PROTOCOL-END -->';
+
+  const slimBlock = `${ANCHOR_START}
+## Roadmap Protocol
+
+This project uses roadmap-governed execution via skills. Do not run roadmap CLI directly.
+
+| Phase | Skill | When |
+|---|---|---|
+| Session start | \`/roadmap-start\` | Before any state-mutating work |
+| Get work brief | \`/roadmap-work <node>\` | Before implementing a node |
+| Submit work | \`/roadmap-done <node>\` | After implementing produces |
+| Dispatch swarm | \`/roadmap-dispatch\` | Before spawning workers |
+| Review DAG | \`/roadmap-review\` | Before committing DAG changes |
+| Cross-roadmap triage | \`/roadmap-gallery\` | To see all roadmaps + pick what to work on |
+| Progress checkpoint | \`/roadmap-progress\` | After batch close, on resume, every ~30min |
+| Behavioral constraints | \`/roadmap-constraints\` | Reference for output standards |
+
+Position comes from \`/roadmap-start\`, not memory. Never infer position.
+Progress checkpoints use \`/roadmap-progress\` — interactive steering, not passive chart dumps.
+${ANCHOR_END}`;
+
+  const resolvedPath = resolve(claudeMdPath);
+
+  if (!existsSync(resolvedPath)) {
+    const dir = resolve(resolvedPath, '..');
+    if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+    writeFileSync(resolvedPath, slimBlock + '\n');
+    console.log(`Created ${resolvedPath} with slim protocol pointer table`);
+    return;
+  }
+
+  let content = readFileSync(resolvedPath, 'utf-8');
+
+  if (content.includes(ANCHOR_START) && content.includes(ANCHOR_END)) {
+    const re = new RegExp(
+      escapeRegex(ANCHOR_START) + '[\\s\\S]*?' + escapeRegex(ANCHOR_END),
+    );
+    content = content.replace(re, slimBlock);
+    writeFileSync(resolvedPath, content);
+    console.log(`Updated ${resolvedPath} — slim protocol pointer table`);
+  } else {
+    content = content.trimEnd() + '\n\n' + slimBlock + '\n';
+    writeFileSync(resolvedPath, content);
+    console.log(`Appended slim protocol pointer table to ${resolvedPath}`);
+  }
+}
+
+function cmdInstallLegacy(binPath: string): void {
   const claudeMdPath = args[1] || join(repoRoot, '.claude', 'CLAUDE.md');
   const resolvedPath = resolve(claudeMdPath);
 
@@ -1705,31 +1841,27 @@ Run \`${binPath} chart\` frequently. **Always reprint the full output verbatim.*
 ${ANCHOR_END}`;
 
   if (!existsSync(resolvedPath)) {
-    // Create new CLAUDE.md with just the protocol
     const dir = resolve(resolvedPath, '..');
     if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
     writeFileSync(resolvedPath, protocolBlock + '\n');
-    console.log(`✅ Created ${resolvedPath} with roadmap protocol`);
+    console.log(`Created ${resolvedPath} with roadmap protocol`);
     console.log(`   bin: ${binPath}`);
     return;
   }
 
-  // Read existing, splice or append
   let content = readFileSync(resolvedPath, 'utf-8');
 
   if (content.includes(ANCHOR_START) && content.includes(ANCHOR_END)) {
-    // Replace existing block
     const re = new RegExp(
       escapeRegex(ANCHOR_START) + '[\\s\\S]*?' + escapeRegex(ANCHOR_END),
     );
     content = content.replace(re, protocolBlock);
     writeFileSync(resolvedPath, content);
-    console.log(`🔄 Updated roadmap protocol in ${resolvedPath}`);
+    console.log(`Updated roadmap protocol in ${resolvedPath}`);
   } else {
-    // Append
     content = content.trimEnd() + '\n\n' + protocolBlock + '\n';
     writeFileSync(resolvedPath, content);
-    console.log(`➕ Appended roadmap protocol to ${resolvedPath}`);
+    console.log(`Appended roadmap protocol to ${resolvedPath}`);
   }
   console.log(`   bin: ${binPath}`);
 }
