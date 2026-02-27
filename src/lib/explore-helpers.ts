@@ -1,186 +1,434 @@
 // @module explore-helpers
 // @exports checkVisible, checkText, checkStyle, checkSize, checkCount, checkAttribute, checkClass, checkContrast, checkOverflow
-// @types Page (structural)
+// @types ObservationResult
 // @entry roadmap
 
+import type { Page } from '@playwright/test';
 import type { ObservationResult } from '../protocol.ts';
 
-// Structural Page type — matches Playwright's Page without importing it
-interface Page {
-  $(selector: string): Promise<ElementHandle | null>;
-  $$(selector: string): Promise<ElementHandle[]>;
-  evaluate<R>(fn: (...args: any[]) => R, ...args: any[]): Promise<R>;
+// ── Luminance & Contrast Ratio (WCAG) ───────────────────────────────────────
+
+/** Relative luminance per WCAG 2.1 — RGB to perceptual brightness */
+function getLuminance(r: number, g: number, b: number): number {
+  const [rs, gs, bs] = [r, g, b].map((c) => {
+    c = c / 255;
+    return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+  });
+  return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
 }
 
-interface ElementHandle {
-  boundingBox(): Promise<{ x: number; y: number; width: number; height: number } | null>;
-  evaluate<R>(fn: (el: Element, ...args: any[]) => R, ...args: any[]): Promise<R>;
-  isVisible(): Promise<boolean>;
+/** Contrast ratio between two luminance values per WCAG 2.1 */
+function contrastRatio(l1: number, l2: number): number {
+  const lighter = Math.max(l1, l2);
+  const darker = Math.min(l1, l2);
+  return (lighter + 0.05) / (darker + 0.05);
 }
 
-// ── Helpers ─────────────────────────────────────────────────────────────────
-
-function makeId(label: string): string {
-  return label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-}
-
-function fail(label: string, evidence: string): ObservationResult {
-  return { id: makeId(label), pass: false, evidence };
-}
-
-// ── Visibility ──────────────────────────────────────────────────────────────
-
-export async function checkVisible(page: Page, selector: string, label: string): Promise<ObservationResult> {
-  try {
-    const el = await page.$(selector);
-    if (!el) return fail(label, `selector not found: ${selector}`);
-    const visible = await el.isVisible();
-    return { id: makeId(label), pass: visible, evidence: visible ? 'element visible' : 'element hidden' };
-  } catch (e: any) {
-    return fail(label, e.message);
+/** Parse rgb(r, g, b) or rgba(r, g, b, a) or #hex to [r, g, b] */
+function parseColor(color: string): [number, number, number] {
+  if (color.startsWith('#')) {
+    const hex = color.slice(1);
+    if (hex.length === 3) {
+      // #abc → #aabbcc
+      const [a, b, c] = hex;
+      return [
+        parseInt(a + a, 16),
+        parseInt(b + b, 16),
+        parseInt(c + c, 16),
+      ];
+    }
+    if (hex.length === 6) {
+      return [
+        parseInt(hex.slice(0, 2), 16),
+        parseInt(hex.slice(2, 4), 16),
+        parseInt(hex.slice(4, 6), 16),
+      ];
+    }
   }
-}
 
-// ── Text Content ────────────────────────────────────────────────────────────
-
-export async function checkText(page: Page, selector: string, label: string): Promise<ObservationResult> {
-  try {
-    const el = await page.$(selector);
-    if (!el) return fail(label, `selector not found: ${selector}`);
-    const text = await el.evaluate((e) => (e as HTMLElement).innerText ?? e.textContent ?? '');
-    return { id: makeId(label), pass: text.trim().length > 0, evidence: `text: "${text.trim().slice(0, 200)}"`, value: text.trim() };
-  } catch (e: any) {
-    return fail(label, e.message);
+  const match = color.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
+  if (match) {
+    return [parseInt(match[1], 10), parseInt(match[2], 10), parseInt(match[3], 10)];
   }
+
+  // Fallback: return black
+  return [0, 0, 0];
 }
 
-// ── Computed Style ──────────────────────────────────────────────────────────
+// ── Observation Helpers ─────────────────────────────────────────────────────
 
-export async function checkStyle(page: Page, selector: string, property: string, label: string): Promise<ObservationResult> {
+/** Check if element matching selector is visible in the viewport */
+export async function checkVisible(
+  page: Page,
+  selector: string,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
   try {
-    const el = await page.$(selector);
-    if (!el) return fail(label, `selector not found: ${selector}`);
-    const value = await el.evaluate((e, prop) => getComputedStyle(e).getPropertyValue(prop), property);
-    return { id: makeId(label), pass: value !== '', evidence: `${property}: ${value}`, value };
-  } catch (e: any) {
-    return fail(label, e.message);
-  }
-}
+    const locator = page.locator(selector);
+    const count = await locator.count();
 
-// ── Bounding Box / Touch Target ─────────────────────────────────────────────
-
-export async function checkSize(page: Page, selector: string, minW: number, minH: number, label: string): Promise<ObservationResult> {
-  try {
-    const el = await page.$(selector);
-    if (!el) return fail(label, `selector not found: ${selector}`);
-    const box = await el.boundingBox();
-    if (!box) return fail(label, 'element has no bounding box (not rendered)');
-    const pass = box.width >= minW && box.height >= minH;
-    return { id: makeId(label), pass, evidence: `${box.width}x${box.height} (min ${minW}x${minH})`, value: `${box.width}x${box.height}` };
-  } catch (e: any) {
-    return fail(label, e.message);
-  }
-}
-
-// ── Element Count ───────────────────────────────────────────────────────────
-
-export async function checkCount(page: Page, selector: string, expected: number, label: string): Promise<ObservationResult> {
-  try {
-    const els = await page.$$(selector);
-    const pass = els.length === expected;
-    return { id: makeId(label), pass, evidence: `count: ${els.length} (expected ${expected})`, value: els.length };
-  } catch (e: any) {
-    return fail(label, e.message);
-  }
-}
-
-// ── HTML Attribute ──────────────────────────────────────────────────────────
-
-export async function checkAttribute(page: Page, selector: string, attr: string, expected: string, label: string): Promise<ObservationResult> {
-  try {
-    const el = await page.$(selector);
-    if (!el) return fail(label, `selector not found: ${selector}`);
-    const value = await el.evaluate((e, a) => e.getAttribute(a), attr);
-    const pass = value === expected;
-    return { id: makeId(label), pass, evidence: `${attr}="${value}" (expected "${expected}")`, value: value ?? undefined };
-  } catch (e: any) {
-    return fail(label, e.message);
-  }
-}
-
-// ── CSS Class ───────────────────────────────────────────────────────────────
-
-export async function checkClass(page: Page, selector: string, className: string, label: string): Promise<ObservationResult> {
-  try {
-    const el = await page.$(selector);
-    if (!el) return fail(label, `selector not found: ${selector}`);
-    const has = await el.evaluate((e, cls) => e.classList.contains(cls), className);
-    return { id: makeId(label), pass: has, evidence: has ? `has class "${className}"` : `missing class "${className}"` };
-  } catch (e: any) {
-    return fail(label, e.message);
-  }
-}
-
-// ── WCAG Contrast Ratio ─────────────────────────────────────────────────────
-
-export async function checkContrast(page: Page, textSel: string, bgSel: string, minRatio: number, label: string): Promise<ObservationResult> {
-  try {
-    const ratio = await page.evaluate((ts: string, bs: string) => {
-      function parseColor(raw: string): [number, number, number] {
-        const m = raw.match(/rgba?\((\d+),\s*(\d+),\s*(\d+)/);
-        if (!m) return [0, 0, 0];
-        return [+m[1], +m[2], +m[3]];
-      }
-      function luminance(r: number, g: number, b: number): number {
-        const [rs, gs, bs] = [r, g, b].map(c => {
-          c /= 255;
-          return c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
-        });
-        return 0.2126 * rs + 0.7152 * gs + 0.0722 * bs;
-      }
-      const tEl = document.querySelector(ts);
-      const bEl = document.querySelector(bs);
-      if (!tEl || !bEl) return -1;
-      const fg = parseColor(getComputedStyle(tEl).color);
-      const bg = parseColor(getComputedStyle(bEl).backgroundColor);
-      const l1 = luminance(...fg);
-      const l2 = luminance(...bg);
-      const lighter = Math.max(l1, l2);
-      const darker = Math.min(l1, l2);
-      return (lighter + 0.05) / (darker + 0.05);
-    }, textSel, bgSel);
-
-    if (ratio === -1) return fail(label, `selector not found: ${textSel} or ${bgSel}`);
-    const rounded = Math.round(ratio * 100) / 100;
-    const pass = rounded >= minRatio;
-    return { id: makeId(label), pass, evidence: `contrast ${rounded}:1 (min ${minRatio}:1)`, value: rounded };
-  } catch (e: any) {
-    return fail(label, e.message);
-  }
-}
-
-// ── Overflow Detection ──────────────────────────────────────────────────────
-
-export async function checkOverflow(page: Page, selector: string, label: string): Promise<ObservationResult> {
-  try {
-    const el = await page.$(selector);
-    if (!el) return fail(label, `selector not found: ${selector}`);
-    const overflow = await el.evaluate((e) => {
-      const h = e as HTMLElement;
+    if (count === 0) {
       return {
-        scrollW: h.scrollWidth,
-        clientW: h.clientWidth,
-        scrollH: h.scrollHeight,
-        clientH: h.clientHeight,
+        id,
+        pass: false,
+        evidence: `Selector "${selector}" matched no elements`,
+      };
+    }
+
+    const visible = await locator.first().isVisible();
+    return {
+      id,
+      pass: visible,
+      evidence: visible ? `Element visible at ${selector}` : `Element not visible (display:none or outside viewport)`,
+      value: visible,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Extract and trim rendered text content from element matching selector */
+export async function checkText(
+  page: Page,
+  selector: string,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+
+    if (count === 0) {
+      return {
+        id,
+        pass: false,
+        evidence: `Selector "${selector}" matched no elements`,
+      };
+    }
+
+    const text = await locator.first().textContent();
+    const trimmed = (text || '').trim();
+
+    return {
+      id,
+      pass: trimmed.length > 0,
+      evidence: trimmed.length > 0
+        ? `Text content: "${trimmed.slice(0, 80)}${trimmed.length > 80 ? '...' : ''}"`
+        : 'No text content (empty or whitespace-only)',
+      value: trimmed,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Read computed CSS property value from element matching selector */
+export async function checkStyle(
+  page: Page,
+  selector: string,
+  property: string,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+
+    if (count === 0) {
+      return {
+        id,
+        pass: false,
+        evidence: `Selector "${selector}" matched no elements`,
+      };
+    }
+
+    const value = await locator.first().evaluate((el: any, prop: string) => {
+      return getComputedStyle(el).getPropertyValue(prop);
+    }, property);
+
+    return {
+      id,
+      pass: value !== '' && value !== null,
+      evidence: value !== '' ? `${property}: ${value}` : `Property "${property}" not set`,
+      value: value || undefined,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Check bounding box width and height exceed minimums */
+export async function checkSize(
+  page: Page,
+  selector: string,
+  minW: number,
+  minH: number,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+
+    if (count === 0) {
+      return {
+        id,
+        pass: false,
+        evidence: `Selector "${selector}" matched no elements`,
+      };
+    }
+
+    const box = await locator.first().boundingBox();
+
+    if (!box) {
+      return {
+        id,
+        pass: false,
+        evidence: 'Element has no bounding box (display:none or removed from layout)',
+      };
+    }
+
+    const pass = box.width >= minW && box.height >= minH;
+    return {
+      id,
+      pass,
+      evidence: `${box.width.toFixed(0)}x${box.height.toFixed(0)}px (min: ${minW}x${minH}px)`,
+      value: `${box.width.toFixed(0)}x${box.height.toFixed(0)}`,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Count elements matching selector and verify against expected count */
+export async function checkCount(
+  page: Page,
+  selector: string,
+  expected: number,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const count = await page.locator(selector).count();
+    const pass = count === expected;
+
+    return {
+      id,
+      pass,
+      evidence: `Found ${count} element(s), expected ${expected}`,
+      value: count,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Check if element's attribute matches expected value */
+export async function checkAttribute(
+  page: Page,
+  selector: string,
+  attr: string,
+  expected: string,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+
+    if (count === 0) {
+      return {
+        id,
+        pass: false,
+        evidence: `Selector "${selector}" matched no elements`,
+      };
+    }
+
+    const value = await locator.first().getAttribute(attr);
+    const pass = value === expected;
+
+    return {
+      id,
+      pass,
+      evidence: `${attr}="${value || '(not set)'}" (expected: "${expected}")`,
+      value: value || undefined,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Check if element has a specific CSS class */
+export async function checkClass(
+  page: Page,
+  selector: string,
+  className: string,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+
+    if (count === 0) {
+      return {
+        id,
+        pass: false,
+        evidence: `Selector "${selector}" matched no elements`,
+      };
+    }
+
+    const pass = await locator.first().evaluate((el: any, cls: string) => {
+      return el.classList.contains(cls);
+    }, className);
+
+    return {
+      id,
+      pass,
+      evidence: pass ? `Class "${className}" present` : `Class "${className}" not found`,
+      value: pass,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Measure text contrast ratio between text and background elements per WCAG 2.1 */
+export async function checkContrast(
+  page: Page,
+  textSel: string,
+  bgSel: string,
+  minRatio: number,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const textLoc = page.locator(textSel);
+    const bgLoc = page.locator(bgSel);
+
+    if (await textLoc.count() === 0) {
+      return {
+        id,
+        pass: false,
+        evidence: `Text selector "${textSel}" matched no elements`,
+      };
+    }
+
+    if (await bgLoc.count() === 0) {
+      return {
+        id,
+        pass: false,
+        evidence: `Background selector "${bgSel}" matched no elements`,
+      };
+    }
+
+    const textColor = await textLoc.first().evaluate((el: any) => {
+      return getComputedStyle(el).color;
+    });
+
+    const bgColor = await bgLoc.first().evaluate((el: any) => {
+      return getComputedStyle(el).backgroundColor;
+    });
+
+    const [tr, tg, tb] = parseColor(textColor);
+    const [br, bg, bb] = parseColor(bgColor);
+
+    const tLum = getLuminance(tr, tg, tb);
+    const bLum = getLuminance(br, bg, bb);
+    const ratio = contrastRatio(tLum, bLum);
+
+    const pass = ratio >= minRatio;
+    return {
+      id,
+      pass,
+      evidence: `Contrast ratio: ${ratio.toFixed(2)}:1 (min: ${minRatio}:1) — text: ${textColor}, bg: ${bgColor}`,
+      value: parseFloat(ratio.toFixed(2)),
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Check if element has scrollable overflow (scroll height/width > client height/width) */
+export async function checkOverflow(
+  page: Page,
+  selector: string,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+
+    if (count === 0) {
+      return {
+        id,
+        pass: false,
+        evidence: `Selector "${selector}" matched no elements`,
+      };
+    }
+
+    const overflow = await locator.first().evaluate((el: any) => {
+      return {
+        overflowY: el.scrollHeight > el.clientHeight,
+        overflowX: el.scrollWidth > el.clientWidth,
       };
     });
-    const overflowX = overflow.scrollW > overflow.clientW;
-    const overflowY = overflow.scrollH > overflow.clientH;
-    const pass = !overflowX && !overflowY;
-    const dims = `scroll ${overflow.scrollW}x${overflow.scrollH}, client ${overflow.clientW}x${overflow.clientH}`;
-    const dir = overflowX && overflowY ? 'x+y' : overflowX ? 'x' : overflowY ? 'y' : 'none';
-    return { id: makeId(label), pass, evidence: `overflow: ${dir} (${dims})`, value: dir };
-  } catch (e: any) {
-    return fail(label, e.message);
+
+    const hasOverflow = overflow.overflowX || overflow.overflowY;
+    return {
+      id,
+      pass: hasOverflow,
+      evidence: `Overflow: ${overflow.overflowY ? 'vertical' : ''}${overflow.overflowX && overflow.overflowY ? ' + ' : ''}${overflow.overflowX ? 'horizontal' : 'none'}`,
+      value: hasOverflow,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
   }
 }
