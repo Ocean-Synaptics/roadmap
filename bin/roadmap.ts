@@ -20,6 +20,7 @@ import { discoverDependencies, resolveSiblingPath } from '../src/lib/dependency-
 import { loadClaims, saveClaims, isExpired, activeClaims, annotateWithClaims, assignBatch } from '../src/lib/claims.ts';
 import { parseTasksMd, tasksToDAG } from '../src/lib/speckit-import.ts';
 import { enrichIntentGate } from '../src/lib/intent-gate-enrichment.ts';
+import { loadCompletions, saveCompletion, getCompletedNodeIds } from '../src/lib/completion-tracker.ts';
 import { buildSpawnPlan } from '../src/lib/spawn-plan.ts';
 import { buildScaffold } from '../src/lib/scaffold.ts';
 import { buildClusters } from '../src/lib/cluster.ts';
@@ -246,7 +247,13 @@ async function cmdOrient(note: string | undefined) {
   }
 
   const dag = loadDAG();
+  const completions = loadCompletions(repoRoot);
+  const completedIds = getCompletedNodeIds(completions);
+
   const pos = await crossOrient(dag, repoRoot, undefined, retiredSet());
+
+  // Filter out completed nodes from batchRemaining
+  const filteredBatchRemaining = pos.batchRemaining.filter(nodeId => !completedIds.has(nodeId));
 
   // Annotate current batch nodes with their mode
   const batchModes: Record<string, string> = {};
@@ -259,16 +266,20 @@ async function cmdOrient(note: string | undefined) {
   const claimStore = loadClaims(repoRoot);
   const claimAnnotations = annotateWithClaims(pos.position, claimStore);
 
+  // If all nodes in current position are completed, position advances
+  const filteredPosition = pos.position.filter(nodeId => !completedIds.has(nodeId));
+  const shouldAdvance = filteredPosition.length === 0 && filteredBatchRemaining.length > 0;
+
   const result: Record<string, unknown> = {
-    position: pos.position,
+    position: shouldAdvance ? filteredBatchRemaining : filteredPosition.length > 0 ? filteredPosition : pos.position,
     level: pos.level,
     produces: pos.produces,
     consumes: pos.consumes,
-    batchRemaining: pos.batchRemaining,
-    batchComplete: pos.batchComplete,
-    done: pos.done.length,
-    remaining: pos.remaining.length,
-    complete: pos.remaining.length === 0,
+    batchRemaining: shouldAdvance ? [] : filteredBatchRemaining,
+    batchComplete: shouldAdvance || filteredBatchRemaining.length === 0,
+    done: pos.done.length + completedIds.size,
+    remaining: pos.remaining.length - completedIds.size,
+    complete: (pos.remaining.length - completedIds.size) === 0,
   };
   if (Object.keys(batchModes).length) result.planNodes = batchModes;
   if (Object.keys(claimAnnotations).length) result.claims = claimAnnotations;
@@ -1711,6 +1722,9 @@ async function cmdComplete(note: string) {
   // 5. Surface newly unblocked nodes — downstream nodes whose deps are now all satisfied.
   const nowReady = readyNodes(dag, fileExists(repoRoot), retiredSet());
   const unblocked = nowReady.map(n => n.id);
+
+  // Save completion to persistent tracking (for batch advancement in next orient call)
+  saveCompletion(repoRoot, nodeId, owner, checkpoint.id);
 
   recordTrail({
     ts: new Date().toISOString(), cmd: 'complete', note,

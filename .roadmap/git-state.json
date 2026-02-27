@@ -1,5 +1,5 @@
 {
-  "lastCommit": "d41d0f50ad95884ca550bc7aa3fef6b023536558",
-  "timestamp": "2026-02-27T08:33:40.095Z",
-  "message": "fix: gallery templates generate valid DAGs with complete node specs"
+  "lastCommit": "18ccbb8f75f4513d59ea926fe01bb74570a61387",
+  "timestamp": "2026-02-27T08:54:28.106Z",
+  "message": "roadmap: Add stacked term gates to protocol (council of reviewers architecture)"
 }
