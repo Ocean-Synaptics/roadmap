@@ -1,5 +1,5 @@
 {
-  "lastCommit": "18ccbb8f75f4513d59ea926fe01bb74570a61387",
-  "timestamp": "2026-02-27T08:54:28.106Z",
-  "message": "roadmap: Add stacked term gates to protocol (council of reviewers architecture)"
+  "lastCommit": "fc781f6f73f6383e6e3862662f109fe9c87b7d1b",
+  "timestamp": "2026-02-27T09:00:49.769Z",
+  "message": "roadmap: Fix batch advancement with persistent completion tracking"
 }

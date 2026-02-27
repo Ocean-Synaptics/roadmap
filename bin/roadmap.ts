@@ -252,31 +252,55 @@ async function cmdOrient(note: string | undefined) {
 
   const pos = await crossOrient(dag, repoRoot, undefined, retiredSet());
 
-  // Filter out completed nodes from batchRemaining
+  // Filter out completed nodes from position and batchRemaining
+  const filteredPosition = pos.position.filter(nodeId => !completedIds.has(nodeId));
   const filteredBatchRemaining = pos.batchRemaining.filter(nodeId => !completedIds.has(nodeId));
+
+  // Determine next position and batch remaining
+  let nextPosition: string[];
+  let nextBatchRemaining: string[];
+  let nextLevel = pos.level;
+
+  if (filteredPosition.length > 0) {
+    // Current batch still has unfinished nodes
+    nextPosition = filteredPosition;
+    nextBatchRemaining = filteredBatchRemaining;
+  } else if (filteredBatchRemaining.length > 0) {
+    // Current batch is complete, advance within same level
+    nextPosition = filteredBatchRemaining;
+    nextBatchRemaining = [];
+  } else {
+    // All current batch done, get next batch from DAG
+    const upcomingBatch = nextBatch(dag, fileExists(repoRoot), retiredSet());
+    if (upcomingBatch && upcomingBatch.position) {
+      nextPosition = upcomingBatch.position.filter(n => !completedIds.has(n));
+      nextBatchRemaining = (upcomingBatch.remaining || []).filter(n => !completedIds.has(n));
+      nextLevel = upcomingBatch.level;
+    } else {
+      // No next batch, stay at current (this shouldn't happen unless DAG is complete)
+      nextPosition = pos.position;
+      nextBatchRemaining = [];
+    }
+  }
 
   // Annotate current batch nodes with their mode
   const batchModes: Record<string, string> = {};
-  for (const nodeId of pos.position) {
+  for (const nodeId of nextPosition) {
     const node = dag.nodes[nodeId as keyof typeof dag.nodes] as any;
     if (node?.mode === 'plan') batchModes[nodeId] = 'plan';
   }
 
   // Annotate batch nodes with claim status
   const claimStore = loadClaims(repoRoot);
-  const claimAnnotations = annotateWithClaims(pos.position, claimStore);
-
-  // If all nodes in current position are completed, position advances
-  const filteredPosition = pos.position.filter(nodeId => !completedIds.has(nodeId));
-  const shouldAdvance = filteredPosition.length === 0 && filteredBatchRemaining.length > 0;
+  const claimAnnotations = annotateWithClaims(nextPosition, claimStore);
 
   const result: Record<string, unknown> = {
-    position: shouldAdvance ? filteredBatchRemaining : filteredPosition.length > 0 ? filteredPosition : pos.position,
-    level: pos.level,
+    position: nextPosition,
+    level: nextLevel,
     produces: pos.produces,
     consumes: pos.consumes,
-    batchRemaining: shouldAdvance ? [] : filteredBatchRemaining,
-    batchComplete: shouldAdvance || filteredBatchRemaining.length === 0,
+    batchRemaining: nextBatchRemaining,
+    batchComplete: nextBatchRemaining.length === 0,
     done: pos.done.length + completedIds.size,
     remaining: pos.remaining.length - completedIds.size,
     complete: (pos.remaining.length - completedIds.size) === 0,

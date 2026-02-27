@@ -132,32 +132,35 @@ function enrichGatesWithSpecKit(
   // Enrich init gate with spec-kit materials
   const initNode = nodes[initId];
   if (initNode) {
-    initNode.ambient = [
-      ...(initNode.ambient || []),
-      ...[preSpec, ...specFiles].filter(f => existsSync(f)),
-    ];
-    initNode.validate = [
-      ...(initNode.validate || []),
-      {
-        type: 'spec-conformance',
-        spec: `${specDir}/spec.md`,
-        scenario: 'Plan clarity validated against feature spec',
-        section: 'Specification',
-      } as any,
-    ];
+    nodes[initId] = {
+      ...initNode,
+      ambient: [
+        ...(initNode.ambient || []),
+        ...[preSpec, ...specFiles].filter(f => existsSync(f)),
+      ],
+      validate: [
+        ...(initNode.validate || []),
+        {
+          type: 'spec-conformance',
+          spec: `${specDir}/spec.md`,
+          scenario: 'Plan clarity validated against feature spec',
+          section: 'Specification',
+        } as any,
+      ],
+    };
   }
 
   // Enrich term gate with spec-conformance validators
   const termNode = nodes[termId];
   if (termNode) {
-    termNode.ambient = [
+    const termAmbient = [
       ...(termNode.ambient || []),
       `${specDir}/spec.md`,
       `${specDir}/quickstart.md`,
     ].filter(f => existsSync(f));
 
     // Add acceptance scenario validators from spec
-    termNode.validate = [
+    const termValidate = [
       ...(termNode.validate || []),
       {
         type: 'spec-conformance',
@@ -176,6 +179,12 @@ function enrichGatesWithSpecKit(
         expectExitCode: 0,
       } as any,
     ];
+
+    nodes[termId] = {
+      ...termNode,
+      ambient: termAmbient,
+      validate: termValidate,
+    };
   }
 }
 
