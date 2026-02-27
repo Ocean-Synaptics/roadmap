@@ -101,12 +101,13 @@ export async function runGallery(opts: {
   strategies: StrategySpec[];
   workDir: string;
   convergence?: ConvergenceConfig;
+  _candidates?: CandidateResult[];  // test injection — bypasses stub generation
 }): Promise<GalleryRunResult> {
   const limit = opts.nodeSpec.candidates;
   const selected = opts.strategies.slice(0, limit);
 
-  // Stub: generate one CandidateResult per strategy — no real LLM dispatch yet.
-  const candidates: CandidateResult[] = selected.map(strategy => ({
+  // Use injected candidates if provided (test path), otherwise stub-generate.
+  const candidates: CandidateResult[] = opts._candidates ?? selected.map(strategy => ({
     id: strategy.id,
     strategy: strategy.id,
     files: {},
@@ -126,12 +127,48 @@ export async function runGallery(opts: {
   }));
 
   const survivors = candidates.filter(c => c.summary.deterministicPass);
-
-  // In stub all intent arrays are empty so no survivor fails an intent check.
   const intentSurvivors = survivors.filter(c => c.intent.every(i => i.pass));
 
-  // No intent statements evaluated → no failures.
+  // Detect intent statements that failed across ALL candidates.
+  // Build map of statement → threshold from nodeSpec.validate intent rules.
+  const statementThresholds = new Map<string, number>();
+  for (const rule of opts.nodeSpec.validate) {
+    if (rule.type === 'intent') {
+      statementThresholds.set(rule.statement, rule.confidence);
+    }
+  }
+
+  const allStatements = new Set<string>();
+  for (const candidate of candidates) {
+    for (const intent of candidate.intent) {
+      allStatements.add(intent.statement);
+    }
+  }
+
   const failures: GalleryFailure[] = [];
+
+  for (const stmt of allStatements) {
+    const entries = candidates
+      .map(c => c.intent.find(i => i.statement === stmt))
+      .filter(Boolean) as Array<{ statement: string; pass: boolean; confidence: number; reasoning: string; evidence: string[] }>;
+
+    const allFailed = entries.length === candidates.length && entries.every(e => !e.pass);
+    if (!allFailed) continue;
+
+    const bestConfidence = Math.max(...entries.map(e => e.confidence));
+    const threshold = statementThresholds.get(stmt) ?? 0.9;
+    const diagnosis = entries[0]?.reasoning
+      ? `all ${candidates.length} candidates: ${entries[0].reasoning}`
+      : `all ${candidates.length} candidates failed intent check`;
+
+    failures.push({
+      unreachable: stmt,
+      bestConfidence,
+      threshold,
+      candidates: candidates.length,
+      diagnosis,
+    });
+  }
 
   const scorecard = buildScorecard(candidates);
 

@@ -24,6 +24,7 @@ export function blendCandidates(
   candidates: CandidateResult[],
   spec: BlendSpec,
   fileToIntents: FileToIntents,
+  opts?: { deterministicCheck?: (files: Record<string, string>) => boolean },
 ): BlendResult {
   const primary = candidates.find(c => c.id === spec.primary);
   if (!primary) throw new Error(`blend: primary candidate '${spec.primary}' not found`);
@@ -54,7 +55,20 @@ export function blendCandidates(
       if (donorLen >= primaryLen) continue;
 
       // Substitute
+      const oldContent = workingFiles[path];
       workingFiles[path] = donor.files[path];
+
+      // Check if substitution breaks deterministic gate
+      if (opts?.deterministicCheck && !opts.deterministicCheck(workingFiles)) {
+        // Revert
+        workingFiles[path] = oldContent;
+        reverted.push({
+          path,
+          reason: `substitution from ${donorId} broke deterministic gate`,
+        });
+        continue;
+      }
+
       substitutions.push({
         path,
         from: donorId,
