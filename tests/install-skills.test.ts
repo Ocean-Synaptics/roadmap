@@ -23,17 +23,17 @@ afterEach(() => {
 });
 
 function targetDir(): string {
-  return join(testRoot, '.claude', 'commands');
+  return join(testRoot, '.claude', 'skills');
 }
 
 function readSkill(name: string): string {
-  return readFileSync(join(targetDir(), `roadmap-${name}.md`), 'utf-8');
+  return readFileSync(join(targetDir(), `roadmap-${name}`, 'SKILL.md'), 'utf-8');
 }
 
 function skillFiles(): string[] {
   const dir = targetDir();
   if (!existsSync(dir)) return [];
-  return readdirSync(dir).filter(f => f.startsWith('roadmap-') && f.endsWith('.md')).sort();
+  return readdirSync(dir).filter(d => d.startsWith('roadmap-')).sort();
 }
 
 function writeFakeClaudeMd(content: string): string {
@@ -142,7 +142,7 @@ describe('SkillTemplate', () => {
     const dir = join(testRoot, 'deep', 'nested');
     const tpl = new SkillTemplate('test', 'Test', 'desc', []);
     tpl.write(dir, { roadmapBin: BIN });
-    expect(existsSync(join(dir, 'roadmap-test.md'))).toBe(true);
+    expect(existsSync(join(dir, 'roadmap-test', 'SKILL.md'))).toBe(true);
   });
 });
 
@@ -201,13 +201,13 @@ describe('ConstraintExtractor', () => {
 
 describe('installAll', () => {
   const EXPECTED_SKILLS = [
-    'roadmap-dispatch.md',
-    'roadmap-done.md',
-    'roadmap-gallery.md',
-    'roadmap-progress.md',
-    'roadmap-review.md',
-    'roadmap-start.md',
-    'roadmap-work.md',
+    'roadmap-dispatch',
+    'roadmap-done',
+    'roadmap-gallery',
+    'roadmap-progress',
+    'roadmap-review',
+    'roadmap-start',
+    'roadmap-work',
   ];
 
   it('installs all 7 builtin skills', () => {
@@ -222,47 +222,47 @@ describe('installAll', () => {
     const result = installAll({ targetDir: targetDir(), roadmapBin: BIN, constraints: claudePath });
     expect(result.installed).toHaveLength(8);
     expect(result.constraintsInstalled).toBe(true);
-    expect(skillFiles()).toContain('roadmap-constraints.md');
+    expect(skillFiles()).toContain('roadmap-constraints');
 
-    const content = readFileSync(join(targetDir(), 'roadmap-constraints.md'), 'utf-8');
+    const content = readFileSync(join(targetDir(), 'roadmap-constraints', 'SKILL.md'), 'utf-8');
     expect(content).toContain('# /roadmap-constraints');
     expect(extractVersionHash(content)).not.toBeNull();
   });
 
   it('all skills have version headers', () => {
     installAll({ targetDir: targetDir(), roadmapBin: BIN });
-    for (const file of skillFiles()) {
-      const id = file.replace(/^roadmap-/, '').replace(/\.md$/, '');
-      const content = readFileSync(join(targetDir(), file), 'utf-8');
+    for (const dir of skillFiles()) {
+      const id = dir.replace(/^roadmap-/, '');
+      const content = readFileSync(join(targetDir(), dir, 'SKILL.md'), 'utf-8');
       const hash = extractVersionHash(content);
-      expect(hash, `${file} missing version hash`).not.toBeNull();
+      expect(hash, `${dir}/SKILL.md missing version hash`).not.toBeNull();
       const expected = computeSkillHash(id, readPackageVersion());
-      expect(hash, `${file} hash mismatch`).toBe(expected);
+      expect(hash, `${dir}/SKILL.md hash mismatch`).toBe(expected);
     }
   });
 
   it('all skills have $ROADMAP_BIN resolved', () => {
     installAll({ targetDir: targetDir(), roadmapBin: BIN });
-    for (const file of skillFiles()) {
-      const content = readFileSync(join(targetDir(), file), 'utf-8');
-      expect(content, `${file} still has $ROADMAP_BIN`).not.toContain('$ROADMAP_BIN');
+    for (const dir of skillFiles()) {
+      const content = readFileSync(join(targetDir(), dir, 'SKILL.md'), 'utf-8');
+      expect(content, `${dir}/SKILL.md still has $ROADMAP_BIN`).not.toContain('$ROADMAP_BIN');
     }
   });
 
   it('all skills contain ## Steps section', () => {
     installAll({ targetDir: targetDir(), roadmapBin: BIN });
-    for (const file of skillFiles()) {
-      const content = readFileSync(join(targetDir(), file), 'utf-8');
-      expect(content, `${file} missing ## Steps`).toContain('## Steps');
+    for (const dir of skillFiles()) {
+      const content = readFileSync(join(targetDir(), dir, 'SKILL.md'), 'utf-8');
+      expect(content, `${dir}/SKILL.md missing ## Steps`).toContain('## Steps');
     }
   });
 
   it('skills with contracts contain ## Contract section', () => {
     installAll({ targetDir: targetDir(), roadmapBin: BIN });
     // All 7 builtin skills have contracts
-    for (const file of skillFiles()) {
-      const content = readFileSync(join(targetDir(), file), 'utf-8');
-      expect(content, `${file} missing ## Contract`).toContain('## Contract');
+    for (const dir of skillFiles()) {
+      const content = readFileSync(join(targetDir(), dir, 'SKILL.md'), 'utf-8');
+      expect(content, `${dir}/SKILL.md missing ## Contract`).toContain('## Contract');
     }
   });
 });
@@ -273,29 +273,29 @@ describe('idempotency', () => {
   it('install twice produces identical output', () => {
     installAll({ targetDir: targetDir(), roadmapBin: BIN });
     const first: Record<string, string> = {};
-    for (const file of skillFiles()) {
-      first[file] = readFileSync(join(targetDir(), file), 'utf-8');
+    for (const dir of skillFiles()) {
+      first[dir] = readFileSync(join(targetDir(), dir, 'SKILL.md'), 'utf-8');
     }
 
     installAll({ targetDir: targetDir(), roadmapBin: BIN });
     const second: Record<string, string> = {};
-    for (const file of skillFiles()) {
-      second[file] = readFileSync(join(targetDir(), file), 'utf-8');
+    for (const dir of skillFiles()) {
+      second[dir] = readFileSync(join(targetDir(), dir, 'SKILL.md'), 'utf-8');
     }
 
     expect(Object.keys(first).sort()).toEqual(Object.keys(second).sort());
-    for (const file of Object.keys(first)) {
-      expect(second[file], `${file} changed on second install`).toBe(first[file]);
+    for (const dir of Object.keys(first)) {
+      expect(second[dir], `${dir} changed on second install`).toBe(first[dir]);
     }
   });
 
   it('install with constraints twice produces identical output', () => {
     const claudePath = writeFakeClaudeMd(SAMPLE_CLAUDE_MD);
     installAll({ targetDir: targetDir(), roadmapBin: BIN, constraints: claudePath });
-    const first = readFileSync(join(targetDir(), 'roadmap-constraints.md'), 'utf-8');
+    const first = readFileSync(join(targetDir(), 'roadmap-constraints', 'SKILL.md'), 'utf-8');
 
     installAll({ targetDir: targetDir(), roadmapBin: BIN, constraints: claudePath });
-    const second = readFileSync(join(targetDir(), 'roadmap-constraints.md'), 'utf-8');
+    const second = readFileSync(join(targetDir(), 'roadmap-constraints', 'SKILL.md'), 'utf-8');
 
     expect(second).toBe(first);
   });
@@ -362,10 +362,10 @@ describe('staleness detection', () => {
   it('current version hashes match installed skills', () => {
     installAll({ targetDir: targetDir(), roadmapBin: BIN });
     const version = readPackageVersion();
-    for (const file of skillFiles()) {
-      const content = readFileSync(join(targetDir(), file), 'utf-8');
+    for (const dir of skillFiles()) {
+      const content = readFileSync(join(targetDir(), dir, 'SKILL.md'), 'utf-8');
       const installed = extractVersionHash(content)!;
-      const id = file.replace(/^roadmap-/, '').replace(/\.md$/, '');
+      const id = dir.replace(/^roadmap-/, '');
       const expected = computeSkillHash(id, version);
       expect(installed).toBe(expected);
     }
@@ -375,7 +375,7 @@ describe('staleness detection', () => {
     installAll({ targetDir: targetDir(), roadmapBin: BIN });
 
     // Tamper: embed a hash from a different version
-    const startPath = join(targetDir(), 'roadmap-start.md');
+    const startPath = join(targetDir(), 'roadmap-start', 'SKILL.md');
     const content = readFileSync(startPath, 'utf-8');
     const staleHash = computeSkillHash('start', '99.99.99');
     const tampered = content.replace(/^<!-- roadmap-skill-version: [a-f0-9]+ -->/, `<!-- roadmap-skill-version: ${staleHash} -->`);
@@ -387,10 +387,10 @@ describe('staleness detection', () => {
   });
 
   it('returns null for skills without version header', () => {
-    const dir = targetDir();
-    mkdirSync(dir, { recursive: true });
-    writeFileSync(join(dir, 'roadmap-custom.md'), '# Custom skill\nno version');
-    const content = readFileSync(join(dir, 'roadmap-custom.md'), 'utf-8');
+    const skillDir = targetDir();
+    mkdirSync(join(skillDir, 'roadmap-custom'), { recursive: true });
+    writeFileSync(join(skillDir, 'roadmap-custom', 'SKILL.md'), '# Custom skill\nno version');
+    const content = readFileSync(join(skillDir, 'roadmap-custom', 'SKILL.md'), 'utf-8');
     expect(extractVersionHash(content)).toBeNull();
   });
 });
@@ -402,7 +402,7 @@ describe('update (re-export)', () => {
     installAll({ targetDir: targetDir(), roadmapBin: BIN });
 
     // Corrupt a skill
-    const startPath = join(targetDir(), 'roadmap-start.md');
+    const startPath = join(targetDir(), 'roadmap-start', 'SKILL.md');
     writeFileSync(startPath, 'corrupted content', 'utf-8');
 
     // Re-install (simulating --update)

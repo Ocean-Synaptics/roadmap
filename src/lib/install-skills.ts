@@ -4,7 +4,7 @@
 // @entry roadmap
 
 import { createHash } from 'node:crypto';
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdirSync, existsSync, readdirSync, unlinkSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -78,9 +78,10 @@ export class SkillTemplate {
     const hash = computeSkillHash(this.id, version);
     const versioned = embedVersion(content, hash);
 
-    if (!existsSync(targetDir)) mkdirSync(targetDir, { recursive: true });
+    const skillDir = join(targetDir, `roadmap-${this.id}`);
+    if (!existsSync(skillDir)) mkdirSync(skillDir, { recursive: true });
 
-    const filePath = join(targetDir, `roadmap-${this.id}.md`);
+    const filePath = join(skillDir, 'SKILL.md');
     writeFileSync(filePath, versioned, 'utf-8');
     return filePath;
   }
@@ -313,6 +314,20 @@ export function installAll(opts: InstallAllOpts): { installed: string[]; constra
     installed.push(path);
   }
 
+  // Cleanup old .claude/commands/roadmap-*.md files if they exist
+  const oldCommandsDir = join(opts.targetDir, '..', 'commands');
+  if (existsSync(oldCommandsDir)) {
+    try {
+      const oldFiles = readdirSync(oldCommandsDir).filter(f => f.startsWith('roadmap-') && f.endsWith('.md'));
+      for (const file of oldFiles) {
+        const oldPath = join(oldCommandsDir, file);
+        unlinkSync(oldPath);
+      }
+    } catch {
+      // Ignore cleanup errors
+    }
+  }
+
   // Constraints extraction
   let constraintsInstalled = false;
   if (opts.constraints) {
@@ -322,7 +337,9 @@ export function installAll(opts: InstallAllOpts): { installed: string[]; constra
     const hash = computeSkillHash('constraints', version);
     const versioned = embedVersion(content, hash);
 
-    const filePath = join(opts.targetDir, 'roadmap-constraints.md');
+    const constraintsDir = join(opts.targetDir, 'roadmap-constraints');
+    if (!existsSync(constraintsDir)) mkdirSync(constraintsDir, { recursive: true });
+    const filePath = join(constraintsDir, 'SKILL.md');
     writeFileSync(filePath, versioned, 'utf-8');
     installed.push(filePath);
     constraintsInstalled = true;

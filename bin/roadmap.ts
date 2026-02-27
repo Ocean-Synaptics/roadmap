@@ -1827,34 +1827,40 @@ function cmdInstall() {
 }
 
 function cmdInstallCheck(binPath: string): void {
-  const skillsDir = join(repoRoot, '.claude', 'commands');
+  const skillsDir = join(repoRoot, '.claude', 'skills');
   if (!existsSync(skillsDir)) {
-    console.log('No skills installed (missing .claude/commands/)');
+    console.log('No skills installed (missing .claude/skills/)');
     return;
   }
 
   const version = readPackageVersion();
-  const files = readdirSync(skillsDir).filter(f => f.startsWith('roadmap-') && f.endsWith('.md'));
-  if (files.length === 0) {
-    console.log('No roadmap skills found in .claude/commands/');
+  const dirs = readdirSync(skillsDir).filter(d => d.startsWith('roadmap-'));
+  if (dirs.length === 0) {
+    console.log('No roadmap skills found in .claude/skills/');
     return;
   }
 
   let staleCount = 0;
-  for (const file of files) {
-    const content = readFileSync(join(skillsDir, file), 'utf-8');
+  for (const dir of dirs) {
+    const skillFile = join(skillsDir, dir, 'SKILL.md');
+    if (!existsSync(skillFile)) {
+      console.log(`  ? ${dir}/SKILL.md — missing`);
+      staleCount++;
+      continue;
+    }
+    const content = readFileSync(skillFile, 'utf-8');
     const installed = extractVersionHash(content);
-    const id = file.replace(/^roadmap-/, '').replace(/\.md$/, '');
+    const id = dir.replace(/^roadmap-/, '');
     const current = computeSkillHash(id, version);
 
     if (!installed) {
-      console.log(`  ? ${file} — no version hash`);
+      console.log(`  ? ${dir}/SKILL.md — no version hash`);
       staleCount++;
     } else if (installed !== current) {
-      console.log(`  ⚠ ${file} — stale (installed: ${installed}, current: ${current})`);
+      console.log(`  ⚠ ${dir}/SKILL.md — stale (installed: ${installed}, current: ${current})`);
       staleCount++;
     } else {
-      console.log(`  ✓ ${file} — up to date`);
+      console.log(`  ✓ ${dir}/SKILL.md — up to date`);
     }
   }
 
@@ -1866,16 +1872,17 @@ function cmdInstallCheck(binPath: string): void {
 }
 
 function cmdInstallSkills(binPath: string, noClaudeMd: boolean, constraintsPath?: string): void {
-  const targetDir = join(repoRoot, '.claude', 'commands');
+  const targetDir = join(repoRoot, '.claude', 'skills');
   const result = installAll({
     targetDir,
     roadmapBin: binPath,
     constraints: constraintsPath,
   });
 
-  console.log(`Installed ${result.installed.length} skill(s) to ${targetDir}:`);
+  console.log(`Installed ${result.installed.length} skill(s) to .claude/skills:`);
   for (const p of result.installed) {
-    console.log(`  + ${basename(p)}`);
+    const rel = p.replace(repoRoot, '').replace(/^\//, '');
+    console.log(`  + ${rel}`);
   }
   if (result.constraintsInstalled) {
     console.log(`  (constraints extracted from ${constraintsPath})`);
