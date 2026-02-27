@@ -1,5 +1,5 @@
 // @module explore-helpers
-// @exports checkVisible, checkText, checkStyle, checkSize, checkCount, checkAttribute, checkClass, checkContrast, checkOverflow
+// @exports checkVisible, checkText, checkStyle, checkSize, checkCount, checkAttribute, checkClass, checkContrast, checkOverflow, checkDisabled, checkChecked, checkContainsText, checkInputValue, checkUrl, checkTitle, checkComputedStyle, checkInViewport
 // @types ObservationResult
 // @entry roadmap
 
@@ -423,6 +423,307 @@ export async function checkOverflow(
       pass: hasOverflow,
       evidence: `Overflow: ${overflow.overflowY ? 'vertical' : ''}${overflow.overflowX && overflow.overflowY ? ' + ' : ''}${overflow.overflowX ? 'horizontal' : 'none'}`,
       value: hasOverflow,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Check if element is disabled */
+export async function checkDisabled(
+  page: Page,
+  selector: string,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+
+    if (count === 0) {
+      return {
+        id,
+        pass: false,
+        evidence: `Selector "${selector}" matched no elements`,
+      };
+    }
+
+    const disabled = await locator.first().isDisabled();
+    return {
+      id,
+      pass: disabled,
+      evidence: disabled ? 'Element is disabled' : 'Element is enabled',
+      value: disabled,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Check if checkbox or radio is checked */
+export async function checkChecked(
+  page: Page,
+  selector: string,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+
+    if (count === 0) {
+      return {
+        id,
+        pass: false,
+        evidence: `Selector "${selector}" matched no elements`,
+      };
+    }
+
+    const checked = await locator.first().isChecked();
+    return {
+      id,
+      pass: checked,
+      evidence: checked ? 'Element is checked' : 'Element is unchecked',
+      value: checked,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Get element's inner text and verify it contains expected substring */
+export async function checkContainsText(
+  page: Page,
+  selector: string,
+  expectedText: string,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+
+    if (count === 0) {
+      return {
+        id,
+        pass: false,
+        evidence: `Selector "${selector}" matched no elements`,
+      };
+    }
+
+    const text = await locator.first().textContent();
+    const pass = text?.includes(expectedText) ?? false;
+
+    return {
+      id,
+      pass,
+      evidence: pass
+        ? `Text contains "${expectedText}"`
+        : `Text "${text?.slice(0, 50) || '(empty)'}" does not contain "${expectedText}"`,
+      value: text || undefined,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Check form field value */
+export async function checkInputValue(
+  page: Page,
+  selector: string,
+  expectedValue: string,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+
+    if (count === 0) {
+      return {
+        id,
+        pass: false,
+        evidence: `Selector "${selector}" matched no elements`,
+      };
+    }
+
+    const value = await locator.first().inputValue();
+    const pass = value === expectedValue;
+
+    return {
+      id,
+      pass,
+      evidence: pass
+        ? `Input value matches "${expectedValue}"`
+        : `Input value "${value}" does not match "${expectedValue}"`,
+      value,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Check if URL matches pattern */
+export async function checkUrl(
+  page: Page,
+  pattern: string | RegExp,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const url = page.url();
+    const pass = typeof pattern === 'string' ? url.includes(pattern) : pattern.test(url);
+
+    return {
+      id,
+      pass,
+      evidence: pass ? `URL matches pattern` : `URL "${url}" does not match pattern`,
+      value: url,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Check page title */
+export async function checkTitle(
+  page: Page,
+  expectedTitle: string,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const title = await page.title();
+    const pass = title.includes(expectedTitle);
+
+    return {
+      id,
+      pass,
+      evidence: pass
+        ? `Title contains "${expectedTitle}"`
+        : `Title "${title}" does not contain "${expectedTitle}"`,
+      value: title,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Check element's computed CSS property value */
+export async function checkComputedStyle(
+  page: Page,
+  selector: string,
+  property: string,
+  expectedValue: string,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+
+    if (count === 0) {
+      return {
+        id,
+        pass: false,
+        evidence: `Selector "${selector}" matched no elements`,
+      };
+    }
+
+    const value = await locator.first().evaluate(
+      (el: any, prop: string) => window.getComputedStyle(el).getPropertyValue(prop),
+      property,
+    );
+
+    const pass = value.trim() === expectedValue.trim();
+
+    return {
+      id,
+      pass,
+      evidence: pass
+        ? `${property}: ${value}`
+        : `${property}: "${value}" (expected "${expectedValue}")`,
+      value,
+    };
+  } catch (err: any) {
+    return {
+      id,
+      pass: false,
+      evidence: `error: ${err.message?.slice(0, 100) || String(err).slice(0, 100)}`,
+    };
+  }
+}
+
+/** Check if element is in viewport */
+export async function checkInViewport(
+  page: Page,
+  selector: string,
+  label: string,
+): Promise<ObservationResult> {
+  const id = label.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+
+  try {
+    const locator = page.locator(selector);
+    const count = await locator.count();
+
+    if (count === 0) {
+      return {
+        id,
+        pass: false,
+        evidence: `Selector "${selector}" matched no elements`,
+      };
+    }
+
+    const inViewport = await locator.first().evaluate((el: any) => {
+      const rect = el.getBoundingClientRect();
+      return (
+        rect.top < window.innerHeight &&
+        rect.bottom > 0 &&
+        rect.left < window.innerWidth &&
+        rect.right > 0
+      );
+    });
+
+    return {
+      id,
+      pass: inViewport,
+      evidence: inViewport ? 'Element is in viewport' : 'Element is outside viewport',
+      value: inViewport,
     };
   } catch (err: any) {
     return {
