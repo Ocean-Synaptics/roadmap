@@ -1475,6 +1475,85 @@ async function cmdComplete(note: string) {
       }));
 
     if (!validationResult.passed) {
+      // Check for intent failures with expandOnFail before rejecting
+      if (intentJudgments) {
+        const { extractIntentFailures, generateIntentExpansion, detectStall, buildEscalation } = await import('../src/lib/intent-expansion.ts');
+        const intentFailures = extractIntentFailures(validationResult.checks, intentJudgments);
+
+        if (intentFailures.length > 0) {
+          const nodeSpec = (dag.nodes as Record<string, any>)[nodeId];
+          const currentDepth = (nodeSpec as any)?._intentDiagnosis?.expansionDepth ?? 0;
+          const maxDepth = Math.max(...intentFailures.map(f => f.rule.maxExpansionDepth ?? 3));
+
+          // Check depth limit
+          if (currentDepth >= maxDepth) {
+            const history = intentFailures.map(f => ({ depth: currentDepth, confidence: f.achieved }));
+            const escalation = buildEscalation(nodeId, intentFailures[0].statement, history, 'depth-exceeded');
+            delete claimStore[nodeId];
+            saveClaims(repoRoot, claimStore);
+            json(escalation);
+            process.exit(1);
+          }
+
+          // Check stall detection
+          if ((nodeSpec as any)?._intentDiagnosis) {
+            const priorConfidence = (nodeSpec as any)._intentDiagnosis.achievedConfidence;
+            const history = [{ depth: currentDepth - 1, confidence: priorConfidence }];
+            for (const f of intentFailures) {
+              if (detectStall(history, f.achieved)) {
+                const fullHistory = [...history, { depth: currentDepth, confidence: f.achieved }];
+                const escalation = buildEscalation(nodeId, f.statement, fullHistory, 'stalled');
+                delete claimStore[nodeId];
+                saveClaims(repoRoot, claimStore);
+                json(escalation);
+                process.exit(1);
+              }
+            }
+          }
+
+          // Generate fix nodes and commit to DAG
+          const expansion = generateIntentExpansion(
+            nodeId,
+            nodeSpec?.produces ?? [],
+            nodeSpec?.consumes ?? [],
+            nodeSpec?.ambient,
+            nodeSpec?.validate ?? [],
+            intentFailures,
+            currentDepth,
+          );
+
+          const headPath = join(repoRoot, '.roadmap', 'head.json');
+          const headContent = JSON.parse(readFileSync(headPath, 'utf-8'));
+          for (const fixNode of expansion.fixNodes) {
+            headContent.nodes[fixNode.id] = fixNode;
+          }
+          writeFileSync(headPath, JSON.stringify(headContent, null, 2));
+
+          execSync('git add .roadmap/head.json', { cwd: repoRoot, stdio: 'pipe' });
+          const msg = `roadmap: intent-expansion — ${expansion.fixNodes.length} fix nodes for ${nodeId}`;
+          execSync(`git commit -m "${msg}"`, { cwd: repoRoot, stdio: 'pipe' });
+
+          delete claimStore[nodeId];
+          saveClaims(repoRoot, claimStore);
+
+          const posAfterExpand = orient(dag, fileExists(repoRoot), retiredSet());
+          recordTrail({
+            ts: new Date().toISOString(), cmd: 'complete', note,
+            repo: basename(repoRoot), position: posAfterExpand.position, level: posAfterExpand.level, dagId: dag.id,
+            detail: { nodeId, owner, status: 'expanding', fixNodes: expansion.fixNodes.map(n => n.id), depth: expansion.depth },
+          });
+
+          json({
+            status: 'expanding',
+            node: nodeId,
+            generatedNodes: expansion.fixNodes.map(n => ({ id: n.id, desc: n.desc, statement: n._intentDiagnosis.statement })),
+            depth: expansion.depth,
+            nextStep: 'Fix nodes will execute in next batch. Re-run complete on parent after fix nodes close.',
+          });
+          return;
+        }
+      }
+
       delete claimStore[nodeId];
       saveClaims(repoRoot, claimStore);
       json({
