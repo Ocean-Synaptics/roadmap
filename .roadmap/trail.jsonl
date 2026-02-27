@@ -1,7 +1,0 @@
-{"ts":"2026-02-27T03:38:10.445Z","cmd":"orient","note":"test","repo":"roadmap","position":["term"],"level":115,"dagId":"roadmap-adversarial","detail":{"done":173,"remaining":0,"complete":true,"batchRemaining":0}}
-{"ts":"2026-02-27T03:38:10.508Z","cmd":"describe","note":"test","repo":"roadmap","position":["init"],"level":0,"dagId":"roadmap-adversarial"}
-{"ts":"2026-02-27T03:38:10.589Z","cmd":"describe","note":"test","repo":"roadmap","position":["init"],"level":0,"dagId":"roadmap-adversarial"}
-{"ts":"2026-02-27T03:38:10.688Z","cmd":"parallel","note":"test","repo":"roadmap","position":["init"],"level":0,"dagId":"roadmap-adversarial","detail":{"crossRepo":false,"showGraph":false}}
-{"ts":"2026-02-27T03:38:10.795Z","cmd":"validate","note":"test","repo":"roadmap","position":["init"],"level":0,"dagId":"roadmap-adversarial","detail":{"nodeId":"init"}}
-{"timestamp":"2026-02-27T03:38:11.777Z","type":"orient","position":"a","produces":["x"],"consumes":[],"done":1,"remaining":2}
-{"timestamp":"2026-02-27T03:38:11.777Z","type":"modify","operation":"add","nodeId":"new"}
