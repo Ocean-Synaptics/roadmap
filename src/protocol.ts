@@ -84,11 +84,12 @@ export interface ConvergenceLimits {
 
 // Escalation when expansion cannot converge
 export interface EscalationResult {
+  status: 'escalated';
   node: string;
   statement: string;
   history: Array<{ depth: number; confidence: number }>;
   diagnosis: string;
-  action: string;
+  reason: 'depth-exceeded' | 'stalled' | 'budget-exceeded';
 }
 
 // Consume entry: plain string (artifact path) or acknowledged pending contract.

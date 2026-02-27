@@ -1,8 +1,9 @@
 // @module intent-expansion
-// @exports IntentFailure, ConvergenceLimits, ExpansionResult, EscalationResult, generateIntentExpansion, resolveProduces, detectStall, buildEscalation
+// @exports IntentFailure, ConvergenceLimits, ExpansionResult, generateIntentExpansion, resolveProduces, detectStall, buildEscalation, extractIntentFailures
 // @entry roadmap
 
-import type { ValidationRule, ValidationCheck, IntentJudgment } from '../protocol.ts';
+import type { ValidationRule, ValidationCheck, IntentJudgment, EscalationResult } from '../protocol.ts';
+export type { EscalationResult } from '../protocol.ts';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -44,15 +45,6 @@ export interface ExpansionResult {
   status: 'expanding';
   fixNodes: FixNodeSpec[];
   depth: number;
-}
-
-export interface EscalationResult {
-  status: 'escalated';
-  node: string;
-  statement: string;
-  history: Array<{ depth: number; confidence: number }>;
-  diagnosis: string;
-  reason: 'depth-exceeded' | 'stalled' | 'budget-exceeded';
 }
 
 const DEFAULT_LIMITS: ConvergenceLimits = {

@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { fileExists, gitArtifactExists, compound } from '../src/predicates.ts';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { writeFileSync, mkdirSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 
-const root = process.cwd();
-const tmpDir = join(root, '.test-predicates-tmp');
+const root = resolve(import.meta.dirname, '..');
+const tmpDir = join(tmpdir(), '.test-predicates-tmp-' + process.pid);
 
 describe('predicates', () => {
   describe('fileExists', () => {

@@ -26,6 +26,7 @@ import { buildSchedule } from '../src/lib/schedule.ts';
 import { propagateConstraints } from '../src/lib/propagate.ts';
 import { compilePrompts } from '../src/lib/compile-prompts.ts';
 import { recordEvaluation, judgmentToRecord } from '../src/lib/intent-evaluator.ts';
+import { validateTerminalIntentGate } from '../src/lib/validate-dag.ts';
 import { buildGallery } from '../src/lib/gallery-templates/index.ts';
 import { estimateCost } from '../src/lib/cost-estimator.ts';
 import { installAll, extractVersionHash, readPackageVersion, computeSkillHash } from '../src/lib/install-skills.ts';
@@ -551,7 +552,11 @@ async function cmdValidate(note: string) {
     json(result);
   } else {
     const result = await validateGraph(dag, fileExists(repoRoot));
-    json(result.summary);
+    const terminalError = validateTerminalIntentGate(dag);
+    json({
+      ...result.summary,
+      ...(terminalError ? { terminalIntentGate: terminalError } : {}),
+    });
   }
 }
 
@@ -611,6 +616,15 @@ async function cmdExpand(note: string) {
       attempted: scriptPath,
       fix: 'Fix the expansion script and re-run',
     }, `Expansion produced invalid DAG: ${verifyErrors.length} errors`);
+  }
+
+  // Terminal intent gate invariant — every terminal node must have expandOnFail intent
+  const terminalError = validateTerminalIntentGate(dagAfter);
+  if (terminalError && !args.includes('--skip-terminal-intent')) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      node: terminalError.node,
+      fix: terminalError.fix,
+    }, terminalError.message);
   }
 
   // Commit
@@ -2338,6 +2352,9 @@ function cmdImport(note: string) {
 
   const dag = tasksToDAG(tasks, { dagId, dagDesc });
 
+  // Terminal intent gate invariant — warn (non-blocking on import, since enrichment adds gates)
+  const terminalError = validateTerminalIntentGate(dag);
+
   // Write to .roadmap/head.json
   const outDir = join(repoRoot, '.roadmap');
   if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
@@ -2362,6 +2379,7 @@ function cmdImport(note: string) {
     term: dag.term,
     path: outPath,
     spawnPlan,
+    ...(terminalError ? { warning: terminalError.message, terminalIntentFix: terminalError.fix } : {}),
   });
 }
 

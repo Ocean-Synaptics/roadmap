@@ -7,8 +7,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { tmpdir } from 'node:os';
 
-const testRepoDir = path.join(process.cwd(), '.test-hook-repo');
+const testRepoDir = path.join(tmpdir(), `.test-hook-repo-${process.pid}`);
 const hooksDir = path.join(testRepoDir, '.git', 'hooks');
 const roadmapDir = path.join(testRepoDir, '.roadmap');
 const srcDir = path.join(testRepoDir, 'src');
