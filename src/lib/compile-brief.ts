@@ -148,26 +148,32 @@ function formatSuccessCriteria(validate: ValidationRule[]): string[] {
     if (typeof rule === 'object' && rule.type) {
       switch (rule.type) {
         case 'artifact-exists':
-          if ('path' in rule && rule.path) {
-            criteria.push(`Artifact exists: ${rule.path}`);
+          const artifactTarget = ('path' in rule && rule.path) || ('target' in rule && (rule as any).target);
+          if (artifactTarget) {
+            criteria.push(`Artifact exists: ${artifactTarget}`);
           }
           break;
         case 'shell':
-          if ('cmd' in rule && rule.cmd) {
-            criteria.push(`Command passes: ${rule.cmd}`);
+          const shellCmd = ('cmd' in rule && rule.cmd) || ('command' in rule && (rule as any).command);
+          if (shellCmd) {
+            const desc = (rule as any).description ? ` — ${(rule as any).description}` : '';
+            criteria.push(`Command passes: ${shellCmd}${desc}`);
           }
           break;
         case 'build-produces':
-          if ('path' in rule && rule.path) {
-            criteria.push(`Build produces: ${rule.path}`);
+          const buildPath = ('path' in rule && rule.path) || ('target' in rule && (rule as any).target);
+          if (buildPath) {
+            criteria.push(`Build produces: ${buildPath}`);
           }
           break;
         case 'launch-check':
           criteria.push('App launches and all features present');
           break;
         case 'spec-conformance':
-          if ('scenario' in rule && rule.scenario) {
-            criteria.push(`Spec scenario passes: ${rule.scenario}`);
+          const scenario = ('scenario' in rule && (rule as any).scenario);
+          if (scenario) {
+            const section = (rule as any).section ? ` in ${(rule as any).section}` : '';
+            criteria.push(`Spec scenario passes: ${scenario}${section}`);
           }
           break;
       }
