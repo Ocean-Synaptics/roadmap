@@ -26,7 +26,7 @@ roadmap plan --gallery --from .specify/specs/001-todo-app/
 |---|---|---|
 | Emit strategy | `single-pass` / `two-stage` / `per-cluster` | Speed vs structural safety |
 | Gate ordering | `parallel` / `serial` / `cheapest-first` | Time vs isolation |
-| Pre-expansion | `none` / `from-history` / `from-spec-complexity` | Baseline size vs first-pass success rate |
+| Pre-expansion | `none` / `from-spec-analysis` | Baseline size vs first-pass success rate |
 | Model allocation | `opus-all` / `opus-emit+haiku-fix` / `haiku-emit+opus-judge` | Cost vs quality |
 | Convergence | `fixed-passes(N)` / `until-clean` / `budget-capped($X)` | Predictability vs completeness |
 
@@ -51,12 +51,12 @@ interface GalleryCandidate {
   gateProfile: {
     deterministic: number       // count of tsc/vitest/build gates
     intent: number              // count of intent evaluation gates
-    runtime: number             // count of launch-check/playwright gates
+    runtime: number             // count of launch-check/CDP explore gates
   }
-  historySignal?: {
-    priorFailureClasses: string[]   // known failure types from evaluations/*.jsonl
-    preExpanded: string[]           // nodes added to prevent known failures
-    templateSuccessRate: number     // how often this template shape succeeded historically
+  specSignal?: {
+    detectedConcerns: string[]      // from spec analysis: "native-modules", "css-framework-dark-mode", "ipc-boundary"
+    preExpanded: string[]           // nodes added to address detected concerns
+    templateSuccessRate?: number    // how often this template shape converged (when history exists)
   }
 }
 ```
@@ -74,7 +74,7 @@ $ roadmap plan --gallery --from .specify/specs/001-todo-app/
 
   B: corrective      6+3 nodes ~5 min   ~$3    risk: low
      emit → compile → test → intent → runtime → done
-     Pre-expanded: native-module-abi, css-dark-mode, ipc-channel-match
+     Spec-detected: native-modules (Electron+SQLite), css-dark-mode (Tailwind 4), ipc-boundary
 
   C: staged          9 nodes   ~6 min   ~$4    risk: lowest
      emit-skeleton → compile → emit-features → test → intent → runtime → done
@@ -83,7 +83,7 @@ $ roadmap plan --gallery --from .specify/specs/001-todo-app/
      emit(haiku) → compile ─┬─ test ──┬─ runtime → done
                             └─ intent(opus) ┘
 
-  History: 3 failures in 2 iterations (native-module, css-dark-mode, ipc-wiring)
+  Spec analysis: Electron+native-module, Tailwind 4 dark mode, IPC boundary
   Recommendation: B (corrective)
 
   Select [A/B/C/D]:
@@ -112,22 +112,21 @@ roadmap plan --gallery --select B
 roadmap plan --gallery --evaluate '[{
   "statement": "this execution plan matches project context",
   "confidence": 0.88,
-  "reasoning": "3 prior failures in known categories — pre-expansion eliminates these"
+  "reasoning": "Spec declares Electron+SQLite+Tailwind 4 — pre-expansion covers known concern classes"
 }]'
 ```
 
-Selection is logged to `.roadmap/evaluations/plan-selection.jsonl`. Future gallery runs weight toward historically-selected templates.
+Selection is logged to `.roadmap/evaluations/plan-selection.jsonl` for audit. Cost/time actuals feed back into the cost estimator for future runs — but not into gate calibration or intent derivation.
 
 ### Template derivation
 
 Templates are not hardcoded. They derive from:
 
-1. **Spec structure**: file count, module boundaries, IPC surface area → determines whether single-pass or staged emit is viable
-2. **Evaluation history**: `.roadmap/evaluations/*.jsonl` → identifies failure classes for pre-expansion, provides failure mode hints (see FR-COMPILE-PROMPTS)
-3. **Checkpoint history**: `.roadmap/checkpoints/*.json` → node duration baselines for cost/time estimates
-4. **Trail history**: `.roadmap/trail.jsonl` → which template shapes reached convergence without manual intervention
+1. **Spec analysis**: file count, module boundaries, IPC surface area, tech stack → determines template shape. "Electron + better-sqlite3" → native-module concern. "Tailwind 4 + dark mode" → CSS framework concern. These are **domain knowledge** applied to the spec, not lessons from prior failure.
+2. **Domain knowledge base**: known concern classes for common tech stacks. The template system knows "Electron apps with native modules need electron-rebuild" the same way a senior engineer knows it — from general knowledge, not from this project's bug history.
+3. **Checkpoint history** (cost/time only): `.roadmap/checkpoints/*.json` → node duration baselines for cost/time estimates. This is the only legitimate history use — calibrating wall-clock and cost predictions, not deciding what to validate or pre-expand.
 
-History feeds strategy selection only: which templates to surface, what to pre-expand, how to order candidates in the gallery. History does NOT feed gate calibration — confidence thresholds are specification properties, fixed by the spec author. An intent statement that consistently fails is evidence of a generator problem, not a threshold problem.
+Intent statements derive from the **spec's acceptance scenarios**, not from failure history. Pre-expansion derives from **spec analysis + domain knowledge**, not from "what went wrong last time." Confidence thresholds are **specification properties**, fixed by the spec author. An intent statement that consistently fails is evidence of a generator problem, not a threshold problem. The system does not learn to lower its own bar.
 
 ### Pareto filtering
 
@@ -148,14 +147,15 @@ No history → `risk = 1.0`. After 3+ runs → cardinal value, Pareto-filterable
 
 - `plan --gallery` outputs candidates. `plan --gallery --select X` commits the selected DAG as `head.json`.
 - Selected DAG is a standard roadmap — all existing commands (`orient`, `complete`, `expand`, `propagate`) work unchanged.
-- Pre-expanded nodes carry `{ preExpanded: true, failureClass: "native-module-abi" }` provenance.
-- Gallery metadata recorded in `.roadmap/gallery-selections.jsonl` for future template weighting.
+- Pre-expanded nodes carry `{ preExpanded: true, concern: "native-modules", source: "spec-analysis" }` provenance.
+- Gallery metadata recorded in `.roadmap/gallery-selections.jsonl` for cost/time calibration only.
 
 ## Scope
 
 - New: `src/lib/gallery.ts` — template parameterization, candidate generation, Pareto filtering
 - New: `src/lib/gallery-templates/` — template definitions (aggressive, corrective, staged, budget)
-- New: `src/lib/cost-estimator.ts` — token/time/cost estimation from history
+- New: `src/lib/cost-estimator.ts` — token/time/cost estimation from checkpoint history (cost/time only, not gate calibration)
+- New: `src/lib/spec-analyzer.ts` — spec → concern class detection (tech stack → known concern patterns)
 - Modify: `bin/roadmap.ts` — `plan --gallery`, `--select`, `--evaluate` flags
 - New: `.roadmap/gallery-selections.jsonl` — selection audit trail
 - Tests: template generation, Pareto filtering, cost estimation, history integration

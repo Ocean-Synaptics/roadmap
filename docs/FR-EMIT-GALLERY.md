@@ -30,7 +30,7 @@ Each candidate is produced by a different generation strategy:
 | Robust | Defensive coding, comprehensive error handling | More code, fewer runtime surprises |
 | Budget | Haiku-generated with same spec input | Cheap, quality varies with prompt quality |
 
-Strategies are parameterized, not hardcoded. The gallery system selects which strategies to include based on spec complexity and history.
+Strategies are parameterized, not hardcoded. The gallery system selects which strategies to include based on spec complexity and tech stack analysis.
 
 ### Parallel generation
 
@@ -275,6 +275,122 @@ nodes: [
 
 Expansion still works: if the selected candidate fails downstream gates, the fix node is a standard `execute` node. The gallery node closes when its selection is committed; downstream nodes execute normally.
 
+## Runtime gate: CDP explore scripts
+
+The runtime gate connects to the live Electron app via Chrome DevTools Protocol and produces structured observations — not screenshots for pixel interpretation. This adopts the explore → observe → judge pattern from [template-hmi](~/src/template-hmi/scripts/explore/).
+
+### Architecture
+
+```
+dev-runner.ts launches Electron with --remote-debugging-port=9222
+  → explore script connects via chromium.connectOverCDP()
+    → performs interactions + DOM inspection
+      → returns structured observations (not screenshots)
+        → intent evaluator judges observations against spec statements
+```
+
+### Explore script per intent statement
+
+Each spec acceptance scenario maps to an explore script that produces structured observations:
+
+```typescript
+// scripts/explore/validate-todo.ts
+import { chromium } from 'playwright'
+
+const browser = await chromium.connectOverCDP('http://localhost:9222')
+const contexts = browser.contexts()
+const page = contexts[0].pages().find(p => !p.url().includes('devtools'))
+
+const observations: Record<string, unknown> = {}
+
+// Intent: "Todo text visible in both themes"
+const item = page.locator('.todo-item span').first()
+observations.textColor = await item.evaluate(el => getComputedStyle(el).color)
+observations.bgColor = await item.evaluate(el => {
+  const parent = el.closest('[class*="bg-"]')
+  return parent ? getComputedStyle(parent).backgroundColor : 'transparent'
+})
+
+// Intent: "Theme toggle exists and responds"
+const toggle = page.locator('[title*="theme"], [title*="Theme"]')
+observations.toggleVisible = await toggle.isVisible()
+await toggle.click()
+observations.darkClassAfterToggle = await page.evaluate(() =>
+  document.documentElement.classList.contains('dark')
+)
+
+// Intent: "CRUD operations work"
+await page.fill('input[placeholder]', 'Test todo')
+await page.press('input[placeholder]', 'Enter')
+observations.todoCount = await page.locator('.todo-item').count()
+observations.todoText = await page.locator('.todo-item span').first().textContent()
+
+await browser.close()
+// → observations is structured JSON, fed to intent evaluator
+```
+
+### Why CDP, not screenshots
+
+| CDP explore (structured) | scrot/xdotool (visual) |
+|---|---|
+| `getComputedStyle(el).color` → `"rgb(26, 26, 26)"` | 21 screenshots + magick crop + squint |
+| `toggle.isVisible()` → `true` | "I think I see a button at the bottom" |
+| `page.locator('.todo-item').count()` → `3` | "There appear to be checkboxes" |
+| 1 tool call per assertion | 4 tool calls per visual check |
+| Structured JSON → intent evaluator | Image → vision model → interpretation → guess |
+
+The explore script runs in the runtime-gate node's `validate[]`:
+
+```json
+{
+  "type": "shell",
+  "command": "npx tsx scripts/explore/validate-todo.ts",
+  "expectExitCode": 0
+}
+```
+
+The script exits 0 if observations were collected, non-zero on crash/timeout. The observations file feeds the intent evaluator as evidence alongside the code context.
+
+### Explore → Promote
+
+Validated explore scripts promote to permanent E2E tests. The runtime gate observations become regression tests:
+
+```
+scripts/explore/validate-todo.ts  →  tests/e2e/todo-app.spec.ts
+  (ephemeral, CDP-based)              (permanent, _electron.launch())
+  observations → intent eval           assertions → vitest/playwright
+```
+
+The explore script uses `connectOverCDP()` (attaches to running app). The promoted test uses `_electron.launch()` (spawns its own app instance). Same interactions, different lifecycle.
+
+### Prior art
+
+The explore → observe → judge pattern is validated in production at [template-hmi](~/src/template-hmi):
+- 21 explore scripts covering workspace composition, drag-reposition, quick layouts, status aggregation
+- 42/42 E2E tests promoted from explore observations
+- CDP connection via `--remote-debugging-port=9222` on Electron 34
+- `scripts/dev-runner.ts` as the launch orchestrator
+
+## Intent derivation: spec, not history
+
+Intent statements derive from the **spec's acceptance scenarios**, not from failure history:
+
+```
+pre-spec.md says "dark/light via Tailwind class strategy"
+  → intent statement: "dark: variants use .dark class selector"
+  → explore script: checks getComputedStyle in both themes
+  → compiled prompt: includes the intent + what wrong looks like
+
+pre-spec.md says "CRUD with SQLite persistence"
+  → intent statement: "todos persist across app restart"
+  → explore script: creates todo, restarts app, checks todo exists
+  → compiled prompt: includes the intent + persistence mechanism
+```
+
+The domain knowledge base tells the template system what concern classes a given tech stack implies ("Electron + native modules → externalization concern"). This is general engineering knowledge encoded as rules, not learned from this project's failures. A brand-new project with the same stack gets the same pre-expansion.
+
+Failure history is used for **one thing only**: cost/time estimation in the plan gallery's Pareto filter. Not for intent derivation, not for threshold calibration, not for pre-expansion selection.
+
 ## Integration with plan gallery
 
 `plan --gallery` selects the execution shape. `emit --gallery` is one of those shapes — specifically, it's what the "aggressive" and "budget" plan templates use internally via `emit-gallery` node type. The staged plan template uses two `emit-gallery` nodes (skeleton + features). The corrective template uses one `emit-gallery` node with pre-expanded fix nodes in the surrounding DAG.
@@ -294,8 +410,10 @@ plan --gallery → selects "aggressive" template
 - Modify: `src/protocol.ts` — `EmitGalleryNodeSpec` type, `NodeSpec.type` discriminant, `complete` dispatch on `node.type`
 - Modify: `bin/roadmap.ts` — `emit --gallery`, `--candidates`, `--select`, `--blend` flags; `complete` handler dispatches on node type
 - New: `.roadmap/gallery/` directory structure for candidate working trees
-- Modify: `src/lib/validate.ts` — batch validation across candidate trees
-- Tests: parallel generation, scorecard aggregation, blend algorithm, gate-based conflict resolution, node-type dispatch in complete
+- New: `src/lib/explore-runner.ts` — CDP explore script executor, observation collector, dev-runner orchestration
+- New: `scripts/explore/` template — boilerplate explore script with CDP connection + observation output
+- Modify: `src/lib/validate.ts` — batch validation across candidate trees, explore script integration in runtime gates
+- Tests: parallel generation, scorecard aggregation, blend algorithm, gate-based conflict resolution, node-type dispatch in complete, CDP explore script execution
 
 ## Not in scope
 
