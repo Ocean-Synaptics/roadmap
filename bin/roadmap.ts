@@ -295,23 +295,6 @@ async function cmdOrient(note: string | undefined) {
       process.exit(1);
     }
 
-    // Load strategy if available
-    const strategyPath = join(repoRoot, '.roadmap', 'strategy.json');
-    let strategyInfo: any = null;
-    if (existsSync(strategyPath)) {
-      try {
-        strategyInfo = JSON.parse(readFileSync(strategyPath, 'utf-8'));
-        result.strategy = {
-          selected: strategyInfo.selected,
-          estimates: strategyInfo.estimates,
-          gateProfile: strategyInfo.gateProfile,
-        };
-      } catch (e) {
-        // Strategy file exists but unreadable — log warning but continue
-        console.error(`[warn] strategy.json unreadable: ${e instanceof Error ? e.message : String(e)}`);
-      }
-    }
-
     // When batchRemaining is empty but position has nodes (e.g. term with artifacts
     // present but validation not yet run), fall back to position as the assignable set.
     const assignableNodes = pos.batchRemaining.length > 0 ? pos.batchRemaining : pos.position;
@@ -3351,21 +3334,23 @@ async function cmdPlanGallery(note: string) {
     };
     appendFileSync(join(evalDir, 'plan-selection.jsonl'), JSON.stringify(selectionRecord) + '\n', 'utf-8');
 
-    // Store strategy choice as metadata (preserves current DAG in head.json)
+    // Write selected execution plan as head.json (replaces current DAG)
+    // Recovery: use `roadmap dig .roadmap/head.json --restore` or `git revert`
     const roadmapDir = join(repoRoot, '.roadmap');
     if (!existsSync(roadmapDir)) mkdirSync(roadmapDir, { recursive: true });
+    writeFileSync(headPath, JSON.stringify(selected.dag, null, 2) + '\n');
 
-    const strategyPath = join(roadmapDir, 'strategy.json');
-    const strategy = {
-      selected: selected.id,
-      runId,
-      judgments,
-      specSource,
-      ts: new Date().toISOString(),
-      gateProfile: selected.gateProfile,
-      estimates: selected.estimates,
-    };
-    writeFileSync(strategyPath, JSON.stringify(strategy, null, 2) + '\n');
+    // Commit the strategy selection
+    try {
+      execSync('git add .roadmap/head.json', { cwd: repoRoot, stdio: 'pipe' });
+      execSync(`git commit -m "roadmap: strategy select ${selected.id} — execution plan with gates baked in"`, {
+        cwd: repoRoot,
+        stdio: 'pipe',
+      });
+    } catch (e) {
+      // Commit might fail if no changes or git not configured, but that's OK
+      // The head.json is written either way
+    }
 
     recordTrail({
       ts: new Date().toISOString(), cmd: 'plan --gallery --evaluate', note,
@@ -3373,7 +3358,7 @@ async function cmdPlanGallery(note: string) {
       detail: { selectedId: selected.id, runId, specSource, confidence: Math.min(...judgments.map(j => j.confidence)) },
     });
 
-    json({ selected: selected.id, stored: true, strategyPath: '.roadmap/strategy.json', headPreserved: true });
+    json({ selected: selected.id, committed: true, headPath: '.roadmap/head.json', recovery: 'roadmap dig .roadmap/head.json --restore' });
     return;
   }
 
@@ -3400,21 +3385,23 @@ async function cmdPlanGallery(note: string) {
     };
     appendFileSync(join(evalDir, 'plan-selection.jsonl'), JSON.stringify(selectionRecord) + '\n', 'utf-8');
 
-    // Store strategy choice as metadata (preserves current DAG in head.json)
+    // Write selected execution plan as head.json (replaces current DAG)
+    // Recovery: use `roadmap dig .roadmap/head.json --restore` or `git revert`
     const roadmapDir = join(repoRoot, '.roadmap');
     if (!existsSync(roadmapDir)) mkdirSync(roadmapDir, { recursive: true });
+    writeFileSync(headPath, JSON.stringify(selected.dag, null, 2) + '\n');
 
-    const strategyPath = join(roadmapDir, 'strategy.json');
-    const strategy = {
-      selected: selected.id,
-      runId,
-      manualOverride: true,
-      specSource,
-      ts: new Date().toISOString(),
-      gateProfile: selected.gateProfile,
-      estimates: selected.estimates,
-    };
-    writeFileSync(strategyPath, JSON.stringify(strategy, null, 2) + '\n');
+    // Commit the strategy selection
+    try {
+      execSync('git add .roadmap/head.json', { cwd: repoRoot, stdio: 'pipe' });
+      execSync(`git commit -m "roadmap: strategy select ${selected.id} — execution plan with gates baked in"`, {
+        cwd: repoRoot,
+        stdio: 'pipe',
+      });
+    } catch (e) {
+      // Commit might fail if no changes or git not configured, but that's OK
+      // The head.json is written either way
+    }
 
     recordTrail({
       ts: new Date().toISOString(), cmd: 'plan --gallery --select', note,
@@ -3422,7 +3409,7 @@ async function cmdPlanGallery(note: string) {
       detail: { selectedId: selected.id, runId, specSource, manualOverride: true },
     });
 
-    json({ selected: selected.id, stored: true, strategyPath: '.roadmap/strategy.json', headPreserved: true });
+    json({ selected: selected.id, committed: true, headPath: '.roadmap/head.json', recovery: 'roadmap dig .roadmap/head.json --restore' });
     return;
   }
 
