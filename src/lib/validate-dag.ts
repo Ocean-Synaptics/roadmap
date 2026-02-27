@@ -1,8 +1,8 @@
 // @module validate-dag
-// @exports validateTerminalIntentGate, validateInitIntentGate, findTerminalNodes, TerminalIntentError, InitIntentError
+// @exports validateTerminalIntentGate, validateInitIntentGate, validateStackedTermGates, findTerminalNodes, TerminalIntentError, InitIntentError, StackedTermGateError
 // @entry roadmap
 
-import type { Graph, ValidationRule } from '../protocol.ts';
+import type { Graph, ValidationRule, TermGate } from '../protocol.ts';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -16,6 +16,13 @@ export interface TerminalIntentError {
 export interface InitIntentError {
   type: 'missing-init-intent' | 'init-gate-no-expand-on-fail';
   node: string;
+  message: string;
+  fix: string;
+}
+
+export interface StackedTermGateError {
+  type: 'invalid-stacked-gates' | 'gate-missing-checks';
+  gates?: TermGate[];
   message: string;
   fix: string;
 }
@@ -132,4 +139,41 @@ export function validateInitIntentGate<T extends string>(g: Graph<T>): InitInten
     message: `Init boundary node '${initBoundary[0]}' requires an intent rule with expandOnFail: true and mention of plan/clarity/unambiguous`,
     fix: 'Add an intent gate on an init-adjacent node with a statement mentioning planning or clarity',
   };
+}
+
+/**
+ * Validate stacked term gates (council of reviewers architecture)
+ * Each gate must have checks and a clear reviewer role
+ */
+export function validateStackedTermGates(gates: readonly TermGate[] | undefined): StackedTermGateError | null {
+  if (!gates || gates.length === 0) {
+    return null;  // Optional feature, not an error
+  }
+
+  const reviewerRoles = new Set<string>();
+
+  for (const gate of gates) {
+    // Check: each gate has a unique reviewer
+    if (reviewerRoles.has(gate.reviewer)) {
+      return {
+        type: 'invalid-stacked-gates',
+        gates: gates as TermGate[],
+        message: `Duplicate reviewer role: '${gate.reviewer}' appears in multiple term gates`,
+        fix: 'Each term gate should have a distinct reviewer role (e.g., "Visual Engineer", "Feature Engineer")',
+      };
+    }
+    reviewerRoles.add(gate.reviewer);
+
+    // Check: each gate has checks
+    if (!gate.checks || gate.checks.length === 0) {
+      return {
+        type: 'gate-missing-checks',
+        gates: gates as TermGate[],
+        message: `Term gate '${gate.id}' (${gate.reviewer}) has no validation checks`,
+        fix: `Add validation rules to the '${gate.id}' gate that verify "${gate.validates}"`,
+      };
+    }
+  }
+
+  return null;
 }

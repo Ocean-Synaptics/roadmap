@@ -160,12 +160,25 @@ export function graph<T extends string>(
   return g;
 }
 
+/**
+ * Term gate in stacked gate architecture
+ * Multiple reviewers validate different aspects of the running system
+ */
+export interface TermGate {
+  readonly id: string;
+  readonly reviewer: string;  // e.g., "Visual Engineer", "Feature Engineer"
+  readonly validates: string;  // e.g., "App is visible and running"
+  readonly checks: readonly ValidationRule[];
+  readonly expandOnFail?: boolean;  // if true, expand DAG when this gate fails
+}
+
 export interface Graph<T extends string> {
   readonly id: string;
   readonly desc: string;
   readonly init: string;
   readonly term: string;
   readonly nodes: { readonly [N in T]: NodeSpec<T, N> };
+  readonly termGates?: readonly TermGate[];  // stacked term gates (optional, for new DAGs)
 }
 
 export type Connection = { forward: string; backward: string; artifact: string };
