@@ -98,7 +98,7 @@ describe('bootstrap generation', () => {
       targetDir: '.',
     });
 
-    expect(errors).toContain(expect.stringContaining('Project name'));
+    expect(errors).toEqual(expect.arrayContaining([expect.stringContaining('Project name')]));
   });
 
   it('validates missing target directory', () => {
@@ -108,7 +108,7 @@ describe('bootstrap generation', () => {
       targetDir: '',
     });
 
-    expect(errors).toContain(expect.stringContaining('Target directory'));
+    expect(errors).toEqual(expect.arrayContaining([expect.stringContaining('Target directory')]));
   });
 
   it('validates non-existent target directory', () => {
@@ -128,7 +128,7 @@ describe('bootstrap generation', () => {
       targetDir: '.',
     });
 
-    expect(errors).toContain(expect.stringContaining('Invalid template'));
+    expect(errors).toEqual(expect.arrayContaining([expect.stringContaining('Invalid template')]));
   });
 
   it('detects existing roadmap.ts without force', () => {
