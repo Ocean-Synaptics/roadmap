@@ -16,7 +16,7 @@
 // Dependencies override phase ordering when specified.
 
 import type { Graph, NodeSpec, ValidationRule } from '../protocol.ts';
-import { existsSync } from 'https://deno.land/std@0.208.0/fs/mod.ts';
+import { existsSync } from 'fs';
 
 export interface ParsedTask {
   id: string;
