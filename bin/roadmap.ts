@@ -26,7 +26,7 @@ import { buildSchedule } from '../src/lib/schedule.ts';
 import { propagateConstraints } from '../src/lib/propagate.ts';
 import { compilePrompts } from '../src/lib/compile-prompts.ts';
 import { recordEvaluation, judgmentToRecord } from '../src/lib/intent-evaluator.ts';
-import { validateTerminalIntentGate } from '../src/lib/validate-dag.ts';
+import { validateTerminalIntentGate, validateInitIntentGate, findInitBoundary } from '../src/lib/validate-dag.ts';
 import { buildGallery } from '../src/lib/gallery-templates/index.ts';
 import { estimateCost } from '../src/lib/cost-estimator.ts';
 import { installAll, extractVersionHash, readPackageVersion, computeSkillHash } from '../src/lib/install-skills.ts';
@@ -186,6 +186,7 @@ async function main() {
       case 'retire':    return cmdRetire(note!);
       case 'claim':     return cmdClaim();
       case 'import':    return cmdImport(note!);
+      case 'init':      return cmdInit(note!);
       case 'report':    return await cmdReport(note!);
       case 'scaffold':  return await cmdScaffold(note!);
       case 'cluster':   return cmdCluster(note!);
@@ -1525,6 +1526,16 @@ async function cmdComplete(note: string) {
             }
           }
 
+          // Extract cost budget from intent rules (precedence: per-rule, then global limits)
+          let maxExpansionCost: number | undefined;
+          for (const failure of intentFailures) {
+            const ruleBudget = (failure.rule as any).maxExpansionCost;
+            if (ruleBudget !== undefined) {
+              maxExpansionCost = ruleBudget;
+              break; // Use first rule's budget if defined
+            }
+          }
+
           // Generate fix nodes and write expansion script
           const expansion = generateIntentExpansion(
             nodeId,
@@ -1534,7 +1545,33 @@ async function cmdComplete(note: string) {
             nodeSpec?.validate ?? [],
             intentFailures,
             currentDepth,
+            { maxExpansionCost },
+            'opus-all', // default model allocation
+            0, // initial cumulative cost
           );
+
+          // Handle budget-exceeded escalation
+          if (expansion.status === 'escalated') {
+            delete claimStore[nodeId];
+            saveClaims(repoRoot, claimStore);
+            const escalationOutput: any = {
+              status: 'escalated',
+              node: nodeId,
+              reason: 'budget-exceeded',
+              detail: {
+                statement: intentFailures[0].statement,
+                budgetInfo: {
+                  maxBudget: maxExpansionCost,
+                  cumulativeCost: expansion.cumulativeCost ?? 0,
+                  levelCost: expansion.costHistory?.[0]?.levelTotal ?? 0,
+                  shortfall: (expansion.cumulativeCost ?? 0) - (maxExpansionCost ?? 0),
+                  costHistory: expansion.costHistory,
+                },
+              },
+            };
+            json(escalationOutput);
+            process.exit(1);
+          }
 
           const { writeExpansionScript } = await import('../src/lib/expansion-writer.ts');
           const scriptPath = writeExpansionScript({
@@ -2373,6 +2410,9 @@ function cmdImport(note: string) {
   // Terminal intent gate invariant — warn (non-blocking on import, since enrichment adds gates)
   const terminalError = validateTerminalIntentGate(dag);
 
+  // Init intent gate invariant — warn (non-blocking on import)
+  const initError = validateInitIntentGate(dag);
+
   // Write to .roadmap/head.json
   const outDir = join(repoRoot, '.roadmap');
   if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
@@ -2387,7 +2427,7 @@ function cmdImport(note: string) {
 
   const spawnPlan = buildSpawnPlan(dag);
 
-  json({
+  const result: Record<string, unknown> = {
     imported: true,
     dagId,
     source: filePath,
@@ -2397,7 +2437,160 @@ function cmdImport(note: string) {
     term: dag.term,
     path: outPath,
     spawnPlan,
-    ...(terminalError ? { warning: terminalError.message, terminalIntentFix: terminalError.fix } : {}),
+  };
+
+  if (terminalError) {
+    result.warningTerminal = terminalError.message;
+    result.terminalIntentFix = terminalError.fix;
+  }
+
+  if (initError) {
+    result.warningInit = initError.message;
+    result.initIntentFix = initError.fix;
+    result.initGateSuggestion = `roadmap init ${dagId}`;
+  }
+
+  json(result);
+}
+
+// --- init: add init gate node to DAG ---
+// roadmap init <dag-id> --statement "Plan is clear" --threshold 0.95 --note "add init gate"
+function cmdInit(note: string) {
+  if (!hasLocalDAG) {
+    json({ error: 'No roadmap in this repo.', fix: 'Initialize a roadmap first with: roadmap import --from speckit <file.md> --id <dag-id> --note "..."' });
+    process.exit(1);
+  }
+
+  const dagId = args[0];
+  if (!dagId) {
+    json({ error: 'Missing dag-id argument', fix: 'roadmap init <dag-id> --statement "Plan is clear" --threshold 0.95 --note "..."' });
+    process.exit(1);
+  }
+
+  const dag = loadDAG();
+  if (dag.id !== dagId) {
+    json({ error: `DAG ID mismatch: expected ${dag.id}, got ${dagId}`, fix: `roadmap init ${dag.id} --statement "Plan is clear" --threshold 0.95 --note "..."` });
+    process.exit(1);
+  }
+
+  // Extract flags
+  const statementIdx = args.indexOf('--statement');
+  const statement = statementIdx !== -1 ? args[statementIdx + 1] : 'Plan is unambiguous and ready to execute';
+
+  const thresholdIdx = args.indexOf('--threshold');
+  const thresholdStr = thresholdIdx !== -1 ? args[thresholdIdx + 1] : '0.95';
+  const threshold = parseFloat(thresholdStr);
+  if (isNaN(threshold) || threshold <= 0 || threshold > 1) {
+    json({ error: 'Invalid --threshold: must be between 0 and 1', fix: 'roadmap init <dag-id> --threshold 0.95 --statement "..." --note "..."' });
+    process.exit(1);
+  }
+
+  // Check if init boundary already exists
+  const initBoundary = findInitBoundary(dag);
+  if (initBoundary.length > 0) {
+    // Check if any node already has an intent rule with expandOnFail
+    const hasInitGate = initBoundary.some(nodeId => {
+      const node = (dag.nodes as Record<string, any>)[nodeId];
+      return node?.validate?.some((r: any) => r.type === 'intent' && r.expandOnFail === true);
+    });
+
+    if (hasInitGate) {
+      json({
+        warning: 'Init gate already exists',
+        existing: initBoundary,
+        message: `Init boundary ${initBoundary.join(', ')} already has intent rule(s) with expandOnFail: true`,
+      });
+      return;
+    }
+  }
+
+  // Create the init gate node
+  const gateNodeId = 'plan-clarity';
+  const existingInitGate = (dag.nodes as Record<string, any>)[gateNodeId];
+
+  if (existingInitGate) {
+    json({
+      error: `Init gate node '${gateNodeId}' already exists`,
+      fix: 'Modify the existing node or use a different gate name',
+    });
+    process.exit(1);
+  }
+
+  // Insert gate node after init, before first execute node
+  const firstExecuteNode = initBoundary.length > 0 ? initBoundary[0] : undefined;
+
+  const intentRule = {
+    type: 'intent' as const,
+    statement,
+    confidence: 0,
+    evaluator: 'self' as const,
+    expandOnFail: true,
+    maxExpansionDepth: 2,
+  };
+
+  const gateNode = {
+    id: gateNodeId,
+    desc: 'Plan clarity gate: verify that the roadmap intent is unambiguous',
+    produces: [],
+    consumes: [],
+    deps: [dag.init],
+    validate: [intentRule],
+    idempotent: true,
+    mode: 'plan' as const,
+  };
+
+  // Update DAG
+  const newDag = { ...dag };
+  (newDag.nodes as Record<string, any>)[gateNodeId] = gateNode;
+
+  // If there's a first execute node, add the gate as a dependency
+  if (firstExecuteNode) {
+    const firstNode = (newDag.nodes as Record<string, any>)[firstExecuteNode];
+    if (firstNode && !firstNode.deps.includes(gateNodeId)) {
+      firstNode.deps = [...firstNode.deps, gateNodeId];
+    }
+  }
+
+  // Validate the modified DAG
+  try {
+    define(newDag);
+    check(newDag);
+  } catch (e) {
+    json({
+      error: 'DAG validation failed after adding init gate',
+      detail: e instanceof Error ? e.message : String(e),
+    });
+    process.exit(1);
+  }
+
+  // Write updated DAG
+  const headPath = join(repoRoot, '.roadmap', 'head.json');
+  writeFileSync(headPath, JSON.stringify(newDag, null, 2) + '\n');
+
+  recordTrail({
+    ts: new Date().toISOString(),
+    cmd: 'init',
+    note,
+    repo: basename(repoRoot),
+    position: [gateNodeId],
+    level: 0,
+    dagId: dag.id,
+    detail: { gate: gateNodeId, statement, threshold },
+  });
+
+  // Validate bookend gates
+  const terminalError = validateTerminalIntentGate(newDag);
+  const initError = validateInitIntentGate(newDag);
+
+  json({
+    added: true,
+    gateNodeId,
+    statement,
+    threshold,
+    path: headPath,
+    bookendGatesPresent: !terminalError && !initError,
+    ...(terminalError ? { warningTerminal: terminalError.message } : {}),
+    ...(initError ? { warningInit: initError.message } : { initGateValid: true }),
   });
 }
 
@@ -2700,6 +2893,8 @@ Commands:
   claim <id> --release       Release a claim
   claim --list        Show all claims with expiry status
   import --from speckit <file.md> --id <dag-id>  Parse tasks.md → roadmap DAG
+  init <dag-id>       Add plan clarity gate to existing DAG
+  init <id> --statement "..." --threshold 0.95  Custom intent statement and confidence threshold
   report                      Aggregate validation gap report across all nodes
   trail [--last N]    Read the invocation trail (local or global)
   trail --global      Cross-project trail (~/.roadmap/trail.jsonl)

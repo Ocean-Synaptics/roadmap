@@ -53,6 +53,7 @@ export interface ValidationCheck {
   evidence?: string;
   judgment?: IntentJudgment;                  // populated when judgment was provided
   intentStatus?: 'evaluated' | 'unevaluated'; // present only for intent rules
+  observations?: ObservationResult[];         // populated when runtime-explore results provided
 }
 
 export interface ValidationResult {
@@ -90,6 +91,24 @@ export interface EscalationResult {
   history: Array<{ depth: number; confidence: number }>;
   diagnosis: string;
   reason: 'depth-exceeded' | 'stalled' | 'budget-exceeded';
+  budgetInfo?: {
+    maxBudget: number;        // USD cap
+    cumulativeCost: number;   // USD spent
+    levelCost: number;        // USD required for next level
+    shortfall: number;        // (cumulativeCost + levelCost) - maxBudget
+  };
+}
+
+// Intent diagnosis with observation-informed details for intent-driven expansion
+export interface IntentDiagnosis {
+  statement: string;
+  achievedConfidence: number;
+  threshold: number;
+  reasoning: string;
+  evidence: string[];
+  expansionDepth: number;
+  observationFailures?: Array<{ id: string; description: string; evidence: string }>;  // failed observations from runtime-explore
+  informedBy?: 'runtime-explore' | 'llm' | 'hybrid' | 'unevaluated'; // judgment source
 }
 
 // Consume entry: plain string (artifact path) or acknowledged pending contract.
