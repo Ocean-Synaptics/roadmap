@@ -101,9 +101,9 @@ export type {
 export { generateIntentExpansion, resolveProduces, detectStall, buildEscalation, extractIntentFailures } from './lib/intent-expansion.ts';
 export type { FixNodeSpec, ExpansionResult } from './lib/intent-expansion.ts';
 
-// DAG-level validation (terminal intent gate invariant)
-export { validateTerminalIntentGate, findTerminalNodes } from './lib/validate-dag.ts';
-export type { TerminalIntentError } from './lib/validate-dag.ts';
+// DAG-level validation (bookend intent gates: init + terminal)
+export { validateTerminalIntentGate, validateInitIntentGate, findTerminalNodes, findInitBoundary } from './lib/validate-dag.ts';
+export type { TerminalIntentError, InitIntentError } from './lib/validate-dag.ts';
 
 // Runtime exploration (CDP-based behavioral observation)
 export { launchApp, runExploreScript, mapObservationsToChecks, teardown } from './lib/runtime-explore.ts';
