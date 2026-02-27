@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import {
   fileExists, gitArtifactAt, siblingArtifactExists, compound, any,
 } from '../src/predicates.ts';
 
-const root = process.cwd();
-const tmpSibling = join(root, '.test-sibling-repo');
+const root = resolve(import.meta.dirname, '..');
+const tmpSibling = join(tmpdir(), '.test-sibling-repo-' + process.pid);
 
 describe('cross-repo predicates', () => {
   describe('siblingArtifactExists', () => {
