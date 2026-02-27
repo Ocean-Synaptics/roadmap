@@ -105,6 +105,10 @@ export type { FixNodeSpec, ExpansionResult } from './lib/intent-expansion.ts';
 export { validateTerminalIntentGate, validateInitIntentGate, findTerminalNodes, findInitBoundary } from './lib/validate-dag.ts';
 export type { TerminalIntentError, InitIntentError } from './lib/validate-dag.ts';
 
+// Plan clarity validation (init intent gate evaluator)
+export { validatePlanClarity } from './lib/validate-plan-clarity.ts';
+export type { PlanClarityGap, PlanClarityResult } from './lib/validate-plan-clarity.ts';
+
 // Runtime exploration (CDP-based behavioral observation)
 export { launchApp, runExploreScript, mapObservationsToChecks, teardown } from './lib/runtime-explore.ts';
 export type { LaunchHandle, ExploreScriptResult } from './lib/runtime-explore.ts';
