@@ -1,6 +1,6 @@
 // @module protocol
 // @exports define, graph, check, verify, order, parallelOrder, batchConflicts, orient, advanceBatch, readyNodes, nextBatch, criticalPath, reconcile, merge, branch, analyze, modify, modifyAndCommit, validateNode, validateBatch, validateGraph
-// @types NodeSpec, Graph, Orientation, ReadyNode, NextBatch, BatchConflict, Connection, Gap, ValidationRule, ValidationCheck, ValidationResult, ModifyAnalysis, ModificationRecord, ConsumeSpec
+// @types NodeSpec, Graph, Orientation, ReadyNode, NextBatch, BatchConflict, Connection, Gap, ValidationRule, ValidationCheck, ValidationResult, ModifyAnalysis, ModificationRecord, ConsumeSpec, RuntimeExploreRule, ObservationSpec, ObservationResult, ExploreResult
 // @entry roadmap/protocol
 
 // --- Types ---
@@ -15,7 +15,8 @@ export type ValidationRule =
   | { type: 'build-produces'; command: string; outputs: string[] }
   | { type: 'launch-check'; command: string; timeout?: number; successSignal?: string }
   | { type: 'spec-conformance'; spec: string; stories: number[]; criteria?: number[] }
-  | { type: 'intent'; statement: string; confidence: number; evaluator: 'self' | 'council'; context?: string[] };
+  | { type: 'intent'; statement: string; confidence: number; evaluator: 'self' | 'council'; context?: string[] }
+  | { type: 'runtime-explore'; script: string; launch?: string; port?: number; timeout?: number; observations: ObservationSpec[] };
 
 // LLM-provided judgment for one intent statement.
 // Passed via --evaluate '[{...}]' on the complete command.
@@ -24,6 +25,26 @@ export interface IntentJudgment {
   confidence: number;  // 0.0–1.0
   reasoning: string;   // one paragraph
   evidence?: string[]; // file:line references (optional)
+}
+
+// Runtime exploration types — CDP-based behavioral observation
+export interface ObservationSpec {
+  id: string;                        // unique identifier for this observation
+  description: string;               // human-readable: "todo text visible in light mode"
+  type: 'assertion' | 'measurement'; // assertion = pass/fail, measurement = value capture
+}
+
+export interface ObservationResult {
+  id: string;                          // matches ObservationSpec.id
+  pass: boolean;
+  value?: string | number | boolean;   // measured value
+  evidence: string;                    // human-readable: "color: #1a1a1a on bg: #ffffff"
+}
+
+export interface ExploreResult {
+  observations: ObservationResult[];
+  screenshots?: string[];              // paths to captured screenshots (for audit)
+  duration: number;                    // ms
 }
 
 export interface ValidationCheck {
@@ -1004,7 +1025,7 @@ export async function validateNode<T extends string>(
   g: Graph<T>,
   nodeId: string,
   exists: (artifact: string) => boolean,
-  opts?: { intentJudgments?: IntentJudgment[] },
+  opts?: { intentJudgments?: IntentJudgment[]; exploreResults?: Array<{ script: string; success: boolean; result?: ExploreResult; error?: string }> },
 ): Promise<ValidationResult> {
   const node = g.nodes[nodeId as keyof typeof g.nodes] as any;
 
@@ -1137,6 +1158,39 @@ export async function validateNode<T extends string>(
         } catch (e: any) {
           passed = false;
           evidence = `launch failed: ${rule.command} — ${String(e.message).slice(0, 200)}`;
+        }
+      }
+    } else if (rule.type === 'runtime-explore') {
+      // CDP-based behavioral observation: launch app, run explore script, map observations
+      if (process.env.ROADMAP_VALIDATING) {
+        passed = true;
+        evidence = `skipped (already inside validation): ${rule.script}`;
+      } else if (!opts?.exploreResults) {
+        // No explore results provided — non-blocking, signal what needs exploration
+        passed = true;
+        evidence = `unevaluated: run with --explore to execute ${rule.script}`;
+        checks.push({ rule, passed, evidence });
+        continue;
+      } else {
+        const result = opts.exploreResults.find(r => r.script === rule.script);
+        if (!result) {
+          passed = false;
+          evidence = `explore script not found in results: ${rule.script}`;
+        } else if (!result.success) {
+          passed = false;
+          evidence = `explore failed: ${result.error ?? 'unknown error'}`;
+        } else if (result.result) {
+          // Map observations to individual checks
+          const { mapObservationsToChecks } = await import('./lib/runtime-explore.ts');
+          const obsChecks = mapObservationsToChecks(result.result.observations, rule);
+          for (const oc of obsChecks) {
+            checks.push(oc);
+            if (!oc.passed) allPassed = false;
+          }
+          continue; // already pushed checks
+        } else {
+          passed = false;
+          evidence = `explore result missing for: ${rule.script}`;
         }
       }
     } else if (rule.type === 'spec-conformance') {

@@ -184,6 +184,7 @@ function buildVerificationChecklist(validate: readonly ValidationRule[]): string
       case 'spec-conformance': return `- [ ] Spec conformance: ${rule.spec}`;
       case 'expanded': return `- [ ] DAG expanded with child nodes`;
       case 'intent': return `- [ ] Intent (${rule.evaluator}): "${rule.statement}"`;
+      case 'runtime-explore': return `- [ ] Runtime explore: \`${rule.script}\` (${rule.observations.length} observation(s))`;
       default: return `- [ ] ${(rule as any).type}`;
     }
   }).join('\n');

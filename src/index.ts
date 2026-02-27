@@ -88,7 +88,14 @@ export type {
   ReadyNode,
   NextBatch,
   ModificationRecord,
+  ObservationSpec,
+  ObservationResult,
+  ExploreResult,
 } from './protocol.ts';
+
+// Runtime exploration (CDP-based behavioral observation)
+export { launchApp, runExploreScript, mapObservationsToChecks, teardown } from './lib/runtime-explore.ts';
+export type { LaunchHandle, ExploreScriptResult } from './lib/runtime-explore.ts';
 
 export type {
   GitState,
