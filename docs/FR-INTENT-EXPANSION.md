@@ -360,3 +360,186 @@ The DAG is a self-refining plan. It starts with the best guess at decomposition.
 - `--skip-validate` is the only override. Requires human instruction, records audit trail.
 - Fix nodes inherit parent's deterministic gates. Expanding for an intent failure must not regress deterministic correctness.
 - `expandOnFail` is opt-in per intent rule, mandatory on terminal nodes. Interior nodes can choose bare rejection (default) or expansion.
+
+---
+
+## Amendment: Bookend Intent Gates — Plan Clarity + Output Correctness
+
+**Symmetry principle:** Every roadmap should be bracketed by two intent gates using the same expansion mechanism.
+
+### Init Intent Gate (Plan Clarity)
+
+**Location:** First node after `init`. Before execution begins.
+
+**Statement:** "Plan is unambiguous and executable"
+```
+"Every node has:
+  - Concrete produces (file paths, not placeholders)
+  - Resolvable consumes (all referenced artifacts produced by predecessors)
+  - Testable validate rules (not 'looks good', but measurable criteria)
+  - Clear scope (node description fits one concern; no 'and', no 'also')"
+```
+
+**Confidence threshold:** 0.95 (high bar — plan must be crystal clear)
+
+**Evaluator:** `self` (LLM reads node specs, checks structure + contracts)
+
+**expandOnFail:** `true` (mandatory)
+
+**On failure:** Expansion creates child nodes addressing each gap:
+- Vague `produces` → split into concrete file paths
+- Missing `consumes` → backtrack to find producer or flag as spec gap
+- No `validate` rules → add validators or escalate as design question
+- Overlapping ownership → reassign produces across nodes
+- Too-broad scope → decompose into parallel children
+
+**Recursion:** Typically 1-2 levels. If init gate requires 3+ expansions, the spec is malformed — escalate.
+
+### Terminal Intent Gate (Output Correctness)
+
+**Location:** Last node before `term`. After all work completes.
+
+**Statement:** "Application works — visual validation passes"
+```
+"The built/deployed artifact satisfies all acceptance criteria when observed
+ at runtime (explore scripts pass, no visual defects, all features functional)"
+```
+
+**Confidence threshold:** 0.90 (high bar — users see this)
+
+**Evaluator:** `self` (LLM reads explore observations + test results)
+
+**explore:** Required. Path to runtime validation script (Playwright + CDP).
+
+**expandOnFail:** `true` (mandatory)
+
+**On failure:** Expansion creates fix nodes from explore observations:
+- White-on-white contrast detected → fix node for CSS
+- Button invisible in dark mode → fix node for theme selector
+- Form submits but data lost → fix node for persistence layer
+- etc.
+
+**Recursion:** Typically 1-3 levels. After 3 levels of expand-fix-re-validate, if still failing, escalate with full diagnostic.
+
+### What Init Gate Catches
+
+| Failure Mode | Before (No Init Gate) | With Init Gate |
+|---|---|---|
+| `produces: ["database"]` (no path) | Agent guesses `src/db.ts`, wrong format | Expansion forces: `src/lib/postgres.ts`, validates schema |
+| Circular dependency: A consumes B, B consumes A | Discovered at execution, blocks swarm | Expansion detects + resolves before work starts |
+| Two nodes both `produces: ["src/app.ts"]` | Runtime conflict, merge disaster | Expansion reassigns: one→index.ts, one→bootstrap.ts |
+| Node has no validate rules | Untestable, nobody knows if it worked | Expansion adds: shell validator, test rule, or marks gap |
+| Node description: "build and deploy and monitor and alert" | Scope creep, agent confused about goals | Expansion splits into 4 parallel nodes with single concerns |
+
+### Symmetry
+
+```
+┌─────────────────────────────────────────┐
+│ Init Intent Gate                        │
+│ "Is this plan clear?"                   │
+│ expandOnFail: true                      │
+│ → Expansion refines plan until unambiguous
+└──────────────────┬──────────────────────┘
+                   │
+                   ▼
+         [Execute nodes — deterministic + interior intent gates]
+                   │
+┌──────────────────┴──────────────────────┐
+│ Terminal Intent Gate                    │
+│ "Does it work?"                         │
+│ expandOnFail: true                      │
+│ → Expansion refines output until correct
+└─────────────────────────────────────────┘
+```
+
+Both gates use the same mechanism: intent evaluation + recursive expansion. No execution without a clear plan. No convergence without correct output.
+
+### validateDAG() Invariant (Updated)
+
+Every roadmap must satisfy:
+1. ✅ Acyclic DAG (existing check)
+2. ✅ Reachable from init to term (existing check)
+3. ✅ Terminal node has intent rule with `expandOnFail: true` (existing, added in terminal-intent-gate-enforcement)
+4. **NEW:** Init node (or first execute node after init) has intent rule with `expandOnFail: true`
+
+Bypass: `--skip-validate <reason>` with audit trail (existing).
+
+### Scope Addition (Implementation)
+
+**New node type trigger:** Detect when a DAG is first created or imported without an init gate.
+- `roadmap create` with interactive prompt: "Add plan clarity gate? (y/n)"
+- `roadmap import` with warning: "No init gate detected. Add with: roadmap init <dag-id>"
+- `cmdExpand` validates both gates present before committing
+
+**New command (optional future):**
+```bash
+roadmap init <dag-id> --statement "custom clarity statement" --threshold 0.95
+```
+
+Adds an init gate node to an existing DAG.
+
+### Example: iter3 Payload
+
+**Init gate:**
+```json
+{
+  "id": "plan-clarity",
+  "desc": "Validate plan clarity before execution",
+  "mode": "plan",
+  "produces": [],
+  "consumes": [],
+  "deps": ["init"],
+  "validate": [
+    {
+      "type": "intent",
+      "statement": "Every node has concrete produces, resolvable consumes, testable validate rules, clear scope",
+      "confidence": 0.95,
+      "evaluator": "self",
+      "expandOnFail": true,
+      "maxExpansionDepth": 2,
+      "context": [
+        "src/spec.md — domain model",
+        ".roadmap/head.json — current DAG"
+      ]
+    }
+  ],
+  "idempotent": true
+}
+```
+
+**Terminal gate** (already in use):
+```json
+{
+  "id": "term",
+  "desc": "Verify application works end-to-end",
+  "produces": [],
+  "consumes": ["dist/app"],
+  "deps": ["build", "deploy"],
+  "validate": [
+    {
+      "type": "intent",
+      "statement": "Application launches, renders all spec features, passes visual validation in light/dark modes",
+      "confidence": 0.90,
+      "evaluator": "self",
+      "expandOnFail": true,
+      "maxExpansionDepth": 3,
+      "explore": "scripts/explore-app-correctness.ts",
+      "context": [
+        "spec.md — acceptance criteria",
+        "scripts/explore-app-correctness.ts — visual contract"
+      ]
+    }
+  ],
+  "idempotent": true
+}
+```
+
+### Why This Matters
+
+**Zero-question execution (from CLAUDE.md):** "The node is defined clearly enough that an agent can execute it without asking for clarification."
+
+Today, this is prose guidance. Agents *try* to follow it. With bookend gates:
+- **Init gate enforces it mechanically.** The DAG literally cannot enter execution until the evaluator confirms clarity. No ambiguity passes the gate.
+- **Terminal gate closes the loop.** Output isn't "done" when code compiles; it's done when the live app passes visual validation.
+
+The DAG is now a **closed-loop refinement system**: clear plans → correct output.
