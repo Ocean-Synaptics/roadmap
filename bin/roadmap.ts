@@ -331,7 +331,13 @@ async function cmdOrient(note: string | undefined) {
         assignableNodes, owners, claimStore, currentBatchConflicts, ttlSeconds,
       );
       saveClaims(repoRoot, newStore);
-      result.assignments = assignResult.assignments;
+      // Only report batchRemaining assignments in output; position-fallback
+      // assignments are written to claims.json but are implicit (structural nodes).
+      const reportedAssignments: Record<string, string> = {};
+      for (const [nodeId, owner] of Object.entries(assignResult.assignments)) {
+        if (pos.batchRemaining.includes(nodeId)) reportedAssignments[nodeId] = owner;
+      }
+      result.assignments = reportedAssignments;
       if (Object.keys(assignResult.skipped).length) result.assignSkipped = assignResult.skipped;
     }
   }
