@@ -91,7 +91,15 @@ export type {
   ObservationSpec,
   ObservationResult,
   ExploreResult,
+  IntentFailure,
+  ConvergenceLimits,
+  EscalationResult,
+  IntentDiagnosis,
 } from './protocol.ts';
+
+// Intent-driven expansion
+export { generateIntentExpansion, resolveProduces, detectStall, buildEscalation, extractIntentFailures } from './lib/intent-expansion.ts';
+export type { FixNodeSpec, ExpansionResult } from './lib/intent-expansion.ts';
 
 // Runtime exploration (CDP-based behavioral observation)
 export { launchApp, runExploreScript, mapObservationsToChecks, teardown } from './lib/runtime-explore.ts';
