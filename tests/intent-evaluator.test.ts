@@ -3,11 +3,12 @@ import { mkdirSync, rmSync, readFileSync, writeFileSync, existsSync } from 'node
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { define, graph, validateNode } from '../src/protocol.ts';
-import type { ValidationRule, IntentEvaluation } from '../src/protocol.ts';
+import type { ValidationRule, IntentJudgment } from '../src/protocol.ts';
 import {
-  makeIntentEvaluator,
-  loadContextFiles,
   recordEvaluation,
+  readEvaluations,
+  loadContextFiles,
+  judgmentToRecord,
 } from '../src/lib/intent-evaluator.ts';
 import type { IntentEvaluationRecord } from '../src/lib/intent-evaluator.ts';
 
@@ -35,13 +36,35 @@ function tempDir(): string {
   return dir;
 }
 
-// Mock LLM evaluator that returns a configurable result.
-function mockEvaluator(confidence: number, reasoning = 'test reasoning', evidence: string[] = []) {
-  return async (_statement: string, _files: any[], _evaluator: any) => ({
-    confidence,
-    reasoning,
-    evidence,
-  });
+const INTENT_RULE: ValidationRule = {
+  type: 'intent',
+  statement: 'The store rejects whitespace-only submissions',
+  confidence: 0.8,
+  evaluator: 'self',
+};
+
+const GOOD_JUDGMENT: IntentJudgment = {
+  statement: 'The store rejects whitespace-only submissions',
+  confidence: 0.92,
+  reasoning: 'Line 45 of todoStore.ts trims and checks for empty string before inserting.',
+  evidence: ['todoStore.ts:45 — validates non-empty after trim'],
+};
+
+const WEAK_JUDGMENT: IntentJudgment = {
+  statement: 'The store rejects whitespace-only submissions',
+  confidence: 0.6,
+  reasoning: 'Could not find explicit whitespace validation.',
+};
+
+function intentDag(rules: ValidationRule[] = [INTENT_RULE]) {
+  return define(graph({
+    id: 'test', desc: 'test', init: 'init', term: 'term',
+    nodes: {
+      init: node('init'),
+      n: node('n', { produces: ['src/store.ts'], deps: ['init'], validate: rules }),
+      term: node('term', { deps: ['n'] }),
+    },
+  }));
 }
 
 // ── loadContextFiles ──────────────────────────────────────────────────────────
@@ -53,10 +76,10 @@ describe('loadContextFiles', () => {
 
   it('reads existing files', () => {
     mkdirSync(join(root, 'src'), { recursive: true });
-    writeFileSync(join(root, 'src/a.ts'), 'const x = 1;');
-    const files = loadContextFiles(['src/a.ts'], root);
+    writeFileSync(join(root, 'src/store.ts'), 'const x = 1;');
+    const files = loadContextFiles(['src/store.ts'], root);
     expect(files).toHaveLength(1);
-    expect(files[0].path).toBe('src/a.ts');
+    expect(files[0].path).toBe('src/store.ts');
     expect(files[0].content).toContain('const x = 1');
   });
 
@@ -65,21 +88,15 @@ describe('loadContextFiles', () => {
     expect(files).toHaveLength(0);
   });
 
-  it('reads multiple files', () => {
+  it('reads multiple files, skips missing', () => {
     writeFileSync(join(root, 'a.ts'), 'a');
     writeFileSync(join(root, 'b.ts'), 'b');
     const files = loadContextFiles(['a.ts', 'b.ts', 'missing.ts'], root);
     expect(files).toHaveLength(2);
   });
-
-  it('preserves path in result', () => {
-    writeFileSync(join(root, 'foo.ts'), 'content');
-    const files = loadContextFiles(['foo.ts'], root);
-    expect(files[0].path).toBe('foo.ts');
-  });
 });
 
-// ── recordEvaluation ─────────────────────────────────────────────────────────
+// ── recordEvaluation + readEvaluations ───────────────────────────────────────
 
 describe('recordEvaluation', () => {
   let root: string;
@@ -87,416 +104,202 @@ describe('recordEvaluation', () => {
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
   it('creates .roadmap/evaluations/<nodeId>.jsonl', () => {
-    const record: IntentEvaluationRecord = {
-      pass: true, confidence: 0.9, reasoning: 'looks good', evidence: [],
-      nodeId: 'my-node', statement: 'test', evaluator: 'self',
-      threshold: 0.8, evaluatedAt: '2026-01-01T00:00:00.000Z', contextPaths: [],
-    };
-    recordEvaluation('my-node', record, root);
-    const path = join(root, '.roadmap', 'evaluations', 'my-node.jsonl');
-    expect(existsSync(path)).toBe(true);
-  });
-
-  it('appends JSONL entries', () => {
-    const record: IntentEvaluationRecord = {
-      pass: true, confidence: 0.9, reasoning: 'ok', evidence: [],
-      nodeId: 'n', statement: 's', evaluator: 'self',
-      threshold: 0.8, evaluatedAt: new Date().toISOString(), contextPaths: [],
-    };
+    const record = judgmentToRecord('n', GOOD_JUDGMENT, 'self', 0.8);
     recordEvaluation('n', record, root);
-    recordEvaluation('n', { ...record, confidence: 0.7, pass: false }, root);
+    expect(existsSync(join(root, '.roadmap', 'evaluations', 'n.jsonl'))).toBe(true);
+  });
 
-    const path = join(root, '.roadmap', 'evaluations', 'n.jsonl');
-    const lines = readFileSync(path, 'utf-8').trim().split('\n').filter(Boolean);
+  it('appends entries — each line is valid JSON', () => {
+    recordEvaluation('n', judgmentToRecord('n', GOOD_JUDGMENT, 'self', 0.8), root);
+    recordEvaluation('n', judgmentToRecord('n', WEAK_JUDGMENT, 'self', 0.8), root);
+    const lines = readFileSync(join(root, '.roadmap', 'evaluations', 'n.jsonl'), 'utf-8')
+      .trim().split('\n').filter(Boolean);
     expect(lines).toHaveLength(2);
-    const first = JSON.parse(lines[0]);
-    const second = JSON.parse(lines[1]);
-    expect(first.confidence).toBe(0.9);
-    expect(second.confidence).toBe(0.7);
+    expect(JSON.parse(lines[0]).confidence).toBe(0.92);
+    expect(JSON.parse(lines[1]).confidence).toBe(0.6);
   });
 
-  it('each line is valid JSON with required fields', () => {
-    const record: IntentEvaluationRecord = {
-      pass: false, confidence: 0.5, reasoning: 'uncertain', evidence: ['a.ts:1 — gap'],
-      nodeId: 'x', statement: 'test intent', evaluator: 'council',
-      threshold: 0.85, evaluatedAt: '2026-01-01T00:00:00.000Z', contextPaths: ['a.ts'],
-    };
-    recordEvaluation('x', record, root);
-    const path = join(root, '.roadmap', 'evaluations', 'x.jsonl');
-    const parsed = JSON.parse(readFileSync(path, 'utf-8').trim());
-    expect(parsed.nodeId).toBe('x');
-    expect(parsed.statement).toBe('test intent');
-    expect(parsed.evaluator).toBe('council');
-    expect(parsed.threshold).toBe(0.85);
-    expect(parsed.evaluatedAt).toBeTruthy();
-    expect(Array.isArray(parsed.contextPaths)).toBe(true);
-  });
-
-  it('creates directories recursively if missing', () => {
-    const record: IntentEvaluationRecord = {
-      pass: true, confidence: 0.9, reasoning: 'ok', evidence: [],
-      nodeId: 'y', statement: 's', evaluator: 'self',
-      threshold: 0.8, evaluatedAt: new Date().toISOString(), contextPaths: [],
-    };
-    recordEvaluation('y', record, root);
+  it('creates directories recursively if absent', () => {
+    recordEvaluation('x', judgmentToRecord('x', GOOD_JUDGMENT, 'self', 0.8), root);
     expect(existsSync(join(root, '.roadmap', 'evaluations'))).toBe(true);
   });
 });
 
-// ── makeIntentEvaluator ───────────────────────────────────────────────────────
-
-describe('makeIntentEvaluator', () => {
+describe('readEvaluations', () => {
   let root: string;
   beforeEach(() => { root = tempDir(); });
   afterEach(() => rmSync(root, { recursive: true, force: true }));
 
-  it('returns pass=true when confidence >= threshold', async () => {
-    const evaluator = makeIntentEvaluator('n1', root, { evaluatorFn: mockEvaluator(0.9) });
-    const result = await evaluator('test statement', [], 'self', root, 0.8);
-    expect(result.pass).toBe(true);
-    expect(result.confidence).toBe(0.9);
+  it('returns empty array when no file exists', () => {
+    expect(readEvaluations('n', root)).toEqual([]);
   });
 
-  it('returns pass=false when confidence < threshold', async () => {
-    const evaluator = makeIntentEvaluator('n1', root, { evaluatorFn: mockEvaluator(0.6) });
-    const result = await evaluator('test statement', [], 'self', root, 0.8);
-    expect(result.pass).toBe(false);
-    expect(result.confidence).toBe(0.6);
+  it('reads all records in order', () => {
+    recordEvaluation('n', judgmentToRecord('n', GOOD_JUDGMENT, 'self', 0.8), root);
+    recordEvaluation('n', judgmentToRecord('n', WEAK_JUDGMENT, 'self', 0.8), root);
+    const records = readEvaluations('n', root);
+    expect(records).toHaveLength(2);
+    expect(records[0].confidence).toBe(0.92);
+    expect(records[1].confidence).toBe(0.6);
   });
 
-  it('passes reasoning and evidence through', async () => {
-    const evaluator = makeIntentEvaluator('n1', root, {
-      evaluatorFn: mockEvaluator(0.9, 'detailed reasoning', ['a.ts:10 — implements sorting']),
-    });
-    const result = await evaluator('test', [], 'self', root, 0.8);
-    expect(result.reasoning).toBe('detailed reasoning');
-    expect(result.evidence).toEqual(['a.ts:10 — implements sorting']);
-  });
-
-  it('records evaluation to .roadmap/evaluations/<nodeId>.jsonl', async () => {
-    const evaluator = makeIntentEvaluator('my-node', root, { evaluatorFn: mockEvaluator(0.9) });
-    await evaluator('test', [], 'self', root, 0.8);
-    const path = join(root, '.roadmap', 'evaluations', 'my-node.jsonl');
-    expect(existsSync(path)).toBe(true);
-    const record = JSON.parse(readFileSync(path, 'utf-8').trim());
-    expect(record.nodeId).toBe('my-node');
-    expect(record.statement).toBe('test');
-    expect(record.threshold).toBe(0.8);
-    expect(record.evaluator).toBe('self');
-  });
-
-  it('context scoping: loads files from contextPaths', async () => {
-    mkdirSync(join(root, 'src'), { recursive: true });
-    writeFileSync(join(root, 'src/alpha.ts'), 'export const alpha = 1;');
-
-    let capturedFiles: any[] = [];
-    const capturingFn = async (_stmt: string, files: any[], _ev: any) => {
-      capturedFiles = files;
-      return { confidence: 0.9, reasoning: 'ok', evidence: [] };
-    };
-
-    const evaluator = makeIntentEvaluator('n', root, { evaluatorFn: capturingFn });
-    await evaluator('test', ['src/alpha.ts'], 'self', root, 0.8);
-    expect(capturedFiles).toHaveLength(1);
-    expect(capturedFiles[0].path).toBe('src/alpha.ts');
-    expect(capturedFiles[0].content).toContain('alpha');
-  });
-
-  it('evaluator type is passed to LLM call', async () => {
-    let capturedEvaluator = '';
-    const capturingFn = async (_stmt: string, _files: any[], ev: 'self' | 'council') => {
-      capturedEvaluator = ev;
-      return { confidence: 0.9, reasoning: 'ok', evidence: [] };
-    };
-
-    const evaluator = makeIntentEvaluator('n', root, { evaluatorFn: capturingFn });
-    await evaluator('test', [], 'council', root, 0.8);
-    expect(capturedEvaluator).toBe('council');
-  });
-
-  it('exact threshold boundary: confidence == threshold → pass', async () => {
-    const evaluator = makeIntentEvaluator('n', root, { evaluatorFn: mockEvaluator(0.8) });
-    const result = await evaluator('test', [], 'self', root, 0.8);
-    expect(result.pass).toBe(true);
-  });
-
-  it('just below threshold → fail', async () => {
-    const evaluator = makeIntentEvaluator('n', root, { evaluatorFn: mockEvaluator(0.799) });
-    const result = await evaluator('test', [], 'self', root, 0.8);
-    expect(result.pass).toBe(false);
+  it('record contains all required fields', () => {
+    recordEvaluation('n', judgmentToRecord('n', GOOD_JUDGMENT, 'self', 0.8), root);
+    const [r] = readEvaluations('n', root);
+    expect(r.nodeId).toBe('n');
+    expect(r.statement).toBe(GOOD_JUDGMENT.statement);
+    expect(r.evaluator).toBe('self');
+    expect(r.threshold).toBe(0.8);
+    expect(typeof r.evaluatedAt).toBe('string');
+    expect(r.pass).toBe(true);
   });
 });
 
-// ── validateNode with intent rules ────────────────────────────────────────────
+// ── judgmentToRecord ─────────────────────────────────────────────────────────
 
-describe('validateNode: intent rule (no evaluator — unevaluated)', () => {
-  it('unevaluated intent → passed=true (non-blocking), intentStatus=unevaluated', async () => {
-    const dag = define(graph({
-      id: 'test', desc: 'test', init: 'init', term: 'term',
-      nodes: {
-        init: node('init'),
-        n: node('n', {
-          produces: ['out.ts'],
-          deps: ['init'],
-          validate: [{ type: 'intent', statement: 'test intent', confidence: 0.8, evaluator: 'self' }],
-        }),
-        term: node('term', { deps: ['n'] }),
-      },
-    }));
-    const result = await validateNode(dag, 'n', () => true);
-    expect(result.passed).toBe(true); // non-blocking
-    const intentCheck = result.checks.find(c => c.rule.type === 'intent');
-    expect(intentCheck?.intentStatus).toBe('unevaluated');
-    expect(intentCheck?.passed).toBe(true);
+describe('judgmentToRecord', () => {
+  it('sets pass=true when confidence >= threshold', () => {
+    const r = judgmentToRecord('n', { statement: 's', confidence: 0.85, reasoning: 'ok' }, 'self', 0.8);
+    expect(r.pass).toBe(true);
   });
 
-  it('multiple intent rules all unevaluated → still passes', async () => {
-    const dag = define(graph({
-      id: 'test', desc: 'test', init: 'init', term: 'term',
-      nodes: {
-        init: node('init'),
-        n: node('n', {
-          deps: ['init'],
-          validate: [
-            { type: 'intent', statement: 'intent 1', confidence: 0.8, evaluator: 'self' },
-            { type: 'intent', statement: 'intent 2', confidence: 0.9, evaluator: 'council' },
-          ],
-        }),
-        term: node('term', { deps: ['n'] }),
-      },
-    }));
+  it('sets pass=false when confidence < threshold', () => {
+    const r = judgmentToRecord('n', { statement: 's', confidence: 0.6, reasoning: 'weak' }, 'council', 0.8);
+    expect(r.pass).toBe(false);
+  });
+
+  it('defaults evidence to empty array', () => {
+    const r = judgmentToRecord('n', { statement: 's', confidence: 0.9, reasoning: 'ok' }, 'self', 0.8);
+    expect(r.evidence).toEqual([]);
+  });
+
+  it('copies evidence when provided', () => {
+    const r = judgmentToRecord('n', { statement: 's', confidence: 0.9, reasoning: 'ok', evidence: ['a:1'] }, 'self', 0.8);
+    expect(r.evidence).toEqual(['a:1']);
+  });
+});
+
+// ── validateNode: unevaluated (default complete) ─────────────────────────────
+
+describe('validateNode: intent without judgments (default complete)', () => {
+  it('unevaluated intent → passes, intentStatus=unevaluated', async () => {
+    const dag = intentDag();
     const result = await validateNode(dag, 'n', () => true);
     expect(result.passed).toBe(true);
-    const intentChecks = result.checks.filter(c => c.rule.type === 'intent');
-    expect(intentChecks).toHaveLength(2);
-    expect(intentChecks.every(c => c.intentStatus === 'unevaluated')).toBe(true);
+    const check = result.checks.find(c => c.rule.type === 'intent')!;
+    expect(check.intentStatus).toBe('unevaluated');
+    expect(check.passed).toBe(true);
+    expect(check.judgment).toBeUndefined();
+  });
+
+  it('multiple unevaluated intents → all pass, none block', async () => {
+    const dag = intentDag([
+      { type: 'intent', statement: 'intent A', confidence: 0.8, evaluator: 'self' },
+      { type: 'intent', statement: 'intent B', confidence: 0.9, evaluator: 'council' },
+    ]);
+    const result = await validateNode(dag, 'n', () => true);
+    expect(result.passed).toBe(true);
+    expect(result.checks.filter(c => c.intentStatus === 'unevaluated')).toHaveLength(2);
+  });
+
+  it('deterministic validator failure still blocks even with unevaluated intents', async () => {
+    const dag = intentDag([
+      { type: 'artifact-exists', target: 'missing.ts' },
+      INTENT_RULE,
+    ]);
+    const result = await validateNode(dag, 'n', () => false);
+    expect(result.passed).toBe(false);
   });
 });
 
-describe('validateNode: intent rule with evaluator', () => {
-  let root: string;
-  beforeEach(() => { root = tempDir(); });
-  afterEach(() => rmSync(root, { recursive: true, force: true }));
+// ── validateNode: with judgments (complete --evaluate) ───────────────────────
 
-  it('high confidence → passes', async () => {
-    const dag = define(graph({
-      id: 'test', desc: 'test', init: 'init', term: 'term',
-      nodes: {
-        init: node('init'),
-        n: node('n', {
-          produces: ['out.ts'],
-          deps: ['init'],
-          validate: [{ type: 'intent', statement: 'test intent', confidence: 0.8, evaluator: 'self' }],
-        }),
-        term: node('term', { deps: ['n'] }),
-      },
-    }));
-
-    const intentEvaluator = makeIntentEvaluator('n', root, { evaluatorFn: mockEvaluator(0.9) });
-    const result = await validateNode(dag, 'n', () => true, { intentEvaluator, repoRoot: root });
+describe('validateNode: intent with LLM judgments', () => {
+  it('confidence >= threshold → passes, intentStatus=evaluated', async () => {
+    const dag = intentDag();
+    const result = await validateNode(dag, 'n', () => true, { intentJudgments: [GOOD_JUDGMENT] });
     expect(result.passed).toBe(true);
     const check = result.checks.find(c => c.rule.type === 'intent')!;
     expect(check.intentStatus).toBe('evaluated');
-    expect(check.evaluation?.confidence).toBe(0.9);
-    expect(check.evaluation?.pass).toBe(true);
+    expect(check.judgment?.confidence).toBe(0.92);
   });
 
-  it('low confidence → fails validation', async () => {
-    const dag = define(graph({
-      id: 'test', desc: 'test', init: 'init', term: 'term',
-      nodes: {
-        init: node('init'),
-        n: node('n', {
-          deps: ['init'],
-          validate: [{ type: 'intent', statement: 'test intent', confidence: 0.8, evaluator: 'self' }],
-        }),
-        term: node('term', { deps: ['n'] }),
-      },
-    }));
-
-    const intentEvaluator = makeIntentEvaluator('n', root, { evaluatorFn: mockEvaluator(0.5) });
-    const result = await validateNode(dag, 'n', () => true, { intentEvaluator, repoRoot: root });
+  it('confidence < threshold → fails', async () => {
+    const dag = intentDag();
+    const result = await validateNode(dag, 'n', () => true, { intentJudgments: [WEAK_JUDGMENT] });
     expect(result.passed).toBe(false);
     const check = result.checks.find(c => c.rule.type === 'intent')!;
-    expect(check.intentStatus).toBe('evaluated');
-    expect(check.evaluation?.pass).toBe(false);
-    expect(check.evaluation?.confidence).toBe(0.5);
+    expect(check.passed).toBe(false);
+    expect(check.judgment?.confidence).toBe(0.6);
   });
 
-  it('intent check uses rule.context paths when specified', async () => {
-    writeFileSync(join(root, 'ctx.ts'), 'export const value = 42;');
-    let capturedPaths: string[] = [];
-
-    const capturingEvaluator = makeIntentEvaluator('n', root, {
-      evaluatorFn: async (_stmt, files, _ev) => {
-        capturedPaths = files.map((f: any) => f.path);
-        return { confidence: 0.9, reasoning: 'ok', evidence: [] };
-      },
+  it('exact threshold boundary: confidence == threshold → passes', async () => {
+    const dag = intentDag([{ type: 'intent', statement: 's', confidence: 0.8, evaluator: 'self' }]);
+    const result = await validateNode(dag, 'n', () => true, {
+      intentJudgments: [{ statement: 's', confidence: 0.8, reasoning: 'ok' }],
     });
-
-    const dag = define(graph({
-      id: 'test', desc: 'test', init: 'init', term: 'term',
-      nodes: {
-        init: node('init'),
-        n: node('n', {
-          produces: ['out.ts'],
-          deps: ['init'],
-          validate: [{
-            type: 'intent', statement: 'test', confidence: 0.8, evaluator: 'self',
-            context: ['ctx.ts'], // explicit context
-          }],
-        }),
-        term: node('term', { deps: ['n'] }),
-      },
-    }));
-
-    await validateNode(dag, 'n', () => true, { intentEvaluator: capturingEvaluator, repoRoot: root });
-    expect(capturedPaths).toContain('ctx.ts');
-    expect(capturedPaths).not.toContain('out.ts'); // produces not used when context explicit
-  });
-
-  it('falls back to node.produces when rule.context not specified', async () => {
-    writeFileSync(join(root, 'out.ts'), 'export const out = true;');
-    let capturedPaths: string[] = [];
-
-    const capturingEvaluator = makeIntentEvaluator('n', root, {
-      evaluatorFn: async (_stmt, files, _ev) => {
-        capturedPaths = files.map((f: any) => f.path);
-        return { confidence: 0.9, reasoning: 'ok', evidence: [] };
-      },
-    });
-
-    const dag = define(graph({
-      id: 'test', desc: 'test', init: 'init', term: 'term',
-      nodes: {
-        init: node('init'),
-        n: node('n', {
-          produces: ['out.ts'],
-          deps: ['init'],
-          validate: [{ type: 'intent', statement: 'test', confidence: 0.8, evaluator: 'self' }], // no context
-        }),
-        term: node('term', { deps: ['n'] }),
-      },
-    }));
-
-    await validateNode(dag, 'n', () => true, { intentEvaluator: capturingEvaluator, repoRoot: root });
-    expect(capturedPaths).toContain('out.ts');
-  });
-
-  it('records to .roadmap/evaluations when evaluator runs', async () => {
-    const dag = define(graph({
-      id: 'test', desc: 'test', init: 'init', term: 'term',
-      nodes: {
-        init: node('init'),
-        n: node('n', {
-          deps: ['init'],
-          validate: [{ type: 'intent', statement: 'some intent', confidence: 0.8, evaluator: 'self' }],
-        }),
-        term: node('term', { deps: ['n'] }),
-      },
-    }));
-
-    const intentEvaluator = makeIntentEvaluator('n', root, { evaluatorFn: mockEvaluator(0.9) });
-    await validateNode(dag, 'n', () => true, { intentEvaluator, repoRoot: root });
-    expect(existsSync(join(root, '.roadmap', 'evaluations', 'n.jsonl'))).toBe(true);
-  });
-
-  it('intent + deterministic checks: deterministic failure blocks regardless of intent', async () => {
-    const dag = define(graph({
-      id: 'test', desc: 'test', init: 'init', term: 'term',
-      nodes: {
-        init: node('init'),
-        n: node('n', {
-          deps: ['init'],
-          validate: [
-            { type: 'artifact-exists', target: 'missing.ts' },    // fails
-            { type: 'intent', statement: 'test', confidence: 0.8, evaluator: 'self' }, // would pass
-          ],
-        }),
-        term: node('term', { deps: ['n'] }),
-      },
-    }));
-
-    const intentEvaluator = makeIntentEvaluator('n', root, { evaluatorFn: mockEvaluator(0.95) });
-    const result = await validateNode(dag, 'n', () => false, { intentEvaluator, repoRoot: root });
-    expect(result.passed).toBe(false); // artifact-exists fails
-    const artifactCheck = result.checks.find(c => c.rule.type === 'artifact-exists');
-    expect(artifactCheck?.passed).toBe(false);
-  });
-});
-
-// ── Tiered execution ──────────────────────────────────────────────────────────
-
-describe('tiered execution: self vs council', () => {
-  let root: string;
-  beforeEach(() => { root = tempDir(); });
-  afterEach(() => rmSync(root, { recursive: true, force: true }));
-
-  it('self evaluator rule only fires when evaluateTier includes self', async () => {
-    let selfCalled = false;
-    const trackingFn = async (_stmt: string, _files: any[], ev: 'self' | 'council') => {
-      selfCalled = true;
-      expect(ev).toBe('self');
-      return { confidence: 0.9, reasoning: 'ok', evidence: [] };
-    };
-
-    const dag = define(graph({
-      id: 'test', desc: 'test', init: 'init', term: 'term',
-      nodes: {
-        init: node('init'),
-        n: node('n', {
-          deps: ['init'],
-          validate: [{ type: 'intent', statement: 'test', confidence: 0.8, evaluator: 'self' }],
-        }),
-        term: node('term', { deps: ['n'] }),
-      },
-    }));
-
-    const intentEvaluator = makeIntentEvaluator('n', root, { evaluatorFn: trackingFn });
-    await validateNode(dag, 'n', () => true, { intentEvaluator, repoRoot: root });
-    expect(selfCalled).toBe(true);
-  });
-
-  it('council evaluator rule passes evaluator=council to LLM', async () => {
-    let capturedEv = '';
-    const trackingFn = async (_stmt: string, _files: any[], ev: 'self' | 'council') => {
-      capturedEv = ev;
-      return { confidence: 0.9, reasoning: 'ok', evidence: [] };
-    };
-
-    const dag = define(graph({
-      id: 'test', desc: 'test', init: 'init', term: 'term',
-      nodes: {
-        init: node('init'),
-        n: node('n', {
-          deps: ['init'],
-          validate: [{ type: 'intent', statement: 'test', confidence: 0.8, evaluator: 'council' }],
-        }),
-        term: node('term', { deps: ['n'] }),
-      },
-    }));
-
-    const intentEvaluator = makeIntentEvaluator('n', root, { evaluatorFn: trackingFn });
-    await validateNode(dag, 'n', () => true, { intentEvaluator, repoRoot: root });
-    expect(capturedEv).toBe('council');
-  });
-
-  it('without evaluator: council rule is also unevaluated (non-blocking)', async () => {
-    const dag = define(graph({
-      id: 'test', desc: 'test', init: 'init', term: 'term',
-      nodes: {
-        init: node('init'),
-        n: node('n', {
-          deps: ['init'],
-          validate: [{ type: 'intent', statement: 'test', confidence: 0.8, evaluator: 'council' }],
-        }),
-        term: node('term', { deps: ['n'] }),
-      },
-    }));
-
-    const result = await validateNode(dag, 'n', () => true); // no opts
     expect(result.passed).toBe(true);
-    const check = result.checks.find(c => c.rule.type === 'intent');
-    expect(check?.intentStatus).toBe('unevaluated');
+  });
+
+  it('judgment not found for a statement → that check is unevaluated (non-blocking)', async () => {
+    const dag = intentDag();
+    // Provide judgment for a DIFFERENT statement
+    const result = await validateNode(dag, 'n', () => true, {
+      intentJudgments: [{ statement: 'unrelated statement', confidence: 0.9, reasoning: 'x' }],
+    });
+    expect(result.passed).toBe(true); // unmatched → unevaluated → non-blocking
+    const check = result.checks.find(c => c.rule.type === 'intent')!;
+    expect(check.intentStatus).toBe('unevaluated');
+  });
+
+  it('evidence passed through onto the check', async () => {
+    const dag = intentDag();
+    const result = await validateNode(dag, 'n', () => true, {
+      intentJudgments: [{ ...GOOD_JUDGMENT, evidence: ['store.ts:45 — validates'] }],
+    });
+    const check = result.checks.find(c => c.rule.type === 'intent')!;
+    expect(check.judgment?.evidence).toEqual(['store.ts:45 — validates']);
+  });
+
+  it('reasoning truncated in evidence string but preserved in judgment', async () => {
+    const longReasoning = 'x'.repeat(300);
+    const dag = intentDag();
+    const result = await validateNode(dag, 'n', () => true, {
+      intentJudgments: [{ ...GOOD_JUDGMENT, reasoning: longReasoning }],
+    });
+    const check = result.checks.find(c => c.rule.type === 'intent')!;
+    expect(check.judgment?.reasoning).toBe(longReasoning); // full on judgment
+    expect(check.evidence!.length).toBeLessThan(300);       // truncated in evidence string
+  });
+
+  it('multiple intent rules: all provided judgments evaluated independently', async () => {
+    const dag = intentDag([
+      { type: 'intent', statement: 'A', confidence: 0.8, evaluator: 'self' },
+      { type: 'intent', statement: 'B', confidence: 0.85, evaluator: 'council' },
+    ]);
+    const result = await validateNode(dag, 'n', () => true, {
+      intentJudgments: [
+        { statement: 'A', confidence: 0.9, reasoning: 'ok' },
+        { statement: 'B', confidence: 0.7, reasoning: 'weak' }, // fails threshold 0.85
+      ],
+    });
+    expect(result.passed).toBe(false);
+    const [cA, cB] = result.checks.filter(c => c.rule.type === 'intent');
+    expect(cA.passed).toBe(true);
+    expect(cB.passed).toBe(false);
+  });
+
+  it('intent + deterministic: both must pass', async () => {
+    const dag = intentDag([
+      { type: 'artifact-exists', target: 'src/store.ts' },
+      INTENT_RULE,
+    ]);
+    // artifact exists, good judgment → passes
+    const pass = await validateNode(dag, 'n', p => p === 'src/store.ts', { intentJudgments: [GOOD_JUDGMENT] });
+    expect(pass.passed).toBe(true);
+
+    // artifact missing, good judgment → still fails
+    const fail = await validateNode(dag, 'n', () => false, { intentJudgments: [GOOD_JUDGMENT] });
+    expect(fail.passed).toBe(false);
   });
 });

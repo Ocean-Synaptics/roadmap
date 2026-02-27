@@ -25,7 +25,7 @@ import { buildClusters } from '../src/lib/cluster.ts';
 import { buildSchedule } from '../src/lib/schedule.ts';
 import { propagateConstraints } from '../src/lib/propagate.ts';
 import { compilePrompts } from '../src/lib/compile-prompts.ts';
-import { makeIntentEvaluator } from '../src/lib/intent-evaluator.ts';
+import { recordEvaluation, judgmentToRecord } from '../src/lib/intent-evaluator.ts';
 import type { Graph } from '../src/protocol.ts';
 import type { SiblingStatus } from '../src/lib/cross-orient.ts';
 
@@ -1374,52 +1374,71 @@ async function cmdComplete(note: string) {
     process.exit(1);
   }
 
-  // 1.5 Validate — run all validation rules before accepting completion
-  // --evaluate: activate intent validators (self tier)
-  // --evaluate=council: activate intent validators (council tier — adversarial)
+  // 1.5 Validate — run deterministic validators + optional intent gate.
+  //
+  // Default complete: intent rules are non-blocking; output signals which
+  // statements need LLM judgment and which context files to read.
+  //
+  // complete --evaluate '[{statement, confidence, reasoning, evidence?}]':
+  //   LLM provides judgments for each intent rule inline. roadmap validates
+  //   confidence >= threshold and records to .roadmap/evaluations/ audit trail.
   const skipValidate = args.includes('--skip-validate');
-  const evaluateArg = args.find(a => a === '--evaluate' || a.startsWith('--evaluate='));
-  const evaluateTier: 'self' | 'council' | null = evaluateArg
-    ? (evaluateArg === '--evaluate=council' ? 'council' : 'self')
-    : null;
+  const evaluateIdx = args.indexOf('--evaluate');
+  const evaluateJson = evaluateIdx !== -1 ? args[evaluateIdx + 1] : undefined;
+
+  let intentJudgments: Array<{ statement: string; confidence: number; reasoning: string; evidence?: string[] }> | undefined;
+  if (evaluateJson) {
+    try {
+      intentJudgments = JSON.parse(evaluateJson);
+      if (!Array.isArray(intentJudgments)) throw new Error('--evaluate must be a JSON array');
+    } catch (e: any) {
+      json({ error: `Invalid --evaluate JSON: ${e.message}`, fix: 'roadmap complete <node> --evaluate \'[{"statement":"...","confidence":0.9,"reasoning":"..."}]\'' });
+      process.exit(1);
+    }
+  }
 
   if (!skipValidate) {
     const { validateNode } = await import('../src/protocol.ts');
-    const nodeSpec = (dag.nodes as Record<string, any>)[nodeId];
-    const nodeProduces: string[] = nodeSpec?.produces ?? [];
-
-    const validateOpts = evaluateTier
-      ? {
-          intentEvaluator: makeIntentEvaluator(nodeId, repoRoot),
-          repoRoot,
-        }
-      : undefined;
-
-    const validationResult = await validateNode(dag, nodeId, fileExists(repoRoot), validateOpts);
-
-    // Surface unevaluated intent checks (non-blocking) in the result
-    const unevaluatedIntents = validationResult.checks.filter(
-      (c: any) => c.intentStatus === 'unevaluated',
+    const validationResult = await validateNode(dag, nodeId, fileExists(repoRoot),
+      intentJudgments ? { intentJudgments } : undefined,
     );
 
+    // Collect intent checks for surfacing in output
+    const nodeSpec = (dag.nodes as Record<string, any>)[nodeId];
+    const unevaluated = validationResult.checks
+      .filter((c: any) => c.intentStatus === 'unevaluated')
+      .map((c: any) => ({
+        statement: (c.rule as any).statement,
+        evaluator: (c.rule as any).evaluator,
+        threshold: (c.rule as any).confidence,
+        contextPaths: (c.rule as any).context ?? (nodeSpec?.produces ?? []),
+      }));
+
     if (!validationResult.passed) {
-      // Release claim on failure so another attempt can re-claim
       delete claimStore[nodeId];
       saveClaims(repoRoot, claimStore);
-
       json({
         error: `Validation failed for "${nodeId}"`,
         checks: validationResult.checks,
         failedCount: validationResult.checks.filter((c: any) => !c.passed).length,
         fix: 'Fix the failing validations and retry. Use --skip-validate to override.',
-        ...(unevaluatedIntents.length ? { unevaluatedIntents: unevaluatedIntents.length } : {}),
+        ...(unevaluated.length ? { unevaluated } : {}),
       });
       process.exit(1);
     }
 
-    if (unevaluatedIntents.length && !evaluateTier) {
-      // Attach non-blocking notice to successful completion
-      (validationResult as any)._unevaluatedIntents = unevaluatedIntents.length;
+    // Record evaluated judgments to audit trail
+    if (intentJudgments) {
+      const rules = (nodeSpec?.validate ?? []) as any[];
+      for (const j of intentJudgments) {
+        const rule = rules.find((r: any) => r.type === 'intent' && r.statement === j.statement);
+        if (rule) recordEvaluation(nodeId, judgmentToRecord(nodeId, j, rule.evaluator, rule.confidence), repoRoot);
+      }
+    }
+
+    // Surface unevaluated intents on successful completion so LLM knows what to judge
+    if (unevaluated.length) {
+      (validationResult as any)._unevaluated = unevaluated;
     }
   }
 
@@ -1470,7 +1489,7 @@ async function cmdComplete(note: string) {
   recordTrail({
     ts: new Date().toISOString(), cmd: 'complete', note,
     repo: basename(repoRoot), position: finalPos.position, level: finalPos.level, dagId: dag.id,
-    detail: { nodeId, owner, checkpointId: checkpoint.id, batchComplete: posAfter.batchComplete, advanced: !!advanced, skipValidate, evaluateTier, unblocked },
+    detail: { nodeId, owner, checkpointId: checkpoint.id, batchComplete: posAfter.batchComplete, advanced: !!advanced, skipValidate, evaluated: !!intentJudgments, unblocked },
   });
 
   json({
@@ -1483,7 +1502,7 @@ async function cmdComplete(note: string) {
     unblocked,
     ...(advanced ? { advanced } : {}),
     ...(posAfter.batchComplete && !advanced && !noAdvance ? { hint: 'roadmap advance --note "batch done"' } : {}),
-    ...(evaluateTier ? { evaluated: evaluateTier } : {}),
+    ...(intentJudgments ? { evaluated: intentJudgments.length } : {}),
   });
 }
 

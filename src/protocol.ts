@@ -17,29 +17,20 @@ export type ValidationRule =
   | { type: 'spec-conformance'; spec: string; stories: number[]; criteria?: number[] }
   | { type: 'intent'; statement: string; confidence: number; evaluator: 'self' | 'council'; context?: string[] };
 
-// Result of an LLM intent evaluation.
-export interface IntentEvaluation {
-  pass: boolean;           // confidence >= threshold
-  confidence: number;      // 0.0–1.0 from the evaluator
-  reasoning: string;       // one-paragraph explanation
-  evidence: string[];      // file:line references
+// LLM-provided judgment for one intent statement.
+// Passed via --evaluate '[{...}]' on the complete command.
+export interface IntentJudgment {
+  statement: string;   // must match rule.statement exactly
+  confidence: number;  // 0.0–1.0
+  reasoning: string;   // one paragraph
+  evidence?: string[]; // file:line references (optional)
 }
-
-// Evaluator callback injected into validateNode opts. Handles file loading,
-// LLM call, confidence threshold comparison, and audit recording.
-export type IntentEvaluatorFn = (
-  statement: string,
-  contextPaths: string[],
-  evaluator: 'self' | 'council',
-  repoRoot: string,
-  confidenceThreshold: number,
-) => Promise<IntentEvaluation>;
 
 export interface ValidationCheck {
   rule: ValidationRule;
   passed: boolean;
   evidence?: string;
-  evaluation?: IntentEvaluation;               // populated for evaluated intent rules
+  judgment?: IntentJudgment;                  // populated when judgment was provided
   intentStatus?: 'evaluated' | 'unevaluated'; // present only for intent rules
 }
 
@@ -1000,7 +991,7 @@ export async function validateNode<T extends string>(
   g: Graph<T>,
   nodeId: string,
   exists: (artifact: string) => boolean,
-  opts?: { intentEvaluator?: IntentEvaluatorFn; repoRoot?: string },
+  opts?: { intentJudgments?: IntentJudgment[] },
 ): Promise<ValidationResult> {
   const node = g.nodes[nodeId as keyof typeof g.nodes] as any;
 
@@ -1164,37 +1155,23 @@ export async function validateNode<T extends string>(
         evidence = `spec-conformance error: ${String(e.message).slice(0, 200)}`;
       }
     } else if (rule.type === 'intent') {
-      // Intent constraints are LLM-evaluated. Non-blocking by default (unevaluated).
-      // Activated by passing opts.intentEvaluator (via complete --evaluate).
-      if (opts?.intentEvaluator && opts?.repoRoot) {
-        try {
-          const contextPaths: string[] = rule.context ?? (node.produces ?? []);
-          const evaluation = await opts.intentEvaluator(
-            rule.statement,
-            contextPaths,
-            rule.evaluator,
-            opts.repoRoot,
-            rule.confidence,
-          );
-          passed = evaluation.pass;
-          evidence = `evaluated: confidence=${evaluation.confidence.toFixed(2)} (threshold=${rule.confidence}) — ${evaluation.reasoning.slice(0, 120)}`;
-          checks.push({ rule, passed, evidence, evaluation, intentStatus: 'evaluated' });
-          if (!passed) allPassed = false;
-          continue;
-        } catch (e: any) {
-          passed = false;
-          evidence = `intent evaluation error: ${String(e.message).slice(0, 200)}`;
-          checks.push({ rule, passed, evidence, intentStatus: 'evaluated' });
-          allPassed = false;
-          continue;
-        }
+      // Intent constraints require LLM judgment. The calling LLM reads the
+      // context files and provides its evaluation via --evaluate '[{...}]'.
+      // Without judgments: non-blocking (signals what needs evaluation in output).
+      // With judgments: validates confidence >= rule.confidence.
+      const judgment = opts?.intentJudgments?.find(j => j.statement === rule.statement);
+      if (judgment) {
+        passed = judgment.confidence >= rule.confidence;
+        evidence = `confidence=${judgment.confidence.toFixed(2)} (threshold=${rule.confidence}) — ${judgment.reasoning.slice(0, 120)}`;
+        checks.push({ rule, passed, evidence, judgment, intentStatus: 'evaluated' });
+        if (!passed) allPassed = false;
       } else {
-        // Unevaluated — visible but non-blocking
+        // Unevaluated — non-blocking; output signals what the LLM must judge
         passed = true;
-        evidence = `unevaluated (run complete --evaluate to activate)`;
+        evidence = `unevaluated`;
         checks.push({ rule, passed, evidence, intentStatus: 'unevaluated' });
-        continue;
       }
+      continue;
     }
 
     checks.push({ rule, passed, evidence });
