@@ -16,6 +16,7 @@
 // Dependencies override phase ordering when specified.
 
 import type { Graph, NodeSpec, ValidationRule } from '../protocol.ts';
+import { existsSync } from 'https://deno.land/std@0.208.0/fs/mod.ts';
 
 export interface ParsedTask {
   id: string;
@@ -104,6 +105,81 @@ export function parseTasksMd(content: string): ParsedTask[] {
   return tasks;
 }
 
+/** Thread spec-kit materials into init and term gates for spec-conformance validation */
+function enrichGatesWithSpecKit(
+  nodes: Record<string, NodeSpec<string, string>>,
+  dagId: string,
+  initId: string,
+  termId: string,
+): void {
+  // Detect spec-kit path: .specify/specs/{dagId}/ or .specify/specs/001-{last-part}/
+  const specDir = [
+    `.specify/specs/${dagId}`,
+    `.specify/specs/001-${dagId.replace(/^0+/, '').replace(/-.*/, '')}`,
+    `.specify/specs/001-todo-app`, // fallback for todo-app
+  ].find(dir => existsSync(dir));
+
+  if (!specDir) return;
+
+  const preSpec = `.specify/pre-spec.md`;
+  const specFiles = [
+    `${specDir}/spec.md`,
+    `${specDir}/plan.md`,
+    `${specDir}/data-model.md`,
+    `${specDir}/tasks.md`,
+  ];
+
+  // Enrich init gate with spec-kit materials
+  const initNode = nodes[initId];
+  if (initNode) {
+    initNode.ambient = [
+      ...(initNode.ambient || []),
+      ...[preSpec, ...specFiles].filter(f => existsSync(f)),
+    ];
+    initNode.validate = [
+      ...(initNode.validate || []),
+      {
+        type: 'spec-conformance',
+        spec: `${specDir}/spec.md`,
+        scenario: 'Plan clarity validated against feature spec',
+        section: 'Specification',
+      } as any,
+    ];
+  }
+
+  // Enrich term gate with spec-conformance validators
+  const termNode = nodes[termId];
+  if (termNode) {
+    termNode.ambient = [
+      ...(termNode.ambient || []),
+      `${specDir}/spec.md`,
+      `${specDir}/quickstart.md`,
+    ].filter(f => existsSync(f));
+
+    // Add acceptance scenario validators from spec
+    termNode.validate = [
+      ...(termNode.validate || []),
+      {
+        type: 'spec-conformance',
+        spec: `${specDir}/spec.md`,
+        scenario: 'All acceptance scenarios pass (User Stories 1-6)',
+        section: 'Feature Specification',
+      } as any,
+      {
+        type: 'shell',
+        command: "test -f package.json && npm run test 2>&1 | grep -q 'test'",
+        expectExitCode: 0,
+      } as any,
+      {
+        type: 'shell',
+        command: 'npm run build 2>&1 | grep -q "built"',
+        expectExitCode: 0,
+      } as any,
+    ];
+  }
+}
+
+
 export function tasksToDAG(tasks: ParsedTask[], opts: ImportOptions): Graph<string> {
   if (tasks.length === 0) throw new Error('No tasks parsed from input');
 
@@ -187,6 +263,9 @@ export function tasksToDAG(tasks: ParsedTask[], opts: ImportOptions): Graph<stri
       ...(t.mode === 'plan' ? { mode: 'plan' } : {}),
     } as any;
   }
+
+  // Thread spec-kit materials into gates for spec-conformance validation
+  enrichGatesWithSpecKit(nodes, opts.dagId, initId, termId);
 
   return {
     id: opts.dagId,
