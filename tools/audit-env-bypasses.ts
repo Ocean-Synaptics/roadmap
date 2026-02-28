@@ -22,13 +22,13 @@ const ENV_MERGE = /\.\.\.\s*process\.env/g;
 
 const BYPASS_KEYS = new Set([
   'SKIP_PLAN_GATE', 'SKIP_DAG_CHECK', 'SKIP_BATCH_COMMIT',
-  'ROADMAP_VALIDATING',
 ]);
 
 const CONFIG_KEYS = new Set([
   'HOME', 'PATH', 'TMPDIR', 'AGENT_ID', 'USER', 'NODE_ENV',
   'CDP_URL', 'CDP_PORT',
   'ROADMAP_EXPANSION_TYPE', 'ROADMAP_SIBLING_ROOT',
+  'ROADMAP_VALIDATING', // Recursion guard set by validation system, not external bypass
   'DEBUG',
 ]);
 

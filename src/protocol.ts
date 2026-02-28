@@ -1119,7 +1119,7 @@ export async function validateNode<T extends string>(
   g: Graph<T>,
   nodeId: string,
   exists: (artifact: string) => boolean,
-  opts?: { intentJudgments?: IntentJudgment[]; exploreResults?: Array<{ script: string; success: boolean; result?: ExploreResult; error?: string }> },
+  opts?: { intentJudgments?: IntentJudgment[]; exploreResults?: Array<{ script: string; success: boolean; result?: ExploreResult; error?: string }>; validating?: boolean },
 ): Promise<ValidationResult> {
   const node = g.nodes[nodeId as keyof typeof g.nodes] as any;
 
@@ -1151,7 +1151,9 @@ export async function validateNode<T extends string>(
     } else if (rule.type === 'function') {
       // Run shell command synchronously; exit 0 = pass, non-zero = fail
       // Guard against recursion (e.g. vitest validate → spawns vitest → validate → ...)
-      if (process.env.ROADMAP_VALIDATING) {
+      // Primary: opts.validating (call-stack). Fallback: ROADMAP_VALIDATING env (child process recursion guard).
+      const fnValidating = opts?.validating || !!process.env.ROADMAP_VALIDATING;
+      if (fnValidating) {
         passed = true;
         evidence = `skipped (already inside validation): ${rule.fn}`;
       } else {
@@ -1181,7 +1183,9 @@ export async function validateNode<T extends string>(
       evidence = `manual approval pending${rule.reviewer ? ` from ${rule.reviewer}` : ''}`;
     } else if (rule.type === 'shell') {
       // Run shell command; check exit code matches expectExitCode (default 0)
-      if (process.env.ROADMAP_VALIDATING) {
+      // Primary: opts.validating (call-stack). Fallback: ROADMAP_VALIDATING env (child process recursion guard).
+      const shellValidating = opts?.validating || !!process.env.ROADMAP_VALIDATING;
+      if (shellValidating) {
         passed = true;
         evidence = `skipped (already inside validation): ${rule.command}`;
       } else {
@@ -1204,7 +1208,9 @@ export async function validateNode<T extends string>(
       }
     } else if (rule.type === 'build-produces') {
       // Run build command, then check all outputs exist
-      if (process.env.ROADMAP_VALIDATING) {
+      // Primary: opts.validating (call-stack). Fallback: ROADMAP_VALIDATING env (child process recursion guard).
+      const buildValidating = opts?.validating || !!process.env.ROADMAP_VALIDATING;
+      if (buildValidating) {
         passed = true;
         evidence = `skipped (already inside validation): ${rule.command}`;
       } else {
@@ -1224,7 +1230,9 @@ export async function validateNode<T extends string>(
       }
     } else if (rule.type === 'launch-check') {
       // Start a process, verify it produces a success signal or exits 0 within timeout
-      if (process.env.ROADMAP_VALIDATING) {
+      // Primary: opts.validating (call-stack). Fallback: ROADMAP_VALIDATING env (child process recursion guard).
+      const launchValidating = opts?.validating || !!process.env.ROADMAP_VALIDATING;
+      if (launchValidating) {
         passed = true;
         evidence = `skipped (already inside validation): ${rule.command}`;
       } else {
@@ -1257,7 +1265,9 @@ export async function validateNode<T extends string>(
       }
     } else if (rule.type === 'runtime-explore') {
       // CDP-based behavioral observation: launch app, run explore script, map observations
-      if (process.env.ROADMAP_VALIDATING) {
+      // Primary: opts.validating (call-stack). Fallback: ROADMAP_VALIDATING env (child process recursion guard).
+      const exploreValidating = opts?.validating || !!process.env.ROADMAP_VALIDATING;
+      if (exploreValidating) {
         passed = true;
         evidence = `skipped (already inside validation): ${rule.script}`;
       } else if (!opts?.exploreResults) {
