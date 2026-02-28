@@ -36,6 +36,8 @@ import { compilePrompts } from '../src/lib/compile-prompts.ts';
 import { compileBrief } from '../src/lib/compile-brief.ts';
 import { recordEvaluation, judgmentToRecord } from '../src/lib/intent-evaluator.ts';
 import { validateTerminalIntentGate, validateInitIntentGate, findInitBoundary } from '../src/lib/validate-dag.ts';
+import { writeSpecOrigin, writeSpecImportReceipt, requireSpecOriginForEdit } from '../src/lib/spec-origin.ts';
+import type { SpecOrigin, SpecImportReceipt } from '../src/lib/spec-origin.ts';
 import { buildGallery } from '../src/lib/gallery-templates/index.ts';
 import { estimateCost } from '../src/lib/cost-estimator.ts';
 import { installAll, extractVersionHash, readPackageVersion, computeSkillHash } from '../src/lib/install-skills.ts';
@@ -240,6 +242,7 @@ async function main() {
       case 'advance':   return await cmdAdvance(note!);
       case 'describe':  return cmdDescribe(note!);
       case 'validate':  return cmdValidate(note!);
+      case 'verify':    return await cmdVerify(note!);
       case 'expand':    return await cmdExpand(note!);
       case 'branch':    return cmdBranch(note!);
       case 'position':  return cmdOrient(note); // alias
@@ -859,6 +862,31 @@ async function cmdValidate(note: string) {
       ...(terminalError ? { terminalIntentGate: terminalError } : {}),
     });
   }
+}
+
+async function cmdVerify(note: string) {
+  const { runVerify } = await import('../src/lib/verify.ts');
+  const result = runVerify(repoRoot);
+
+  if (hasLocalDAG) {
+    const dag = loadDAG();
+    const pos = orientWithState(dag);
+    recordTrail({
+      ts: new Date().toISOString(), cmd: 'verify', note,
+      repo: basename(repoRoot),
+      position: pos.position, level: pos.level, dagId: dag.id,
+    });
+  } else {
+    recordTrail({
+      ts: new Date().toISOString(), cmd: 'verify', note,
+      repo: basename(repoRoot),
+      position: 'untracked', level: 0,
+    });
+  }
+
+  json(result);
+
+  if (result.violations.length > 0) process.exit(1);
 }
 
 async function cmdExpand(note: string) {
@@ -3229,6 +3257,29 @@ function cmdImportCompiled(note: string, irPath: string | undefined) {
   const outPath = join(outDir, 'head.json');
   writeFileSync(outPath, dagJson);
 
+  // Write spec-origin.json — provenance for this spec-compiled import
+  const specOrigin: SpecOrigin = {
+    schemaVersion: 1,
+    engine: ir.engine.name,
+    version: ir.engine.version ?? '0.0.0',
+    compile_hash: ir.metadata.compile_hash,
+    spec_sha: inputHash,
+    importedAt: new Date().toISOString(),
+    dagId: ir.dag_id,
+  };
+  const specOriginPath = writeSpecOrigin(repoRoot, specOrigin);
+
+  // Write spec-import receipt
+  const specImportReceipt: SpecImportReceipt = {
+    schemaVersion: 1,
+    type: 'spec-import',
+    specOrigin,
+    dagHash,
+    inputHash,
+    timestamp: new Date().toISOString(),
+  };
+  const specImportReceiptPath = writeSpecImportReceipt(repoRoot, specImportReceipt);
+
   // Write receipt
   let gitSha = 'unknown';
   try { gitSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim(); } catch {}
@@ -3291,6 +3342,8 @@ function cmdImportCompiled(note: string, irPath: string | undefined) {
     term: dag.term,
     path: outPath,
     receipt: receiptPath,
+    specOrigin: specOriginPath,
+    specImportReceipt: specImportReceiptPath,
     dag_hash: dagHash.slice(0, 12),
     input_hash: inputHash.slice(0, 12),
     spawnPlan,
