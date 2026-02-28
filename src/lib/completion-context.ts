@@ -1,6 +1,6 @@
 // @module completion-context
 // @description Receipt-only completion store — single truth regime for node completion
-// @exports CompletionStore
+// @exports CompletionStore, CompletionStoreError
 // @entry roadmap/completion
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -36,11 +36,43 @@ export class CompletionStore {
     return this.records.get(nodeId)?.validationChecks ?? [];
   }
 
+  /** Does this node have any record (passing or failing)? */
+  hasRecord(nodeId: string): boolean {
+    return this.records.has(nodeId);
+  }
+
+  /** Does this node have a record with at least one failing check? */
+  hasFailing(nodeId: string): boolean {
+    const record = this.records.get(nodeId);
+    if (!record) return false;
+    if (!record.validationChecks || record.validationChecks.length === 0) return false;
+    return record.validationChecks.some(c => !c.passed);
+  }
+
+  /** Get raw completion record for a node (undefined if none). */
+  record(nodeId: string): CompletionRecordWithEvidence | undefined {
+    return this.records.get(nodeId);
+  }
+
+  /** All node IDs in the store (passing, failing, or empty checks). */
+  allIds(): Set<string> {
+    return new Set(this.records.keys());
+  }
+
   /** All node IDs with passing receipts. */
   passingIds(): Set<string> {
     const ids = new Set<string>();
     for (const [id] of this.records) {
       if (this.hasPassing(id)) ids.add(id);
+    }
+    return ids;
+  }
+
+  /** All node IDs with at least one failing check. */
+  failingIds(): Set<string> {
+    const ids = new Set<string>();
+    for (const [id] of this.records) {
+      if (this.hasFailing(id)) ids.add(id);
     }
     return ids;
   }
@@ -86,6 +118,13 @@ export class CompletionStore {
       });
     }
     return new CompletionStore(records);
+  }
+
+  /** Test fixture — build from explicit records (passing, failing, or empty checks). */
+  static fromRecords(records: CompletionRecordWithEvidence[]): CompletionStore {
+    const map = new Map<string, CompletionRecordWithEvidence>();
+    for (const r of records) map.set(r.nodeId, r);
+    return new CompletionStore(map);
   }
 }
 
