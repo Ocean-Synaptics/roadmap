@@ -4050,6 +4050,36 @@
       "idempotent": true,
       "mode": "execute"
     },
+    "fix-artifact-field": {
+      "id": "fix-artifact-field",
+      "desc": "Fix artifact-exists field mismatch: accept both target and path at runtime",
+      "produces": [],
+      "consumes": ["src/protocol.ts", "src/lib/compile-prompts.ts"],
+      "deps": ["phase-26-init"],
+      "validate": [{ "type": "shell", "command": "npx tsc --noEmit" }],
+      "idempotent": true,
+      "mode": "execute"
+    },
+    "fix-orient-completions": {
+      "id": "fix-orient-completions",
+      "desc": "Fix orient CLI: pass completedIds through crossOrient to orient",
+      "produces": [],
+      "consumes": ["bin/roadmap.ts", "src/lib/cross-orient.ts"],
+      "deps": ["phase-26-init"],
+      "validate": [{ "type": "shell", "command": "npx tsc --noEmit" }],
+      "idempotent": true,
+      "mode": "execute"
+    },
+    "fix-post-commit-hook": {
+      "id": "fix-post-commit-hook",
+      "desc": "Fix post-commit hook: track bash replacement, remove deleted .ts",
+      "produces": ["hooks/post-commit"],
+      "consumes": [],
+      "deps": ["phase-26-init"],
+      "validate": [{ "type": "artifact-exists", "target": "hooks/post-commit" }],
+      "idempotent": true,
+      "mode": "execute"
+    },
     "phase-26-term": {
       "id": "phase-26-term",
       "desc": "Phase 26 complete: Example phase demonstrates expansion and parallel execution",
@@ -4060,7 +4090,10 @@
         "examples/integration.md"
       ],
       "deps": [
-        "example-integration"
+        "example-integration",
+        "fix-artifact-field",
+        "fix-orient-completions",
+        "fix-post-commit-hook"
       ],
       "validate": [
         {
