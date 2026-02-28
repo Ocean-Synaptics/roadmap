@@ -11,6 +11,7 @@ import type { Graph } from '../protocol.ts';
 import { loadCompletions, getCompletedNodeIds } from './completion-tracker.ts';
 import { validatePlanSelection } from './plan-selection.ts';
 import { isSpecOrigin, SPEC_ORIGIN_PATH } from './spec-origin.ts';
+import { loadPeers } from './federation.ts';
 
 export interface Violation {
   code: string;
@@ -230,6 +231,75 @@ function checkArtifactOnlyCompletions(repoRoot: string, dag: Graph<string>): Vio
   }];
 }
 
+// Cross-repo dependency verification: peer::<repoId>::<nodeId> deps
+function checkCrossRepoDeps(repoRoot: string, dag: Graph<string>): Violation[] {
+  const violations: Violation[] = [];
+  const dagNodes = dag.nodes as unknown as Record<string, { deps?: readonly string[] }>;
+
+  // Collect all cross-repo deps
+  const crossDeps: { nodeId: string; peerId: string; remoteNodeId: string }[] = [];
+  for (const [nodeId, spec] of Object.entries(dagNodes)) {
+    for (const dep of spec.deps ?? []) {
+      const match = dep.match(/^peer::([^:]+)::(.+)$/);
+      if (match) {
+        crossDeps.push({ nodeId, peerId: match[1], remoteNodeId: match[2] });
+      }
+    }
+  }
+
+  if (crossDeps.length === 0) return [];
+
+  const peers = loadPeers(repoRoot);
+  const peerMap = new Map(peers.map(p => [p.id, p]));
+
+  for (const { nodeId, peerId, remoteNodeId } of crossDeps) {
+    const peer = peerMap.get(peerId);
+    if (!peer) {
+      violations.push({
+        code: 'UNKNOWN_PEER',
+        message: `Node "${nodeId}" depends on peer "${peerId}" which is not in federation peers`,
+        nodeIds: [nodeId],
+        fix: [`roadmap federation add --id ${peerId} --path <repo-path> --note "add peer"`],
+      });
+      continue;
+    }
+
+    // Check if the remote node is completed
+    const completedPath = join(peer.path, '.roadmap', 'completed.json');
+    if (!existsSync(completedPath)) {
+      violations.push({
+        code: 'PEER_DEP_UNSATISFIED',
+        message: `Node "${nodeId}" depends on peer "${peerId}::${remoteNodeId}" but peer has no completion store`,
+        nodeIds: [nodeId],
+        fix: [`Complete node "${remoteNodeId}" in peer repo at ${peer.path}`],
+      });
+      continue;
+    }
+
+    try {
+      const records = JSON.parse(readFileSync(completedPath, 'utf-8'));
+      const completedIds = new Set(Array.isArray(records) ? records.map((r: any) => r.nodeId) : []);
+      if (!completedIds.has(remoteNodeId)) {
+        violations.push({
+          code: 'PEER_DEP_UNSATISFIED',
+          message: `Node "${nodeId}" depends on peer "${peerId}::${remoteNodeId}" which is not yet completed`,
+          nodeIds: [nodeId],
+          fix: [`Complete node "${remoteNodeId}" in peer repo at ${peer.path}`],
+        });
+      }
+    } catch {
+      violations.push({
+        code: 'PEER_DEP_UNSATISFIED',
+        message: `Node "${nodeId}" depends on peer "${peerId}::${remoteNodeId}" but peer completion store is unreadable`,
+        nodeIds: [nodeId],
+        fix: [`Check peer repo at ${peer.path}`],
+      });
+    }
+  }
+
+  return violations;
+}
+
 export function runVerify(repoRoot: string): VerifyResult {
   const headPath = join(repoRoot, '.roadmap', 'head.json');
   if (!existsSync(headPath)) {
@@ -265,6 +335,7 @@ export function runVerify(repoRoot: string): VerifyResult {
     ...checkStructure(dag),
     ...checkContracts(dag),
     ...checkSpecOrigin(repoRoot),
+    ...checkCrossRepoDeps(repoRoot, dag),
   ];
 
   const warnings = [
