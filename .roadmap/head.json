@@ -560,7 +560,7 @@
       "id": "rkg3-fixtures",
       "desc": "Fixture suite for RKG-3. Tests: argv validator roundtrip (no shell injection), git index isolation (two workers, no index collision), hook scoping (staged-only validation), strategy overlay application, dispatch receipt gating (reject on stale orientSha), verify cache hit/miss by treeSha.",
       "produces": [
-        "src/tests/rkg3.test.ts"
+        "tests/rkg3.test.ts"
       ],
       "consumes": [],
       "deps": [
@@ -573,7 +573,7 @@
       "validate": [
         {
           "type": "shell",
-          "command": "npx vitest run src/tests/rkg3.test.ts"
+          "command": "npx vitest run tests/rkg3.test.ts"
         }
       ],
       "idempotent": true
@@ -582,7 +582,7 @@
       "id": "rkg4-fixtures",
       "desc": "Fixture DAGs + expected outputs for RKG-4. Tests: parallelOrder stability across runs (same DAG → same order), BFS reachability witness (path from init to each node), contract closure violations with ancestor witness, batch conflict detection (two nodes same produces path), plan receipt in orient output.",
       "produces": [
-        "src/tests/rkg4.test.ts"
+        "tests/rkg4.test.ts"
       ],
       "consumes": [],
       "deps": [
@@ -595,7 +595,7 @@
       "validate": [
         {
           "type": "shell",
-          "command": "npx vitest run src/tests/rkg4.test.ts"
+          "command": "npx vitest run tests/rkg4.test.ts"
         }
       ],
       "idempotent": true
@@ -604,7 +604,7 @@
       "id": "rkg5-fixtures",
       "desc": "Adversarial fixture suite for RKG-5. Tests: guard registry (unknown guard = hard error), orphan statement rejection, CheckSet rollback evidence written on failure, candidate receipt written per candidate, pareto front stable under noise quantization, GalleryFailure routing (each failure type carries evidence).",
       "produces": [
-        "src/tests/rkg5.test.ts"
+        "tests/rkg5.test.ts"
       ],
       "consumes": [],
       "deps": [
@@ -617,7 +617,7 @@
       "validate": [
         {
           "type": "shell",
-          "command": "npx vitest run src/tests/rkg5.test.ts"
+          "command": "npx vitest run tests/rkg5.test.ts"
         }
       ],
       "idempotent": true
@@ -644,7 +644,7 @@
       "id": "rkg6-fixtures",
       "desc": "Intent guard fixture suite for RKG-6. Tests: structured diagnosis (no string keyword matching), intentPolicy minConfidence gate (reject orient advancement below threshold), evidence algebra validation (counter-evidence blocks confirmation), sibling invariant enforcement (same produces path → rejection), convergence stall escalation.",
       "produces": [
-        "src/tests/rkg6.test.ts"
+        "tests/rkg6.test.ts"
       ],
       "consumes": [],
       "deps": [
@@ -657,7 +657,7 @@
       "validate": [
         {
           "type": "shell",
-          "command": "npx vitest run src/tests/rkg6.test.ts"
+          "command": "npx vitest run tests/rkg6.test.ts"
         }
       ],
       "idempotent": true
@@ -666,10 +666,10 @@
       "id": "term",
       "desc": "All RKG-3/4/5/6 governance hardening complete. All fixture suites pass. TypeScript clean. Full test suite green.",
       "produces": [
-        "src/tests/rkg3.test.ts",
-        "src/tests/rkg4.test.ts",
-        "src/tests/rkg5.test.ts",
-        "src/tests/rkg6.test.ts"
+        "tests/rkg3.test.ts",
+        "tests/rkg4.test.ts",
+        "tests/rkg5.test.ts",
+        "tests/rkg6.test.ts"
       ],
       "consumes": [],
       "deps": [

@@ -174,18 +174,18 @@ dagId: rkg-governess
 
 - [P3] rkg3-fixtures: Fixture suite for RKG-3. Tests: argv validator roundtrip (no shell injection), git index isolation (two workers, no index collision), hook scoping (staged-only validation), strategy overlay application, dispatch receipt gating (reject on stale orientSha), verify cache hit/miss by treeSha.
   - depends: rkg3-git-index, rkg3-hook-scoping, rkg3-strategy-ab, rkg3-dispatch-enforcement, rkg3-perf-cache
-  - produces: src/tests/rkg3.test.ts
-  - validate: shell:npx vitest run src/tests/rkg3.test.ts
+  - produces: tests/rkg3.test.ts
+  - validate: shell:npx vitest run tests/rkg3.test.ts
 
 - [P3] rkg4-fixtures: Fixture DAGs + expected outputs for RKG-4. Tests: parallelOrder stability across runs (same DAG → same order), BFS reachability witness (path from init to each node), contract closure violations with ancestor witness, batch conflict detection (two nodes same produces path), plan receipt in orient output.
   - depends: rkg4-stable-order, rkg4-reachability, rkg4-contract-closure, rkg4-batch-gate, rkg4-orient-plan-receipt
-  - produces: src/tests/rkg4.test.ts
-  - validate: shell:npx vitest run src/tests/rkg4.test.ts
+  - produces: tests/rkg4.test.ts
+  - validate: shell:npx vitest run tests/rkg4.test.ts
 
 - [P3] rkg5-fixtures: Adversarial fixture suite for RKG-5. Tests: guard registry (unknown guard = hard error), orphan statement rejection, CheckSet rollback evidence written on failure, candidate receipt written per candidate, pareto front stable under noise quantization, GalleryFailure routing (each failure type carries evidence).
   - depends: rkg5-guard-policy, rkg5-statement-ownership, rkg5-checkset, rkg5-pareto-governance, rkg5-failure-routing
-  - produces: src/tests/rkg5.test.ts
-  - validate: shell:npx vitest run src/tests/rkg5.test.ts
+  - produces: tests/rkg5.test.ts
+  - validate: shell:npx vitest run tests/rkg5.test.ts
 
 - [P3] rkg5-cli-explain: FR-GB-009 — `roadmap gallery explain` + `roadmap blend explain` commands. gallery explain <candidateId>: reads candidate receipt, outputs provenance chain. blend explain <blendId>: reads blend ledger entry, outputs guard results + statement ownership + check set. Add both commands to bin/roadmap.ts.
   - depends: rkg5-blend-receipt
@@ -194,13 +194,13 @@ dagId: rkg-governess
 
 - [P3] rkg6-fixtures: Intent guard fixture suite for RKG-6. Tests: structured diagnosis (no string keyword matching), intentPolicy minConfidence gate (reject orient advancement below threshold), evidence algebra validation (counter-evidence blocks confirmation), sibling invariant enforcement (same produces path → rejection), convergence stall escalation.
   - depends: rkg6-structured-diagnosis, rkg6-intent-status-policy, rkg6-evidence-algebra, rkg6-expansion-receipt, rkg6-convergence-metrics
-  - produces: src/tests/rkg6.test.ts
-  - validate: shell:npx vitest run src/tests/rkg6.test.ts
+  - produces: tests/rkg6.test.ts
+  - validate: shell:npx vitest run tests/rkg6.test.ts
 
 ## Phase 4: Terminal
 
 - [P4] term: All RKG-3/4/5/6 governance hardening complete. All fixture suites pass. TypeScript clean. Full test suite green.
   - depends: rkg3-fixtures, rkg4-fixtures, rkg5-fixtures, rkg5-cli-explain, rkg6-fixtures, rkg4-merge-branch-witness, rkg4-env-bypass, rkg4-algo-report, rkg3-dispatch-enforcement, rkg6-rate-card
-  - produces: src/tests/rkg3.test.ts, src/tests/rkg4.test.ts, src/tests/rkg5.test.ts, src/tests/rkg6.test.ts
+  - produces: tests/rkg3.test.ts, tests/rkg4.test.ts, tests/rkg5.test.ts, tests/rkg6.test.ts
   - validate: shell:npx tsc --noEmit
   - validate: shell:npx vitest run
