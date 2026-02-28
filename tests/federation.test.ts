@@ -114,6 +114,29 @@ describe('federation', () => {
     });
   });
 
+  describe('cross-repo deps', () => {
+    it('checkCrossRepoDeps detects UNKNOWN_PEER', async () => {
+      const { runVerify } = await import('../src/lib/verify.js');
+      const tmpRepo = makeTmpDir();
+      mkdirSync(join(tmpRepo, '.roadmap'), { recursive: true });
+      writeFileSync(join(tmpRepo, '.roadmap', 'head.json'), JSON.stringify({
+        id: 'cross-test',
+        desc: 'test',
+        init: 'init',
+        term: 'term',
+        nodes: {
+          init: { id: 'init', desc: 'Init', produces: [], consumes: [], deps: [] },
+          task: { id: 'task', desc: 'T', produces: [], consumes: [], deps: ['init', 'peer::unknown::remote-node'] },
+          term: { id: 'term', desc: 'Term', produces: [], consumes: [], deps: ['task'] },
+        },
+      }));
+      const result = runVerify(tmpRepo);
+      const peerViolation = result.violations.find(v => v.code === 'UNKNOWN_PEER');
+      expect(peerViolation).toBeDefined();
+      rmSync(tmpRepo, { recursive: true, force: true });
+    });
+  });
+
   describe('federationStatus', () => {
     it('reports status across peers', () => {
       makePeerRepo(peerA, 'dag-a', {
