@@ -62,6 +62,7 @@ import { render, renderDagLayers, type RenderOpts, type RenderModel, type Render
 import { resolveWidth } from '../src/lib/render/layout.ts';
 import { renderOrient, renderChart, renderPlanGallery, renderPlanSelect, renderPlanStatus, renderDoctor, renderValidate, renderTrail, renderRemaining } from '../src/lib/cli-human.ts';
 import type { OrientData, ChartData, GalleryData, PlanSelectData, PlanStatusData, DoctorData, ValidateData, TrailData, RemainingData } from '../src/lib/cli-human.ts';
+import { ensureRunDir, writeMeta, type RunId, type RunMeta, generateRunId } from '../src/lib/metaflow/index.ts';
 
 const rawArgs = process.argv.slice(2);
 const repoRoot = process.cwd();
@@ -94,6 +95,10 @@ function deriveEnvelopeCmd(): string {
     if (args[1] === 'generate') return 'spec.generate';
     if (args[1] === 'compile') return 'spec.compile';
     return 'spec';
+  }
+  if (cmd === 'mf') {
+    if (args[1] === 'init') return 'mf.init';
+    return 'mf';
   }
   return cmd;
 }
@@ -328,6 +333,7 @@ async function main() {
         json({ error: 'Unknown plan subcommand', fix: 'roadmap plan --gallery | plan select <id> --note "..." | plan status | plan overlay --select <id> --note "..." | plan schedule --note "..."' });
         process.exit(1);
         return;
+      case 'mf':        return cmdMf(note!);
       case 'help':
       case '--help':
       case '-h':        return cmdHelp();
@@ -4812,6 +4818,54 @@ function cmdSync(note: string) {
       count: allRoadmaps.length,
       timestamp: new Date().toISOString(),
     });
+  }
+}
+
+function cmdMf(note: string) {
+  const sub = args[1];
+  switch (sub) {
+    case 'init': {
+      // Parse --run <id> (optional)
+      const runIdx = args.indexOf('--run');
+      let headSha = '';
+      try {
+        headSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+      } catch {
+        headSha = '000000000000';
+      }
+      const runId: RunId = runIdx !== -1 && args[runIdx + 1]
+        ? args[runIdx + 1] as RunId
+        : generateRunId(headSha);
+
+      ensureRunDir(runId, repoRoot);
+
+      // Read strictReceipts from config (default true)
+      const configPath = join(repoRoot, '.roadmap', 'metaflow', 'config.json');
+      let strictReceipts = true;
+      if (existsSync(configPath)) {
+        try {
+          const cfg = JSON.parse(readFileSync(configPath, 'utf8'));
+          if (typeof cfg.strictReceipts === 'boolean') strictReceipts = cfg.strictReceipts;
+        } catch { /* use default */ }
+      }
+
+      const meta: RunMeta = {
+        schema_version: 1,
+        runId,
+        repoRoot: process.cwd(),
+        headSha,
+        createdAt: new Date().toISOString(),
+        strictReceipts,
+      };
+      writeMeta(runId, meta, repoRoot);
+
+      json({ cmd: 'mf.init', runId, repoRoot: process.cwd(), headSha, strictReceipts });
+      recordTrail({ ts: new Date().toISOString(), cmd: 'mf.init', note, repo: basename(repoRoot), position: ['mf-init'], level: 0 });
+      return;
+    }
+    default:
+      json({ error: `Unknown mf subcommand: ${sub}`, fix: 'roadmap mf init --note "..."' });
+      process.exit(1);
   }
 }
 
