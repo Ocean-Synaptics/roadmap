@@ -1,334 +1,145 @@
 {
-  "id": "fr-gov-010-spec-003",
-  "desc": "Plan-before-change gate (FR-GOV-010) + spec-driven DAG front door (FR-SPEC-003) + certify primitive",
+  "id": "us1-gitsha-gov012",
+  "desc": "US1 gitSha completion provenance + FR-GOV-012 env-var bypass elimination",
   "init": "init",
   "term": "term",
   "nodes": {
     "init": {
       "id": "init",
-      "desc": "Existing codebase: protocol types, spec pipeline, receipt infra, CI workflow",
+      "desc": "Existing codebase: completion-evidence.ts, protocol.ts validators, bin/roadmap.ts, CI workflow",
       "produces": [
+        "src/lib/completion-evidence.ts",
         "src/protocol.ts",
-        "src/lib/spec-ir.ts",
         "bin/roadmap.ts",
         ".github/workflows/ci.yml"
       ],
       "consumes": [],
       "deps": [],
       "validate": [
-        { "type": "artifact-exists", "target": "src/protocol.ts" },
-        { "type": "artifact-exists", "target": "bin/roadmap.ts" },
-        { "type": "artifact-exists", "target": ".github/workflows/ci.yml" }
+        { "type": "artifact-exists", "target": "src/lib/completion-evidence.ts" },
+        { "type": "artifact-exists", "target": "bin/roadmap.ts" }
       ],
       "idempotent": true
     },
 
-    "rm-node-type-ext": {
-      "id": "rm-node-type-ext",
-      "desc": "FR-GOV-010: Add track?: number and affects?: readonly string[] to NodeSpec. Validate track/affects in define().",
+    "rm-gitsha-interface": {
+      "id": "rm-gitsha-interface",
+      "desc": "US1: Add gitSha?: string to CompletionRecordWithEvidence interface. Emit gitSha in saveCompletionWithEvidence() using execSync('git rev-parse HEAD').",
       "produces": [
-        "src/protocol.ts",
-        "tests/node-type-ext.test.ts"
+        "src/lib/completion-evidence.ts"
       ],
       "consumes": [
-        "src/protocol.ts"
-      ],
-      "deps": ["init"],
-      "validate": [
-        { "type": "shell", "command": "npx vitest run tests/node-type-ext.test.ts --reporter=dot" }
-      ],
-      "idempotent": true
-    },
-
-    "rm-plan-gate-script": {
-      "id": "rm-plan-gate-script",
-      "desc": "FR-GOV-010: scripts/ci/roadmap-plan-gate.ts — collect changed governed files, assert qualifying Track 0 rm-* node in head.json delta",
-      "produces": [
-        "scripts/ci/roadmap-plan-gate.ts"
-      ],
-      "consumes": [
-        "src/protocol.ts"
-      ],
-      "ambient": [
-        ".github/workflows/ci.yml"
-      ],
-      "deps": ["rm-node-type-ext"],
-      "validate": [
-        { "type": "shell", "command": "npx tsc --noEmit" },
-        { "type": "artifact-exists", "target": "scripts/ci/roadmap-plan-gate.ts" }
-      ],
-      "idempotent": true
-    },
-
-    "rm-plan-gate-tests": {
-      "id": "rm-plan-gate-tests",
-      "desc": "FR-GOV-010: Unit tests for plan-gate — at least 3 fixtures: governed-no-plan (fail), governed-with-plan (pass), docs-only (no-op pass)",
-      "produces": [
-        "tests/plan-gate.test.ts"
-      ],
-      "consumes": [
-        "scripts/ci/roadmap-plan-gate.ts"
-      ],
-      "deps": ["rm-plan-gate-script"],
-      "validate": [
-        { "type": "shell", "command": "npx vitest run tests/plan-gate.test.ts --reporter=dot" }
-      ],
-      "idempotent": true
-    },
-
-    "rm-plan-gate-ci": {
-      "id": "rm-plan-gate-ci",
-      "desc": "FR-GOV-010: Wire roadmap-plan-gate into .github/workflows/ci.yml promote lane",
-      "produces": [
-        ".github/workflows/ci.yml"
-      ],
-      "consumes": [
-        "scripts/ci/roadmap-plan-gate.ts",
-        ".github/workflows/ci.yml"
-      ],
-      "deps": ["rm-plan-gate-tests"],
-      "validate": [
-        { "type": "shell", "command": "grep -q 'roadmap-plan-gate' .github/workflows/ci.yml" }
-      ],
-      "idempotent": true
-    },
-
-    "rm-head-spec-meta": {
-      "id": "rm-head-spec-meta",
-      "desc": "FR-SPEC-003: Add spec? metadata block to Graph type — compiled_sha256, engine, inputs[]",
-      "produces": [
-        "src/protocol.ts",
-        "tests/head-spec-meta.test.ts"
-      ],
-      "consumes": [
-        "src/protocol.ts"
-      ],
-      "deps": ["init"],
-      "validate": [
-        { "type": "shell", "command": "npx vitest run tests/head-spec-meta.test.ts --reporter=dot" }
-      ],
-      "idempotent": true
-    },
-
-    "rm-receipt-chain": {
-      "id": "rm-receipt-chain",
-      "desc": "FR-SPEC-003: Define receipt chain types — compiled_sha256, dag_sha256, engine identity, input hashes. Shared type file.",
-      "produces": [
-        "src/lib/receipt-types.ts",
-        "tests/receipt-chain.test.ts"
-      ],
-      "consumes": [
-        "src/lib/spec-ir.ts"
-      ],
-      "deps": ["init"],
-      "validate": [
-        { "type": "shell", "command": "npx vitest run tests/receipt-chain.test.ts --reporter=dot" }
-      ],
-      "idempotent": true
-    },
-
-    "rm-cli-spec-receipts": {
-      "id": "rm-cli-spec-receipts",
-      "desc": "FR-SPEC-003: Update spec compile + import --spec-compiled to write receipt with compiled_sha256 and head metadata block",
-      "produces": [
-        "bin/roadmap.ts"
-      ],
-      "consumes": [
-        "src/protocol.ts",
-        "src/lib/spec-ir.ts",
-        "src/lib/receipt-types.ts",
-        "bin/roadmap.ts"
-      ],
-      "deps": ["rm-head-spec-meta", "rm-receipt-chain"],
-      "validate": [
-        { "type": "shell", "command": "npx tsc --noEmit" },
-        { "type": "shell", "command": "npx vitest run tests/receipt-chain.test.ts tests/head-spec-meta.test.ts --reporter=dot" }
-      ],
-      "idempotent": true
-    },
-
-    "rm-spec-origin-gate": {
-      "id": "rm-spec-origin-gate",
-      "desc": "FR-SPEC-003: scripts/ci/roadmap-spec-origin-gate.ts — assert head.json changes have matching spec-compile + import receipts with hash chain",
-      "produces": [
-        "scripts/ci/roadmap-spec-origin-gate.ts"
-      ],
-      "consumes": [
-        "src/protocol.ts",
-        "src/lib/receipt-types.ts"
-      ],
-      "deps": ["rm-cli-spec-receipts"],
-      "validate": [
-        { "type": "shell", "command": "npx tsc --noEmit" },
-        { "type": "artifact-exists", "target": "scripts/ci/roadmap-spec-origin-gate.ts" }
-      ],
-      "idempotent": true
-    },
-
-    "rm-spec-origin-tests": {
-      "id": "rm-spec-origin-tests",
-      "desc": "FR-SPEC-003: Unit tests for spec-origin gate — at least 3 fixtures: manual-edit (fail), spec-pipeline (pass), hash-mismatch (fail)",
-      "produces": [
-        "tests/spec-origin-gate.test.ts"
-      ],
-      "consumes": [
-        "scripts/ci/roadmap-spec-origin-gate.ts"
-      ],
-      "deps": ["rm-spec-origin-gate"],
-      "validate": [
-        { "type": "shell", "command": "npx vitest run tests/spec-origin-gate.test.ts --reporter=dot" }
-      ],
-      "idempotent": true
-    },
-
-    "rm-spec-origin-ci": {
-      "id": "rm-spec-origin-ci",
-      "desc": "FR-SPEC-003: Wire roadmap-spec-origin-gate into .github/workflows/ci.yml promote lane",
-      "produces": [
-        ".github/workflows/ci.yml"
-      ],
-      "consumes": [
-        "scripts/ci/roadmap-spec-origin-gate.ts",
-        ".github/workflows/ci.yml"
-      ],
-      "deps": ["rm-spec-origin-tests"],
-      "validate": [
-        { "type": "shell", "command": "grep -q 'roadmap-spec-origin-gate' .github/workflows/ci.yml" }
-      ],
-      "idempotent": true
-    },
-
-    "rm-certify-cmd": {
-      "id": "rm-certify-cmd",
-      "desc": "Add `roadmap certify <node>` — re-run validators on a completed node, write structured receipt if pass, reject if fail. No manual marking.",
-      "produces": [
-        "bin/roadmap.ts"
-      ],
-      "consumes": [
-        "bin/roadmap.ts",
-        "src/protocol.ts",
         "src/lib/completion-evidence.ts"
       ],
       "deps": ["init"],
       "validate": [
-        { "type": "shell", "command": "npx tsc --noEmit" }
+        { "type": "shell", "command": "npx tsc --noEmit" },
+        { "type": "shell", "command": "npx vitest run tests/completion-gitsha.test.ts --reporter=dot" }
       ],
       "idempotent": true
     },
 
-    "rm-certify-tests": {
-      "id": "rm-certify-tests",
-      "desc": "Tests for certify: node with passing validators gets receipt, node with failing validators is rejected, node not in DAG errors",
+    "rm-gitsha-cli-emit": {
+      "id": "rm-gitsha-cli-emit",
+      "desc": "US1: Wire gitSha into cmdComplete and cmdCertify — pass current git SHA to saveCompletionWithEvidence(). Verify completed.json entries include gitSha after node completion.",
       "produces": [
-        "tests/certify-cmd.test.ts"
-      ],
-      "consumes": [
-        "bin/roadmap.ts"
-      ],
-      "deps": ["rm-certify-cmd"],
-      "validate": [
-        { "type": "shell", "command": "npx vitest run tests/certify-cmd.test.ts --reporter=dot" }
-      ],
-      "idempotent": true
-    },
-
-    "rm-plan-select-cmd": {
-      "id": "rm-plan-select-cmd",
-      "desc": "Add `roadmap plan select <candidateId>`; write plan-select receipt bound to head.json sha256; include optional galleryHash + note.",
-      "produces": [
-        "src/lib/receipts/plan-select.ts",
-        "bin/roadmap.ts"
+        "bin/roadmap.ts",
+        "tests/completion-gitsha.test.ts"
       ],
       "consumes": [
         "bin/roadmap.ts",
-        "src/lib/receipt-types.ts"
+        "src/lib/completion-evidence.ts"
       ],
-      "deps": ["rm-certify-cmd", "rm-receipt-chain"],
+      "deps": ["rm-gitsha-interface"],
       "validate": [
         { "type": "shell", "command": "npx tsc --noEmit" },
-        { "type": "shell", "command": "npx vitest run tests/plan-select.test.ts --reporter=dot" }
+        { "type": "shell", "command": "npx vitest run tests/completion-gitsha.test.ts --reporter=dot" }
       ],
       "idempotent": true
     },
 
-    "rm-plan-selected-pointer": {
-      "id": "rm-plan-selected-pointer",
-      "desc": "Add `.roadmap/receipts/PLAN_SELECTED.json` pointer to authoritative plan-select receipt; update atomically on selection.",
+    "rm-gitsha-ci-gate": {
+      "id": "rm-gitsha-ci-gate",
+      "desc": "US1: CI gate script scripts/ci/roadmap-gitsha-gate.ts — verify all completion records in completed.json have gitSha field. Wire into CI promote lane.",
       "produces": [
-        "src/lib/receipts/plan-selected-pointer.ts"
+        "scripts/ci/roadmap-gitsha-gate.ts",
+        ".github/workflows/ci.yml"
       ],
       "consumes": [
-        "src/lib/receipts/plan-select.ts"
+        "src/lib/completion-evidence.ts",
+        ".github/workflows/ci.yml"
       ],
-      "deps": ["rm-plan-select-cmd"],
+      "deps": ["rm-gitsha-cli-emit"],
       "validate": [
         { "type": "shell", "command": "npx tsc --noEmit" },
-        { "type": "shell", "command": "npx vitest run tests/plan-selected-pointer.test.ts --reporter=dot" }
+        { "type": "shell", "command": "grep -q 'roadmap-gitsha-gate' .github/workflows/ci.yml" }
       ],
       "idempotent": true
     },
 
-    "rm-plan-exec-gate": {
-      "id": "rm-plan-exec-gate",
-      "desc": "Gate execution/dispatch commands on valid plan selection receipt: require PLAN_SELECTED.json + referenced receipt; headSha must match current head.json sha256.",
+    "rm-env-audit-script": {
+      "id": "rm-env-audit-script",
+      "desc": "FR-GOV-012: tools/audit-env-bypasses.ts — scan src/, bin/, scripts/, tests/ for process.env usage. Classify as bypass/config/test-harness. Exit 1 if any bypass keys outside tests/.",
       "produces": [
-        "src/lib/plan-gate.ts",
-        "bin/roadmap.ts"
-      ],
-      "consumes": [
-        "bin/roadmap.ts",
-        "src/lib/receipts/plan-selected-pointer.ts"
-      ],
-      "deps": ["rm-plan-selected-pointer"],
-      "validate": [
-        { "type": "shell", "command": "npx tsc --noEmit" },
-        { "type": "shell", "command": "npx vitest run tests/plan-exec-gate.test.ts --reporter=dot" }
-      ],
-      "idempotent": true
-    },
-
-    "rm-plan-status-cmd": {
-      "id": "rm-plan-status-cmd",
-      "desc": "Add `roadmap plan status` showing: selected candidateId, headSha match/mismatch, receipt file, selectedAt, and actionable remediation if invalid.",
-      "produces": [
-        "bin/roadmap.ts"
+        "tools/audit-env-bypasses.ts"
       ],
       "consumes": [
         "bin/roadmap.ts",
-        "src/lib/plan-gate.ts"
+        "src/protocol.ts"
       ],
-      "deps": ["rm-plan-exec-gate"],
+      "deps": ["init"],
       "validate": [
         { "type": "shell", "command": "npx tsc --noEmit" },
-        { "type": "shell", "command": "npx vitest run tests/plan-status.test.ts --reporter=dot" }
+        { "type": "shell", "command": "npx vitest run tests/env-audit.test.ts --reporter=dot" }
       ],
       "idempotent": true
     },
 
-    "rm-plan-select-ci": {
-      "id": "rm-plan-select-ci",
-      "desc": "CI gate: any workflow step invoking execution/dispatch must first run `roadmap plan status` and fail if invalid; prevents agent orchestration without selection on CI runners.",
+    "rm-remove-env-bypasses": {
+      "id": "rm-remove-env-bypasses",
+      "desc": "FR-GOV-012: Remove SKIP_PLAN_GATE env var from production paths (bin/roadmap.ts). Replace with --skip-plan-gate CLI flag that writes non-passing receipt. Replace ROADMAP_VALIDATING with internal ValidationContext parameter threaded through call stack.",
+      "produces": [
+        "bin/roadmap.ts",
+        "src/protocol.ts"
+      ],
+      "consumes": [
+        "bin/roadmap.ts",
+        "src/protocol.ts",
+        "tools/audit-env-bypasses.ts"
+      ],
+      "deps": ["rm-env-audit-script"],
+      "validate": [
+        { "type": "shell", "command": "npx tsc --noEmit" },
+        { "type": "shell", "command": "npx vitest run tests/env-bypass-removal.test.ts --reporter=dot" },
+        { "type": "shell", "command": "npx tsx tools/audit-env-bypasses.ts" }
+      ],
+      "idempotent": true
+    },
+
+    "rm-env-audit-ci": {
+      "id": "rm-env-audit-ci",
+      "desc": "FR-GOV-012: Wire tools/audit-env-bypasses.ts into CI as required check. Add SKIP_PLAN_GATE to the Reject SKIP_ bypass in CI step.",
       "produces": [
         ".github/workflows/ci.yml"
       ],
       "consumes": [
         ".github/workflows/ci.yml",
-        "bin/roadmap.ts"
+        "tools/audit-env-bypasses.ts"
       ],
-      "deps": ["rm-plan-status-cmd"],
+      "deps": ["rm-remove-env-bypasses"],
       "validate": [
-        { "type": "shell", "command": "npx tsc --noEmit" },
-        { "type": "shell", "command": "grep -q 'plan status' .github/workflows/ci.yml" }
+        { "type": "shell", "command": "grep -q 'audit-env-bypasses' .github/workflows/ci.yml" },
+        { "type": "shell", "command": "grep -q 'SKIP_PLAN_GATE' .github/workflows/ci.yml" }
       ],
       "idempotent": true
     },
 
     "term": {
       "id": "term",
-      "desc": "FR-GOV-010 + FR-SPEC-003 + certify primitive + plan-select gate — governance gates enforced, receipt repair available, execution requires plan selection",
+      "desc": "US1 gitSha provenance on completion records + FR-GOV-012 env-var bypass elimination — no governance decisions depend on ambient env vars",
       "produces": [],
       "consumes": [],
-      "deps": ["rm-plan-gate-ci", "rm-spec-origin-ci", "rm-certify-tests", "rm-plan-select-ci"],
+      "deps": ["rm-gitsha-ci-gate", "rm-env-audit-ci"],
       "validate": [
         { "type": "shell", "command": "npx tsc --noEmit" },
         { "type": "shell", "command": "npx vitest run --reporter=dot" }
