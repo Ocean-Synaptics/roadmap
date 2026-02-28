@@ -80,9 +80,10 @@ export async function crossOrient<T extends string>(
   repoRoot: string,
   exists?: (artifact: string) => boolean,
   retired?: ReadonlySet<string>,
+  completed?: ReadonlySet<string>,
 ): Promise<CrossOrientation> {
   const predicate = exists || fileExists(repoRoot);
-  const local = orient(g, predicate, retired);
+  const local = orient(g, predicate, retired, completed);
 
   const deps = await discoverDependencies(repoRoot);
   if (!deps.length) {

@@ -250,7 +250,7 @@ async function cmdOrient(note: string | undefined) {
   const completions = loadCompletions(repoRoot);
   const completedIds = getCompletedNodeIds(completions);
 
-  const pos = await crossOrient(dag, repoRoot, undefined, retiredSet());
+  const pos = await crossOrient(dag, repoRoot, undefined, retiredSet(), completedIds);
 
   // Filter out completed nodes from position and batchRemaining
   const filteredPosition = pos.position.filter(nodeId => !completedIds.has(nodeId));
@@ -508,17 +508,18 @@ async function cmdAdvance(note: string) {
     return;
   }
 
-  const { advanceBatch } = await import('../src/protocol.ts');
+  const { advanceBatch, validateBatch } = await import('../src/protocol.ts');
   const dag = loadDAG();
   const predicate = fileExists(repoRoot);
   const completions = loadCompletions(repoRoot);
   const completedIds = getCompletedNodeIds(completions);
+  const structuralOnly = args.includes('--structural-only');
 
   try {
     // Get current position (including explicit completions)
     const current = orient(dag, predicate, retiredSet(), completedIds);
 
-    // Validate batch is complete
+    // Validate batch is complete (artifact existence)
     if (!current.batchComplete) {
       json({
         error: 'Batch not complete',
@@ -544,6 +545,30 @@ async function cmdAdvance(note: string) {
       return;
     }
 
+    // Run validate[] rules on every node in the batch (default: strict).
+    // --structural-only skips quality gates (artifact-existence only).
+    if (!structuralOnly) {
+      const batchResult = await validateBatch(dag, current.position, predicate);
+      if (!batchResult.passed) {
+        const failures = batchResult.results
+          .filter((r: any) => !r.passed)
+          .map((r: any) => ({
+            node: r.nodeId,
+            failedRules: r.checks
+              .filter((c: any) => !c.passed)
+              .map((c: any) => ({ type: c.rule.type, evidence: c.evidence })),
+          }));
+        json({
+          error: 'Batch validation failed — quality gates block advancement',
+          currentBatch: current.position,
+          summary: batchResult.summary,
+          failures,
+          fix: 'Fix failing validations, then retry. Use --structural-only to bypass quality gates.',
+        });
+        return;
+      }
+    }
+
     // Advance to next batch (with completed nodes)
     const next = await advanceBatch(dag, predicate, retiredSet(), completedIds);
 
@@ -561,6 +586,7 @@ async function cmdAdvance(note: string) {
       nextBatch: next.position,
       nextLevel: next.level,
       complete: next.remaining.length === 0,
+      validated: !structuralOnly,
     });
   } catch (e: any) {
     json({ error: e.message || 'Failed to advance batch' });
@@ -967,7 +993,9 @@ async function cmdChart() {
   const showCritical = args.includes('--critical-path');
   const dag = loadDAG();
   const retiredIds = retiredSet();
-  const pos = await crossOrient(dag, repoRoot, undefined, retiredIds);
+  const chartCompletions = loadCompletions(repoRoot);
+  const chartCompletedIds = getCompletedNodeIds(chartCompletions);
+  const pos = await crossOrient(dag, repoRoot, undefined, retiredIds, chartCompletedIds);
   const batches = parallelOrder(dag);
   const claimStore = loadClaims(repoRoot);
   const now = new Date();
@@ -2942,7 +2970,8 @@ Commands:
   orient --next       Next batch lookahead with pre-checked conflicts
   orient --staged     Per-node isomorphism check: do staged files match a node's produces?
   orient --assign     Round-robin assign batchRemaining to --owners (JSON)
-  advance             Advance to next batch (requires current batch complete) (JSON)
+  advance             Advance to next batch — runs validate[] on all nodes (JSON)
+  advance --structural-only  Skip quality gates, advance on artifact existence only
   commit --node <id>  Stage node's produces, commit with [node: X] trailer, update git-state
   complete <node-id>  Atomic: claim → checkpoint → reorient → auto-advance if last in batch (--no-advance to suppress)
   checkpoint --label <name>  Save checkpoint (--note optional when --label given)
