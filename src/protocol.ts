@@ -14,7 +14,7 @@ export type ValidationRule =
   | { type: 'function'; target: string; fn: string }
   | { type: 'manual-approval'; target: string; reviewer?: string }
   | { type: 'expanded'; minNodes?: number }
-  | { type: 'shell'; command: string; expectExitCode?: number }
+  | { type: 'shell'; command: string | string[]; expectExitCode?: number }
   | { type: 'build-produces'; command: string; outputs: string[] }
   | { type: 'launch-check'; command: string; timeout?: number; successSignal?: string }
   | { type: 'spec-conformance'; spec: string; stories: number[]; criteria?: number[] }

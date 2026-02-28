@@ -55,20 +55,28 @@ function runId(): string {
 export async function runValidator(
   nodeId: string,
   validatorId: string,
-  command: string,
+  command: string | string[],
   repoRoot: string,
   opts?: { captureArtifacts?: boolean },
 ): Promise<ValidatorResult> {
   const env = normalizedEnv();
   const start = performance.now();
 
-  const proc = spawnSync('sh', ['-c', command], {
-    cwd: repoRoot,
-    env,
-    encoding: 'utf-8',
-    maxBuffer: 10 * 1024 * 1024,
-    timeout: 120_000,
-  });
+  const proc = Array.isArray(command)
+    ? spawnSync(command[0], command.slice(1), {
+        cwd: repoRoot,
+        env,
+        encoding: 'utf-8',
+        maxBuffer: 10 * 1024 * 1024,
+        timeout: 120_000,
+      })
+    : spawnSync('sh', ['-c', command], {
+        cwd: repoRoot,
+        env,
+        encoding: 'utf-8',
+        maxBuffer: 10 * 1024 * 1024,
+        timeout: 120_000,
+      });
 
   const durationMs = Math.round(performance.now() - start);
   const stdout = proc.stdout ?? '';

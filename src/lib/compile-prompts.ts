@@ -165,7 +165,7 @@ interface NodeSpec {
 function resolveValidateShellCommands(validate: readonly ValidationRule[]): string[] {
   const cmds: string[] = [];
   for (const rule of validate) {
-    if (rule.type === 'shell') cmds.push(rule.command);
+    if (rule.type === 'shell') cmds.push(Array.isArray(rule.command) ? rule.command.join(' ') : rule.command);
     if (rule.type === 'build-produces') cmds.push(rule.command);
     if (rule.type === 'launch-check') cmds.push(rule.command);
   }
