@@ -68,7 +68,8 @@ if [ -z "$STAGED_TEST_FILES" ]; then
   exit 1
 fi
 
-# --- Batch validation enforcement (Phase 16) ---
+# --- DAG integrity gate (FR-GOV-002) ---
+# When head.json is staged, run verify()+check() to reject broken contracts before commit.
 
 ROADMAP_FILE="${REPO_ROOT}/.roadmap/head.json"
 
@@ -76,6 +77,46 @@ ROADMAP_FILE="${REPO_ROOT}/.roadmap/head.json"
 if [ ! -f "$ROADMAP_FILE" ]; then
   exit 0
 fi
+
+# Check if head.json is in the staged changeset
+HEAD_STAGED=$(git diff --cached --name-only | grep -c '.roadmap/head.json' || true)
+
+if [ "$HEAD_STAGED" -gt 0 ]; then
+  if [ -n "$SKIP_DAG_CHECK" ]; then
+    echo "[$(date +'%Y-%m-%d %H:%M:%S')] SKIP_DAG_CHECK: $SKIP_DAG_CHECK" >> "$LOG_FILE"
+  else
+    # Gate on define() — rejects cycles, missing init/term, structural corruption.
+    # Uses inline node script to avoid full validate overhead.
+    DEFINE_RESULT=$(cd "$REPO_ROOT" && node --experimental-strip-types -e "
+      import { define } from './src/protocol.ts';
+      import { readFileSync } from 'fs';
+      try {
+        const dag = JSON.parse(readFileSync('.roadmap/head.json', 'utf-8'));
+        define(dag);
+        process.exit(0);
+      } catch(e) {
+        console.error(e.message);
+        process.exit(1);
+      }
+    " 2>&1)
+
+    if [ $? -ne 0 ]; then
+      echo "❌ Pre-commit hook: DAG integrity check failed"
+      echo ""
+      echo "head.json is staged but define() rejected the graph:"
+      echo "  $DEFINE_RESULT"
+      echo ""
+      echo "Fix the DAG before committing. Common causes: cycles, missing init/term."
+      echo ""
+      echo "To bypass this check (not recommended):"
+      echo "  SKIP_DAG_CHECK='reason' git commit"
+      echo ""
+      exit 1
+    fi
+  fi
+fi
+
+# --- Batch validation enforcement (Phase 16) ---
 
 # Check for SKIP_BATCH_COMMIT bypass
 if [ -n "$SKIP_BATCH_COMMIT" ]; then

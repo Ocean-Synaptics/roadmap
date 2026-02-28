@@ -2069,13 +2069,53 @@
       "validate": [],
       "idempotent": false
     },
+    "FR-GOV-002": {
+      "id": "FR-GOV-002",
+      "desc": "Pre-commit verify()+check() gate when head.json is staged — reject broken contracts before commit",
+      "produces": [
+        "hooks/pre-commit"
+      ],
+      "consumes": [
+        "src/protocol.ts"
+      ],
+      "deps": [
+        "phase-26-term"
+      ],
+      "validate": [
+        { "type": "artifact-exists", "target": "hooks/pre-commit" },
+        { "type": "shell", "command": "test -f hooks/pre-commit && grep -q 'verify.*check' hooks/pre-commit" }
+      ],
+      "idempotent": true
+    },
+    "FR-GOV-003": {
+      "id": "FR-GOV-003",
+      "desc": "Orient uses hasPassingReceipt() — quarantined completions (--skip-validate) do not advance batch position",
+      "produces": [
+        "bin/roadmap.ts",
+        "tests/orient-receipt-hardening.test.ts"
+      ],
+      "consumes": [
+        "src/lib/completion-evidence.ts",
+        "src/lib/completion-tracker.ts"
+      ],
+      "deps": [
+        "phase-26-term"
+      ],
+      "validate": [
+        { "type": "artifact-exists", "target": "tests/orient-receipt-hardening.test.ts" },
+        { "type": "shell", "command": "grep -q 'hasPassingReceipt' bin/roadmap.ts" }
+      ],
+      "idempotent": true
+    },
     "term": {
       "id": "term",
       "desc": "v0.5.0-consumption-ready: All phases complete, CLI binary ships, clean API surface",
       "produces": [],
       "consumes": [],
       "deps": [
-        "phase-26-term"
+        "phase-26-term",
+        "FR-GOV-002",
+        "FR-GOV-003"
       ],
       "validate": [
         {
