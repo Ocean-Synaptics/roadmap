@@ -104,7 +104,7 @@ if (_humanRenderers[_outputOpts.cmd]) {
 
 // Commands that don't require a note
 // Special case: orient/position with --check is note-exempt (silent polling)
-const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'trail', 'chart', 'install', 'dig', 'claim', 'diff', 'show', 'iter-id', 'explore', 'remaining', 'doctor', 'status']);
+const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'trail', 'chart', 'install', 'dig', 'claim', 'diff', 'show', 'iter-id', 'explore', 'remaining', 'doctor', 'status', 'explain', 'receipts', 'artifacts']);
 const isOrientCheck = (cmd === 'orient' || cmd === 'position') && args.includes('--check');
 if (isOrientCheck) {
   NOTE_EXEMPT.add('orient');
@@ -283,6 +283,9 @@ async function main() {
       case 'remaining': return cmdRemaining();
       case 'doctor':    return cmdDoctor();
       case 'status':    return cmdStatus();
+      case 'explain':   return cmdExplain();
+      case 'receipts':  return cmdReceipts();
+      case 'artifacts': return cmdArtifacts();
       case 'explore':   return await cmdExplore();
       case 'compile-prompts': return cmdCompilePrompts(note!);
       case 'compile-brief': return cmdCompileBrief(note!);
@@ -1651,6 +1654,133 @@ function cmdStatus() {
   };
 
   json(status);
+}
+
+function cmdExplain() {
+  if (!hasLocalDAG) {
+    json({ error: 'No roadmap in this repo.' });
+    process.exit(1);
+  }
+
+  const nodeIdx = args.indexOf('--node');
+  const nodeId = nodeIdx !== -1 ? args[nodeIdx + 1] : args[1];
+  if (!nodeId) {
+    json({ error: 'Missing node ID', fix: 'roadmap explain --node <id>' });
+    process.exit(1);
+  }
+
+  const dag = loadDAG();
+  const node = (dag.nodes as Record<string, any>)[nodeId];
+  if (!node) {
+    json({ error: `Node "${nodeId}" not found` });
+    process.exit(1);
+  }
+
+  const completion = loadStore();
+  const record = completion.record(nodeId);
+  const produces = (node.produces ?? []) as string[];
+
+  // Check file existence for each produces artifact
+  const produceStatus = produces.map((p: string) => ({
+    path: p,
+    exists: existsSync(join(repoRoot, p)),
+  }));
+
+  // Receipt and validator info
+  const hasReceipt = completion.hasRecord(nodeId);
+  const isPassing = completion.hasPassing(nodeId);
+  const isFailing = completion.hasFailing(nodeId);
+
+  // Failing validators
+  const failingChecks = (record?.validationChecks ?? []).filter(c => !c.passed);
+
+  // Fix suggestions
+  const fixes: string[] = [];
+  if (!hasReceipt) fixes.push(`Run: roadmap complete ${nodeId} --note "reason"`);
+  if (isFailing) fixes.push('Fix failing validators and re-complete');
+  for (const p of produceStatus) {
+    if (!p.exists) fixes.push(`Missing artifact: ${p.path}`);
+  }
+
+  json({
+    nodeId,
+    desc: node.desc,
+    mode: node.mode ?? 'execute',
+    produces: produceStatus,
+    receipt: hasReceipt ? {
+      present: true,
+      passing: isPassing,
+      failing: isFailing,
+      completedAt: record?.completedAt,
+      owner: record?.owner,
+      gitSha: record?.gitSha,
+    } : { present: false },
+    failingValidators: failingChecks,
+    fixes,
+  });
+}
+
+function cmdReceipts() {
+  if (!hasLocalDAG) {
+    json({ error: 'No roadmap in this repo.' });
+    process.exit(1);
+  }
+
+  const nodeIdx = args.indexOf('--node');
+  const filterNode = nodeIdx !== -1 ? args[nodeIdx + 1] : undefined;
+
+  const completion = loadStore();
+  const dag = loadDAG();
+  const allNodes = Object.keys(dag.nodes);
+
+  const receipts: any[] = [];
+  for (const id of allNodes) {
+    if (filterNode && id !== filterNode) continue;
+    const record = completion.record(id);
+    if (!record) continue;
+    receipts.push({
+      nodeId: id,
+      completedAt: record.completedAt,
+      owner: record.owner,
+      passing: completion.hasPassing(id),
+      checks: (record.validationChecks ?? []).length,
+      gitSha: record.gitSha,
+    });
+  }
+
+  json({ receipts, count: receipts.length });
+}
+
+function cmdArtifacts() {
+  const nodeIdx = args.indexOf('--node');
+  const filterNode = nodeIdx !== -1 ? args[nodeIdx + 1] : undefined;
+
+  const artifactsDir = join(repoRoot, '.roadmap', 'artifacts');
+  if (!existsSync(artifactsDir)) {
+    json({ artifacts: [], count: 0 });
+    return;
+  }
+
+  const artifacts: { nodeId: string; runId: string; files: string[] }[] = [];
+  try {
+    const nodes = readdirSync(artifactsDir);
+    for (const node of nodes) {
+      if (filterNode && node !== filterNode) continue;
+      const nodeDir = join(artifactsDir, node);
+      const runs = readdirSync(nodeDir);
+      for (const run of runs) {
+        const runDir = join(nodeDir, run);
+        const files = readdirSync(runDir);
+        artifacts.push({
+          nodeId: node,
+          runId: run,
+          files: files.map(f => join('.roadmap', 'artifacts', node, run, f)),
+        });
+      }
+    }
+  } catch { /* ignore */ }
+
+  json({ artifacts, count: artifacts.length });
 }
 
 function cmdDiff() {
