@@ -2,6 +2,7 @@
 // @exports BlendSpec, BlendResult, blendCandidates
 
 import type { CandidateResult, FileToIntents } from './emit-gallery.ts';
+import type { BlendReceipt } from './blend-receipt.ts';
 
 export interface BlendSpec {
   primary: string;    // candidate id — base architecture source
@@ -14,6 +15,7 @@ export interface BlendResult {
   reverted: Array<{ path: string; reason: string }>;
   deterministicPass: boolean;
   intentScore: string;            // e.g. "5/6"
+  receipt?: BlendReceipt;
 }
 
 // A donor file is substitutable only when:
