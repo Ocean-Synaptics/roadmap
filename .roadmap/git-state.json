@@ -1,5 +1,5 @@
 {
-  "lastCommit": "248fdf5880233d665a4e39050ab07282ebf233f7",
-  "timestamp": "2026-02-28T12:19:43Z",
-  "message": "FR-GOV-002: pre-commit DAG integrity gate — define() on staged head.json"
+  "lastCommit": "931ed2d81a8311dd64af2986678b5d0597f2592e",
+  "timestamp": "2026-02-28T19:59:41Z",
+  "message": "full-test-suite: fix stale env-audit test expectations — ROADMAP_VALIDATING reclassified to config in rm-remove-env-bypasses"
 }

@@ -86,7 +86,7 @@ function runCli(cmd: string, cwd: string, env?: Record<string, string>) {
     const raw = JSON.parse(r.stdout);
     if (raw && typeof raw === 'object' && 'schema_version' in raw) {
       if ('data' in raw) result = raw.data;
-      else if ('error' in raw) result = { error: raw.error.message ?? raw.error, fix: raw.error.fix?.[0], ...raw.error };
+      else if ('error' in raw) result = { ...raw.error, error: raw.error.message ?? raw.error, fix: Array.isArray(raw.error.fix) ? raw.error.fix.join('; ') : raw.error.fix };
       else result = raw;
     } else {
       result = raw;
