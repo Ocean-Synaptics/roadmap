@@ -2273,8 +2273,21 @@ async function cmdComplete(note: string) {
   const nowReady = readyNodes(dag, loadStore(), retiredSet());
   const unblocked = nowReady.map(n => n.id);
 
+  // Run shell validators through validator-runner for artifact capture
+  const nodeValidators = ((dag.nodes as Record<string, any>)[nodeId]?.validate ?? []) as any[];
+  const shellRules = nodeValidators.filter((r: any) => r.type === 'shell');
+  let validatorResults: import('../src/lib/completion-store.ts').ValidatorResult[] | undefined;
+  if (shellRules.length > 0 && !skipValidate) {
+    const { runValidator } = await import('../src/lib/validator-runner.ts');
+    validatorResults = [];
+    for (const rule of shellRules) {
+      const vr = await runValidator(nodeId, `shell:${rule.command}`, rule.command, repoRoot, { captureArtifacts: true });
+      validatorResults.push({ id: vr.id, passed: vr.passed, exitCode: vr.exitCode, stdoutSha: vr.stdoutSha, stderrSha: vr.stderrSha, artifactPaths: vr.artifactPaths });
+    }
+  }
+
   // Save completion with evidence to persistent tracking (receipt-authoritative)
-  saveCompletionWithEvidence(repoRoot, nodeId, evidenceChecks, owner, checkpoint.id);
+  saveCompletionWithEvidence(repoRoot, nodeId, evidenceChecks, owner, checkpoint.id, validatorResults);
 
   recordTrail({
     ts: new Date().toISOString(), cmd: 'complete', note,
