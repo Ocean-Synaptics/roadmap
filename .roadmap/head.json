@@ -1,95 +1,663 @@
 {
-  "id": "fr-cli-001",
-  "desc": "FR-CLI-001: JSON-native CLI with --human renderers — machine-first stdout, structured errors, schema governance",
+  "id": "rkg-all",
+  "desc": "RKG-1+2: Governance Kernel Hardening + Federated Attestation — plan-select gate, verify kernel, intake compiler, overlay, attestation, federation, cross-repo deps",
   "init": "init",
   "term": "term",
   "nodes": {
     "init": {
       "id": "init",
-      "desc": "Existing CLI: bin/roadmap.ts with json() helper, chart human output, ad-hoc console.log/error",
+      "desc": "Existing roadmap codebase — bin/roadmap.ts, src/lib/, src/protocol.ts, CompletionStore, ValidationRule",
       "produces": [
-        "bin/roadmap.ts"
+        "bin/roadmap.ts",
+        "src/protocol.ts",
+        "src/lib/completion-store.ts"
       ],
       "consumes": [],
       "deps": [],
       "validate": [
-        { "type": "artifact-exists", "target": "bin/roadmap.ts" }
+        {
+          "type": "spec-conformance",
+          "spec": ".specify/specs/rkg-all/spec.md",
+          "scenario": "Plan clarity validated against feature spec",
+          "section": "Specification"
+        }
+      ],
+      "idempotent": true,
+      "ambient": [
+        ".specify/specs/rkg-all/spec.md",
+        ".specify/specs/rkg-all/tasks.md"
+      ]
+    },
+    "plan-selection-types": {
+      "id": "plan-selection-types",
+      "desc": "Define plan-select receipt schema, PLAN_SELECTED pointer type, and selector types in src/lib/plan-selection.ts. Receipt fields: headSha, candidateId, timestamp, note. Write type guards and schema constants.",
+      "produces": [
+        "src/lib/plan-selection.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "init"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
       ],
       "idempotent": true
     },
-    "rm-cli-json-envelope": {
-      "id": "rm-cli-json-envelope",
-      "desc": "Central emit() funnel with JSON envelope (schema_version, ok, cmd, repoRoot, headSha, data/error). Replace all json() calls in bin/roadmap.ts. Define canonical error codes. Write JSON_CONTRACT.md schema doc.",
+    "completion-store-ext": {
+      "id": "completion-store-ext",
+      "desc": "Extend CompletionStore receipt record with validatorResults[], runner, commitSha, treeSha. Extend CompletionRecord type in src/lib/completion-store.ts without breaking existing reads.",
       "produces": [
-        "src/lib/cli-envelope.ts",
-        "docs/cli/JSON_CONTRACT.md"
+        "src/lib/completion-store.ts"
       ],
-      "consumes": [
-        "bin/roadmap.ts"
+      "consumes": [],
+      "deps": [
+        "init"
       ],
-      "deps": ["init"],
       "validate": [
-        { "type": "artifact-exists", "target": "src/lib/cli-envelope.ts" },
-        { "type": "artifact-exists", "target": "docs/cli/JSON_CONTRACT.md" },
-        { "type": "shell", "command": "grep -q 'schema_version' src/lib/cli-envelope.ts" },
-        { "type": "shell", "command": "grep -q 'export function emit' src/lib/cli-envelope.ts" },
-        { "type": "shell", "command": "npx tsc --noEmit" }
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
       ],
       "idempotent": true
     },
-    "rm-cli-human-renderers": {
-      "id": "rm-cli-human-renderers",
-      "desc": "Human-readable formatters for each command: plan gallery (table), plan select (summary), position/chart (ASCII), doctor (report). Wire --human and --json flags with correct precedence (default=JSON, --human=text, --json overrides --human).",
+    "spec-origin-schema": {
+      "id": "spec-origin-schema",
+      "desc": "Define spec-origin.json schema (engine, version, compile_hash, spec_sha) and spec-import receipt type in src/lib/spec-origin.ts. Add spec-origin check predicate.",
       "produces": [
-        "src/lib/cli-human.ts"
+        "src/lib/spec-origin.ts"
       ],
-      "consumes": [
-        "src/lib/cli-envelope.ts",
-        "bin/roadmap.ts"
+      "consumes": [],
+      "deps": [
+        "init"
       ],
-      "deps": ["rm-cli-json-envelope"],
       "validate": [
-        { "type": "artifact-exists", "target": "src/lib/cli-human.ts" },
-        { "type": "shell", "command": "grep -q '\\-\\-human' bin/roadmap.ts" },
-        { "type": "shell", "command": "npx tsc --noEmit" }
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
       ],
       "idempotent": true
     },
-    "rm-cli-contract-tests": {
-      "id": "rm-cli-contract-tests",
-      "desc": "Contract test suite asserting: (1) default stdout parses as JSON with envelope fields, (2) --human produces non-JSON text, (3) stderr does not contain JSON payload, (4) exit codes match ok field. Cover orient, chart, plan select, plan status, validate, complete.",
+    "plan-select-cmd": {
+      "id": "plan-select-cmd",
+      "desc": "Add CLI commands: `roadmap plan select <candidateId> --note`, `roadmap plan status`. Writes plan-select receipt to .roadmap/receipts/plan-select-<sha>.json and .roadmap/PLAN_SELECTED.json pointer.",
       "produces": [
-        "tests/cli-contract.test.ts"
+        "bin/roadmap.ts",
+        "src/lib/plan-selection.ts"
       ],
-      "consumes": [
-        "src/lib/cli-envelope.ts",
-        "src/lib/cli-human.ts",
+      "consumes": [],
+      "deps": [
+        "plan-selection-types"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "spec-origin-gate": {
+      "id": "spec-origin-gate",
+      "desc": "Add `roadmap import --spec-compiled` path to write spec-origin.json and spec-import receipt. Block direct head.json edits when spec-origin.json exists via verify rule predicate.",
+      "produces": [
+        "src/lib/spec-origin.ts",
         "bin/roadmap.ts"
       ],
-      "deps": ["rm-cli-human-renderers"],
+      "consumes": [],
+      "deps": [
+        "spec-origin-schema"
+      ],
       "validate": [
-        { "type": "artifact-exists", "target": "tests/cli-contract.test.ts" },
-        { "type": "shell", "command": "npx vitest run tests/cli-contract.test.ts" }
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "validator-runner": {
+      "id": "validator-runner",
+      "desc": "Implement src/lib/validator-runner.ts — normalized env allowlist, cwd normalization, stdout/stderr capture to .roadmap/artifacts/<nodeId>/<sha>/, sha256 computation, structured ValidatorResult type. Replace ad-hoc spawnSync calls.",
+      "produces": [
+        "src/lib/validator-runner.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "completion-store-ext"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "verify-skeleton": {
+      "id": "verify-skeleton",
+      "desc": "Scaffold `roadmap verify` command with JSON envelope output (violations[], warnings[], fix[]) and exit code protocol (0/1/2). Wire in: DAG structural validity, CompletionStore consistency checks.",
+      "produces": [
+        "src/lib/verify.ts",
+        "bin/roadmap.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "plan-selection-types",
+        "spec-origin-schema"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "verify-kernel": {
+      "id": "verify-kernel",
+      "desc": "Wire all invariant checks into verify-skeleton: plan-selection receipt valid, spec-origin integrity, orphan receipt detection, env-var bypass scan (grep process.env in src/), CompletionStore consistency, no artifact-only completion. Each violation carries code + message + paths? + fix[].",
+      "produces": [
+        "src/lib/verify.ts",
+        "bin/roadmap.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "plan-select-cmd",
+        "spec-origin-gate",
+        "verify-skeleton",
+        "validator-runner"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "intake-compiler": {
+      "id": "intake-compiler",
+      "desc": "Implement `roadmap intake scan`, `roadmap intake import`, `roadmap intake certify`. Scan diffs git log against last attested commit; group changed paths into candidate NodeSpecs; import with intakeFrom provenance; certify via CompletionStore.",
+      "produces": [
+        "src/lib/intake.ts",
+        "bin/roadmap.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "verify-kernel"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "plan-overlay": {
+      "id": "plan-overlay",
+      "desc": "Implement `roadmap plan overlay --select <id>`, `roadmap plan schedule`. Write .roadmap/plan-overlay.json with headSha, candidateId, clusters[], schedule[]. Overlay invalidates on DAG mutation. Schedule is deterministic from overlay clusters + DAG topology.",
+      "produces": [
+        "src/lib/plan-overlay.ts",
+        "bin/roadmap.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "verify-kernel",
+        "plan-select-cmd"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "state-introspection": {
+      "id": "state-introspection",
+      "desc": "Add `roadmap status --json`, `roadmap remaining --json`, `roadmap doctor`. Derive counts (total, done, pending, failed, skipped, planned) from CompletionStore only. Doctor surfaces inconsistencies with fix suggestions.",
+      "produces": [
+        "bin/roadmap.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "verify-kernel"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "receipt-evidence": {
+      "id": "receipt-evidence",
+      "desc": "Wire validator-runner into complete flow. After complete, write validator artifact files under .roadmap/artifacts/<nodeId>/<sha>/. Receipt references artifacts by sha. treeSha bound on record.",
+      "produces": [
+        "src/lib/completion-store.ts",
+        "src/lib/validator-runner.ts",
+        "bin/roadmap.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "validator-runner",
+        "completion-store-ext",
+        "verify-kernel"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "attestation-emit": {
+      "id": "attestation-emit",
+      "desc": "Add `roadmap check --id roadmap.verify` — synonym for verify with explicit checkId. Output: checkId, commitSha, treeSha, violations[], artifacts[]. Bind to treeSha not commitSha when possible.",
+      "produces": [
+        "src/lib/verify.ts",
+        "bin/roadmap.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "verify-kernel",
+        "receipt-evidence"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "multi-repo-merge": {
+      "id": "multi-repo-merge",
+      "desc": "Implement `roadmap federation add --path <repo>`, `roadmap federation build`, `roadmap federation status`. Write .roadmap/federation/peers.json (peer list). Build computes .roadmap/federation/view.json with namespaced node IDs <peerId>::<nodeId>. View is read-only + deterministic.",
+      "produces": [
+        "src/lib/federation.ts",
+        "bin/roadmap.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "verify-kernel"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "dispatch-plan": {
+      "id": "dispatch-plan",
+      "desc": "Implement `roadmap dispatch plan [--overlay] [--workers N]`, `roadmap dispatch apply`, `roadmap dispatch status`. Plan writes .roadmap/dispatch/plan-<sha>.json (headSha, overlayId, clusters, worktrees, ownership). Apply writes receipt. Does not spawn agents.",
+      "produces": [
+        "src/lib/dispatch.ts",
+        "bin/roadmap.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "plan-overlay"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "cross-repo-deps": {
+      "id": "cross-repo-deps",
+      "desc": "Extend NodeSpec.depends[] to accept `peer::<repoId>::<nodeId>` strings. verify-kernel checks cross-repo deps by reading peer CompletionStore receipts from peers.json paths. Violations: UNKNOWN_PEER, PEER_DEP_UNSATISFIED.",
+      "produces": [
+        "src/protocol.ts",
+        "src/lib/federation.ts",
+        "src/lib/verify.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "multi-repo-merge",
+        "verify-kernel"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "ux-explain": {
+      "id": "ux-explain",
+      "desc": "Add `roadmap explain --node <id>`, `roadmap receipts ls [--node <id>]`, `roadmap artifacts ls [--node <id>]`. explain returns: produces existence per file, receipt presence, failing validator, last run, fix suggestions. JSON default, --human optional.",
+      "produces": [
+        "bin/roadmap.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "receipt-evidence",
+        "state-introspection"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "test-plan-selection": {
+      "id": "test-plan-selection",
+      "desc": "Tests for plan-select CLI, receipt format, plan status, verify PLAN_NOT_SELECTED, verify PLAN_INVALIDATED after mutation. Min 8 test cases.",
+      "produces": [
+        "tests/plan-selection.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "plan-select-cmd",
+        "verify-kernel"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx vitest run tests/plan-selection.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "test-spec-origin": {
+      "id": "test-spec-origin",
+      "desc": "Tests for spec-origin gate — import writes receipt, direct edit triggers SPEC_ORIGIN_VIOLATED, compile_hash match passes. Min 5 test cases.",
+      "produces": [
+        "tests/spec-origin.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "spec-origin-gate",
+        "verify-kernel"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx vitest run tests/spec-origin.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "test-verify-kernel": {
+      "id": "test-verify-kernel",
+      "desc": "Tests for verify command — all violation codes, exit codes, clean state returns violations:[], orphan receipt detection, env-bypass scan, CompletionStore consistency. Min 12 test cases.",
+      "produces": [
+        "tests/verify-kernel.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "verify-kernel"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx vitest run tests/verify-kernel.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "test-intake": {
+      "id": "test-intake",
+      "desc": "Tests for intake scan, import, certify — path grouping, NodeSpec shape, intakeFrom provenance, CompletionStore write. Min 6 test cases.",
+      "produces": [
+        "tests/intake.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "intake-compiler"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx vitest run tests/intake.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "test-plan-overlay": {
+      "id": "test-plan-overlay",
+      "desc": "Tests for plan overlay — write schedule, stale detection, determinism. Min 5 test cases.",
+      "produces": [
+        "tests/plan-overlay.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "plan-overlay"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx vitest run tests/plan-overlay.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "test-validator-runner": {
+      "id": "test-validator-runner",
+      "desc": "Tests for validator-runner — env normalization, stdout/stderr capture, sha256, structured result. Min 7 test cases.",
+      "produces": [
+        "tests/validator-runner.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "validator-runner"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx vitest run tests/validator-runner.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "test-federation": {
+      "id": "test-federation",
+      "desc": "Tests for federation add/build/status, namespaced IDs, cross-repo dep enforcement. Min 8 test cases.",
+      "produces": [
+        "tests/federation.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "cross-repo-deps"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx vitest run tests/federation.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "test-dispatch": {
+      "id": "test-dispatch",
+      "desc": "Tests for dispatch plan/apply/status, stale overlay detection, receipt format. Min 6 test cases.",
+      "produces": [
+        "tests/dispatch.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "dispatch-plan"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx vitest run tests/dispatch.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "test-state-introspection": {
+      "id": "test-state-introspection",
+      "desc": "Tests for status --json counts, remaining list, doctor output. Min 6 test cases.",
+      "produces": [
+        "tests/state-introspection.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "state-introspection"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx vitest run tests/state-introspection.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "test-attestation": {
+      "id": "test-attestation",
+      "desc": "Tests for check --id roadmap.verify — checkId, treeSha binding, violation passthrough. Min 5 test cases.",
+      "produces": [
+        "tests/attestation.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "attestation-emit"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx vitest run tests/attestation.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "test-explain": {
+      "id": "test-explain",
+      "desc": "Tests for explain --node, receipts ls, artifacts ls. Min 6 test cases.",
+      "produces": [
+        "tests/ux-explain.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "ux-explain"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx vitest run tests/ux-explain.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "governance-self": {
+      "id": "governance-self",
+      "desc": "Write .roadmap/kernel.json prohibiting gate-disable without signed override receipt. Add `roadmap contract test` (JSON envelope + error code + stderr discipline) and `roadmap env-audit` (scan for process.env bypasses) commands.",
+      "produces": [
+        ".roadmap/kernel.json",
+        "bin/roadmap.ts",
+        "src/lib/verify.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "verify-kernel",
+        "attestation-emit"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "full-test-suite": {
+      "id": "full-test-suite",
+      "desc": "All tests pass. tsc clean. No regressions.",
+      "produces": [
+        "tests/rkg-integration.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "test-plan-selection",
+        "test-spec-origin",
+        "test-verify-kernel",
+        "test-intake",
+        "test-plan-overlay",
+        "test-validator-runner",
+        "test-federation",
+        "test-dispatch",
+        "test-state-introspection",
+        "test-attestation",
+        "test-explain",
+        "governance-self"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx vitest run"
+        },
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
       ],
       "idempotent": true
     },
     "term": {
       "id": "term",
-      "desc": "FR-CLI-001 complete — all commands JSON-native, --human renderers, contract tests passing, schema governance doc",
-      "produces": [],
-      "consumes": [
-        "src/lib/cli-envelope.ts",
-        "src/lib/cli-human.ts",
-        "tests/cli-contract.test.ts",
-        "docs/cli/JSON_CONTRACT.md"
+      "desc": "RKG complete — governance kernel hardened, federated attestation, all tests green",
+      "produces": [
+        ".roadmap/rkg-complete.json"
       ],
-      "deps": ["rm-cli-contract-tests"],
+      "consumes": [],
+      "deps": [
+        "full-test-suite"
+      ],
       "validate": [
-        { "type": "shell", "command": "npx tsc --noEmit" },
-        { "type": "shell", "command": "npx vitest run tests/cli-contract.test.ts" },
-        { "type": "shell", "command": "bin/roadmap orient --note 'term gate' 2>/dev/null | node -e \"const d=JSON.parse(require('fs').readFileSync('/dev/stdin','utf8')); process.exit(d.schema_version===1?0:1)\"" }
+        {
+          "type": "spec-conformance",
+          "spec": ".specify/specs/rkg-all/spec.md",
+          "scenario": "All acceptance scenarios pass (User Stories 1-6)",
+          "section": "Feature Specification"
+        },
+        {
+          "type": "shell",
+          "command": "test -f package.json && npm run test 2>&1 | grep -q 'test'",
+          "expectExitCode": 0
+        },
+        {
+          "type": "shell",
+          "command": "npm run build 2>&1 | grep -q \"built\"",
+          "expectExitCode": 0
+        }
       ],
-      "idempotent": true
+      "idempotent": true,
+      "ambient": [
+        ".specify/specs/rkg-all/spec.md"
+      ]
     }
+  },
+  "version": "0.3.0",
+  "protocolVersion": "0.3.0",
+  "spec": {
+    "compiled_sha256": "3d4e40be59a161230a420e2977e5e8cafa4513af93501ef9148a66859125da21",
+    "engine": {
+      "name": "speckit",
+      "version": "0.1.0"
+    },
+    "inputs": [
+      {
+        "path": ".specify/specs/rkg-all/tasks.md",
+        "sha256": "3d4e40be59a161230a420e2977e5e8cafa4513af93501ef9148a66859125da21"
+      }
+    ]
   }
 }

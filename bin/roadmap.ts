@@ -3027,8 +3027,8 @@ function cmdImport(note: string) {
     ...dag,
     spec: {
       compiled_sha256: inputHash,
-      engine: { name: ir.engine.name, version: ir.engine.version },
-      inputs: ir.inputs.map((i: any) => ({ path: i.path, sha256: i.sha256, role: i.role })),
+      engine: { name: 'speckit', version: '0.1.0' },
+      inputs: specInputs,
     },
   };
 
