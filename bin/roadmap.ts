@@ -659,7 +659,7 @@ async function cmdAdvance(note: string) {
     return;
   }
 
-  if (!process.env['SKIP_PLAN_GATE']) {
+  if (!args.includes('--skip-plan-gate')) {
     const { requirePlanGate } = await import('../src/lib/plan-gate.ts');
     const gate = requirePlanGate(repoRoot);
     if (!gate.ok) { json({ error: gate.reason, fix: gate.fix }); process.exit(1); }
@@ -822,7 +822,7 @@ async function cmdValidate(note: string) {
 }
 
 async function cmdExpand(note: string) {
-  if (!process.env['SKIP_PLAN_GATE']) {
+  if (!args.includes('--skip-plan-gate')) {
     const { requirePlanGate } = await import('../src/lib/plan-gate.ts');
     const gate = requirePlanGate(repoRoot);
     if (!gate.ok) { json({ error: gate.reason, fix: gate.fix }); process.exit(1); }
@@ -1797,7 +1797,7 @@ async function cmdComplete(note: string) {
     process.exit(1);
   }
 
-  if (!process.env['SKIP_PLAN_GATE']) {
+  if (!args.includes('--skip-plan-gate')) {
     const { requirePlanGate } = await import('../src/lib/plan-gate.ts');
     const gate = requirePlanGate(repoRoot);
     if (!gate.ok) { json({ error: gate.reason, fix: gate.fix }); process.exit(1); }

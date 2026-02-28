@@ -95,10 +95,10 @@ describe('CLI plan gate integration', () => {
     expect(result.fix).toMatch(/plan select/);
   });
 
-  it('complete proceeds with SKIP_PLAN_GATE=1', () => {
-    // Without a plan pointer but with SKIP_PLAN_GATE, gate should be bypassed.
+  it('complete proceeds with --skip-plan-gate flag', () => {
+    // Without a plan pointer but with --skip-plan-gate, gate should be bypassed.
     // It will still fail downstream (no completed.json, etc.) but NOT on the gate.
-    const { result } = runCli('complete a --note test', tmpDir, { SKIP_PLAN_GATE: '1' });
+    const { result } = runCli('complete a --skip-plan-gate --note test', tmpDir);
     // Should NOT contain the plan-gate error
     if (result) {
       expect(result.error ?? '').not.toMatch(/plan select/i);

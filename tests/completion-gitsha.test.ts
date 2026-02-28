@@ -109,11 +109,11 @@ describe('CLI gitSha integration', () => {
     const expectedSha = getHeadSha(cliTmpDir);
 
     const result = spawnSync(
-      'npx', ['tsx', bin, 'complete', 'init', '--note', 'test', '--skip-validate'],
+      'npx', ['tsx', bin, 'complete', 'init', '--skip-plan-gate', '--skip-validate', '--note', 'test'],
       {
         cwd: cliTmpDir,
         encoding: 'utf-8',
-        env: { ...process.env, SKIP_PLAN_GATE: '1', AGENT_ID: 'test-agent' },
+        env: { ...process.env, AGENT_ID: 'test-agent' },
       },
     );
 
