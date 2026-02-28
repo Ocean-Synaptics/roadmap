@@ -42,6 +42,7 @@ import { installAll, extractVersionHash, readPackageVersion, computeSkillHash } 
 import type { Graph } from '../src/protocol.ts';
 import type { SiblingStatus } from '../src/lib/cross-orient.ts';
 import type { OrientV1, OrientDag, OrientDagNode, OrientDagEdge, OrientBlockedNode } from '../src/lib/orient-schema.ts';
+import { emit, emitError, parseOutputOpts, ErrorCode, type OutputFormat } from '../src/lib/cli-envelope.ts';
 
 const rawArgs = process.argv.slice(2);
 const repoRoot = process.cwd();
@@ -57,6 +58,25 @@ function extractNote(argv: string[]): { note: string | undefined; positional: st
 
 const { note: _note, positional: args } = extractNote(rawArgs);
 const cmd = args[0] || 'help';
+
+// --- Global output opts (FR-CLI-001) ---
+function deriveEnvelopeCmd(): string {
+  if (cmd === 'plan') {
+    if (args.includes('--gallery')) return 'plan.gallery';
+    if (args[1] === 'select') return 'plan.select';
+    if (args[1] === 'status') return 'plan.status';
+    return 'plan';
+  }
+  if (cmd === 'position') return 'orient';
+  if (cmd === 'spec') {
+    if (args[1] === 'init') return 'spec.init';
+    if (args[1] === 'generate') return 'spec.generate';
+    if (args[1] === 'compile') return 'spec.compile';
+    return 'spec';
+  }
+  return cmd;
+}
+const _outputOpts = parseOutputOpts(rawArgs, deriveEnvelopeCmd());
 
 // Commands that don't require a note
 // Special case: orient/position with --check is note-exempt (silent polling)
@@ -252,11 +272,13 @@ async function main() {
     }
   } catch (e) {
     if (e instanceof RoadmapError) {
-      json(e.toJSON());
+      const rej = e.toJSON();
+      emit({ ok: false, cmd: _outputOpts.cmd, error: { code: rej.code ?? ErrorCode.INTERNAL_ERROR, message: rej.message ?? String(e), fix: rej.context?.fix ? [rej.context.fix] : undefined } }, _outputOpts);
+      process.exit(1);
     } else {
-      json({ error: e instanceof Error ? e.message : String(e) });
+      emit({ ok: false, cmd: _outputOpts.cmd, error: { code: ErrorCode.INTERNAL_ERROR, message: e instanceof Error ? e.message : String(e) } }, _outputOpts);
+      process.exit(2);
     }
-    process.exit(1);
   }
 }
 
@@ -4776,7 +4798,21 @@ function loadDAG(): Graph<string> {
 }
 
 function json(obj: unknown) {
-  console.log(JSON.stringify(obj, null, 2));
+  const hasError = typeof obj === 'object' && obj !== null && 'error' in obj;
+  if (hasError) {
+    const e = obj as Record<string, unknown>;
+    emit({
+      ok: false,
+      cmd: _outputOpts.cmd,
+      error: {
+        code: typeof e.code === 'string' ? e.code : 'UNKNOWN',
+        message: typeof e.error === 'string' ? e.error : String(e.error),
+        fix: Array.isArray(e.fix) ? e.fix : typeof e.fix === 'string' ? [e.fix] : undefined,
+      },
+    }, _outputOpts);
+  } else {
+    emit({ ok: true, cmd: _outputOpts.cmd, data: obj }, _outputOpts);
+  }
 }
 
 function scanExports(): Record<string, string[]> {
