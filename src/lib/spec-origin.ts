@@ -1,5 +1,5 @@
 // @module spec-origin
-// @exports SpecOrigin, SpecImportReceipt, isSpecOrigin, SPEC_ORIGIN_PATH, SPEC_IMPORT_RECEIPT_DIR, hasSpecOrigin, hasSpecOriginSync, specImportReceiptPath
+// @exports SpecOrigin, SpecImportReceipt, isSpecOrigin, SPEC_ORIGIN_PATH, SPEC_IMPORT_RECEIPT_DIR, hasSpecOrigin, hasSpecOriginSync, specImportReceiptPath, writeSpecOrigin, writeSpecImportReceipt, requireSpecOriginForEdit
 // @types SpecOrigin, SpecImportReceipt
 // @entry roadmap
 
@@ -7,9 +7,9 @@
 // spec-origin.json records the engine, version, and content hashes at import time.
 // SpecImportReceipt is the receipt type written to .roadmap/receipts/ on import.
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 
 export interface SpecOrigin {
   schemaVersion: 1;
@@ -71,4 +71,36 @@ export function hasSpecOriginSync(repoRoot: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** Write spec-origin.json to .roadmap/. Creates directories as needed. */
+export function writeSpecOrigin(repoRoot: string, origin: SpecOrigin): string {
+  const p = join(repoRoot, SPEC_ORIGIN_PATH);
+  const dir = dirname(p);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  writeFileSync(p, JSON.stringify(origin, null, 2) + '\n');
+  return p;
+}
+
+/** Write a SpecImportReceipt to .roadmap/receipts/. Returns the receipt path. */
+export function writeSpecImportReceipt(repoRoot: string, receipt: SpecImportReceipt): string {
+  const dir = join(repoRoot, SPEC_IMPORT_RECEIPT_DIR);
+  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+  const p = join(dir, `spec-import-${receipt.specOrigin.spec_sha.slice(0, 12)}.json`);
+  writeFileSync(p, JSON.stringify(receipt, null, 2) + '\n');
+  return p;
+}
+
+/**
+ * Gate predicate: when spec-origin.json exists, direct head.json edits
+ * (outside the import pipeline) are blocked. Returns null if allowed,
+ * or an error message string if blocked.
+ */
+export function requireSpecOriginForEdit(repoRoot: string): { ok: true } | { ok: false; reason: string; fix: string } {
+  if (!hasSpecOriginSync(repoRoot)) return { ok: true };
+  return {
+    ok: false,
+    reason: 'This DAG was imported from a spec-compiled source. Direct head.json edits are blocked.',
+    fix: 'Re-run the spec pipeline: roadmap import --spec-compiled <path> --note "..."',
+  };
 }
