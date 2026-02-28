@@ -83,6 +83,7 @@ function deriveEnvelopeCmd(): string {
   }
   if (cmd === 'position') return 'orient';
   if (cmd === 'patch') { if (args[1] === 'stack') return 'patch.stack'; return 'patch'; }
+  if (cmd === 'gate') { if (args[1] === 'merge') return 'gate.merge'; return 'gate'; }
   if (cmd === 'spec') {
     if (args[1] === 'init') return 'spec.init';
     if (args[1] === 'generate') return 'spec.generate';
@@ -2017,6 +2018,29 @@ function cmdProfile(note: string) {
 }
 }
 
+
+function cmdAudit(note: string) {
+  const sub = args[1];
+  if (sub === 'ingest') {
+    const transcriptPath = args[2];
+    if (!transcriptPath) {
+      json({ error: 'Missing transcript path', fix: 'roadmap audit ingest <path> [--dag-id <id>]' });
+      process.exit(1);
+    }
+    const dagIdIdx = args.indexOf('--dag-id');
+    const dagId = dagIdIdx !== -1 ? args[dagIdIdx + 1] : undefined;
+    const session = runAuditIngest({ transcriptPath: resolve(transcriptPath), dagId, repoRoot });
+    recordTrail({ ts: new Date().toISOString(), cmd: 'audit ingest', note, repo: basename(repoRoot), detail: { sessionId: session.sessionId, toolCalls: session.toolCalls.length } });
+    json(session);
+    return;
+  }
+  if (sub === 'recommend') {
+    console.log('Not yet implemented');
+    return;
+  }
+  json({ error: `Unknown audit subcommand: ${sub}`, fix: 'roadmap audit ingest <path> | audit recommend' });
+  process.exit(1);
+}
 function cmdDiff() {
   if (!hasLocalDAG) {
     console.log('No roadmap in this repo.');
@@ -4760,6 +4784,7 @@ Commands:
   spec init --engine <name>  Use alternate backend engine (default: spec-kit)
   spec generate             Hash + receipt spec inputs via configured engine
   spec compile              Parse tasks → spec-compiled.json (roadmap IR) + receipt
+  intake absorb --from <sha> [--to <sha>]  Absorb git range → .roadmap/intake/<id>.json
   init <dag-id>       Add plan clarity gate to existing DAG
   init <id> --statement "..." --threshold 0.95  Custom intent statement and confidence threshold
   report                      Aggregate validation gap report across all nodes
@@ -5641,6 +5666,34 @@ function loadDAG(): Graph<string> {
     }, 'No roadmap found at .roadmap/head.json');
   }
   return JSON.parse(readFileSync(headPath, 'utf-8'));
+}
+
+// --- gate: local merge gate enforcement ---
+
+function cmdGate(note: string) {
+  const sub = args[1];
+  if (sub !== 'merge') {
+    json({ error: `Unknown gate subcommand: ${sub}`, fix: 'roadmap gate merge [--target <branch>] --note "..."' });
+    process.exit(1);
+    return;
+  }
+
+  const targetIdx = args.indexOf('--target');
+  const target = targetIdx !== -1 ? args[targetIdx + 1] : undefined;
+
+  const { runMergeGate } = require('../src/lib/merge-gate-cmd.ts') as typeof import('../src/lib/merge-gate-cmd.ts');
+  const result = runMergeGate({ repoRoot, target });
+
+  recordTrail({
+    ts: new Date().toISOString(),
+    cmd: 'gate.merge',
+    note,
+    repo: basename(repoRoot),
+    detail: { pass: result.pass, target: result.target, checks: result.checks.length, errors: result.errors.length },
+  });
+
+  json(result);
+  if (!result.pass) process.exit(1);
 }
 
 function json(obj: unknown) {
