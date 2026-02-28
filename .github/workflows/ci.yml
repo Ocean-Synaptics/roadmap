@@ -70,6 +70,10 @@ jobs:
         if: needs.setup.outputs.mode == 'promote'
         run: npx tsx scripts/ci/roadmap-spec-origin-gate.ts
 
+      - name: Plan selection check
+        if: needs.setup.outputs.mode == 'promote'
+        run: npx tsx bin/roadmap.ts plan status
+
       - name: DAG integrity (hard)
         if: needs.setup.outputs.mode == 'promote' || needs.setup.outputs.mode == 'main'
         run: npm run check:dag:define
