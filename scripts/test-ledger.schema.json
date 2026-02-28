@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "test-ledger",
+  "description": "Canonical baseline of known test failures. Keyed by file::fullName.",
+  "type": "object",
+  "properties": {
+    "version": { "const": 1 },
+    "generated": { "type": "string", "format": "date-time" },
+    "entries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["file", "testPath", "testName", "firstSeenCommit", "class"],
+        "properties": {
+          "file": { "type": "string" },
+          "testPath": { "type": "array", "items": { "type": "string" } },
+          "testName": { "type": "string" },
+          "firstSeenCommit": { "type": "string" },
+          "class": { "enum": ["deterministic", "flaky", "spec-mismatch", "infra"] },
+          "note": { "type": "string" },
+          "owner": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["version", "entries"],
+  "additionalProperties": false
+}
