@@ -20,7 +20,9 @@ import { discoverDependencies, resolveSiblingPath } from '../src/lib/dependency-
 import { loadClaims, saveClaims, isExpired, activeClaims, annotateWithClaims, assignBatch } from '../src/lib/claims.ts';
 import { parseTasksMd, tasksToDAG } from '../src/lib/speckit-import.ts';
 import { enrichIntentGate } from '../src/lib/intent-gate-enrichment.ts';
-import { loadCompletions, saveCompletion, getCompletedNodeIds } from '../src/lib/completion-tracker.ts';
+import { loadCompletions, getCompletedNodeIds } from '../src/lib/completion-tracker.ts';
+import { saveCompletionWithEvidence } from '../src/lib/completion-evidence.ts';
+import type { EvidenceRecord } from '../src/lib/completion-evidence.ts';
 import { buildSpawnPlan } from '../src/lib/spawn-plan.ts';
 import { buildScaffold } from '../src/lib/scaffold.ts';
 import { buildClusters } from '../src/lib/cluster.ts';
@@ -1561,6 +1563,9 @@ async function cmdComplete(note: string) {
     }
   }
 
+  // Evidence for receipt-based completion
+  let evidenceChecks: EvidenceRecord[] = [];
+
   if (!skipValidate) {
     const { validateNode } = await import('../src/protocol.ts');
     const validationOpts: Record<string, any> = {};
@@ -1569,6 +1574,13 @@ async function cmdComplete(note: string) {
     const validationResult = await validateNode(dag, nodeId, fileExists(repoRoot),
       Object.keys(validationOpts).length > 0 ? validationOpts : undefined,
     );
+
+    // Capture evidence for receipt
+    evidenceChecks = validationResult.checks.map((c: any) => ({
+      rule: c.rule?.type ?? 'unknown',
+      passed: c.passed,
+      evidence: c.evidence ?? '',
+    }));
 
     // Collect intent checks for surfacing in output
     const nodeSpec = (dag.nodes as Record<string, any>)[nodeId];
@@ -1747,6 +1759,9 @@ async function cmdComplete(note: string) {
     if (unevaluated.length) {
       (validationResult as any)._unevaluated = unevaluated;
     }
+  } else {
+    // --skip-validate: record non-passing receipt (quarantined completion)
+    evidenceChecks = [{ rule: 'skip-validate', passed: false, evidence: 'validation skipped by --skip-validate flag' }];
   }
 
   // 2. Checkpoint
@@ -1793,8 +1808,8 @@ async function cmdComplete(note: string) {
   const nowReady = readyNodes(dag, fileExists(repoRoot), retiredSet());
   const unblocked = nowReady.map(n => n.id);
 
-  // Save completion to persistent tracking (for batch advancement in next orient call)
-  saveCompletion(repoRoot, nodeId, owner, checkpoint.id);
+  // Save completion with evidence to persistent tracking (receipt-authoritative)
+  saveCompletionWithEvidence(repoRoot, nodeId, evidenceChecks, owner, checkpoint.id);
 
   recordTrail({
     ts: new Date().toISOString(), cmd: 'complete', note,
