@@ -70,6 +70,10 @@ if (isOrientCheck) {
 if (cmd === 'checkpoint' && (args.includes('--list') || args.includes('--restore') || args.includes('--label'))) {
   NOTE_EXEMPT.add('checkpoint');
 }
+// plan status is read-only
+if (cmd === 'plan' && args[1] === 'status') {
+  NOTE_EXEMPT.add('plan');
+}
 
 interface TrailEntry {
   ts: string;
@@ -234,7 +238,9 @@ async function main() {
       case 'compile-brief': return cmdCompileBrief(note!);
       case 'plan':
         if (args.includes('--gallery')) return await cmdPlanGallery(note!);
-        json({ error: 'Unknown plan subcommand', fix: 'roadmap plan --gallery [--from <specFile>] [--select <id>] [--evaluate <json>] [--json]' });
+        if (args[1] === 'select') return await cmdPlanSelect(note!);
+        if (args[1] === 'status') return await cmdPlanStatus();
+        json({ error: 'Unknown plan subcommand', fix: 'roadmap plan --gallery | plan select <id> --note "..." | plan status' });
         process.exit(1);
         return;
       case 'help':
@@ -4277,6 +4283,79 @@ Examples:
   roadmap explore --api
   roadmap explore --run scripts/explore/validate-app.ts --launch "npx electron dist/main/index.js" --port 9222
   roadmap explore --run scripts/explore/validate-app.ts --keep-alive`);
+}
+
+// --- plan select / plan status: plan selection receipt + validation ---
+
+async function cmdPlanSelect(note: string) {
+  const candidateId = args[2];
+  if (!candidateId) {
+    json({ error: 'Missing candidate ID', fix: 'roadmap plan select <candidateId> --note "reason"' });
+    process.exit(1);
+  }
+  if (!hasLocalDAG) {
+    json({ error: 'No roadmap in this repo.' });
+    process.exit(1);
+  }
+
+  const { writePlanSelectReceipt } = await import('../src/lib/receipts/plan-select.ts');
+
+  const galleryJsonIdx = args.indexOf('--gallery-json');
+  let galleryHash: string | undefined;
+  if (galleryJsonIdx !== -1 && args[galleryJsonIdx + 1]) {
+    try {
+      const galleryBytes = readFileSync(resolve(repoRoot, args[galleryJsonIdx + 1]));
+      galleryHash = createHash('sha256').update(galleryBytes).digest('hex');
+    } catch { /* gallery hash is optional */ }
+  }
+
+  const selector = process.env['AGENT_ID'] ?? process.env['USER'] ?? 'unknown';
+  const receipt = writePlanSelectReceipt(repoRoot, candidateId, selector, { galleryHash, note });
+
+  const dag = loadDAG();
+  const pos = orientWithState(dag);
+  recordTrail({
+    ts: new Date().toISOString(), cmd: 'plan select', note,
+    repo: basename(repoRoot),
+    position: pos.position, level: pos.level, dagId: dag.id,
+    detail: { candidateId, headSha: receipt.headSha, selector, galleryHash },
+  });
+
+  json({
+    selected: candidateId,
+    headSha: receipt.headSha,
+    selector: receipt.selector,
+    selectedAt: receipt.selectedAt,
+    receipt: receipt,
+  });
+}
+
+async function cmdPlanStatus() {
+  if (!hasLocalDAG) {
+    json({ error: 'No roadmap in this repo.' });
+    process.exit(1);
+  }
+
+  const { validatePlanSelection } = await import('../src/lib/receipts/plan-select.ts');
+  const result = validatePlanSelection(repoRoot);
+
+  if (result.valid) {
+    json({
+      status: 'valid',
+      candidateId: result.receipt!.candidateId,
+      headSha: result.receipt!.headSha,
+      selectedAt: result.receipt!.selectedAt,
+      selector: result.receipt!.selector,
+      note: result.receipt!.note,
+    });
+  } else {
+    json({
+      status: 'invalid',
+      reason: result.reason,
+      ...(result.receipt ? { staleReceipt: { candidateId: result.receipt.candidateId, headSha: result.receipt.headSha } } : {}),
+    });
+    process.exit(1);
+  }
 }
 
 // --- plan --gallery: template gallery, candidate selection, judgment recording ---
