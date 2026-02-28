@@ -71,7 +71,7 @@ describe('JSON envelope contract', () => {
   });
 
   it('show emits JSON envelope for valid node', () => {
-    const { stdout, exitCode } = run('show rm-cli-contract-tests');
+    const { stdout, exitCode } = run('show init');
     expect(exitCode).toBe(0);
     const env = parseEnvelope(stdout);
     expect(env.schema_version).toBe(1);
