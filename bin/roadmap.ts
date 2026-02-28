@@ -4,7 +4,7 @@
 // @exports (CLI binary — no programmatic exports)
 // @entry bin/roadmap
 
-import { readFileSync, existsSync, writeFileSync, appendFileSync, mkdirSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync, writeFileSync, appendFileSync, mkdirSync, readdirSync, statSync } from 'node:fs';
 import { join, resolve, basename } from 'node:path';
 import { homedir } from 'node:os';
 import { execSync } from 'node:child_process';
@@ -4865,7 +4865,7 @@ function cmdMf(note: string) {
 
       json({ cmd: 'mf.init', runId, repoRoot: process.cwd(), headSha, strictReceipts });
       recordTrail({ ts: new Date().toISOString(), cmd: 'mf.init', note, repo: basename(repoRoot), position: ['mf-init'], level: 0 });
-      return;
+      break;
     }
     case 'dispatch': {
       const runIdx = args.indexOf('--run');
@@ -4901,7 +4901,7 @@ function cmdMf(note: string) {
 
       json({ cmd: 'mf.dispatch', runId: dRunId, workerId: dWorkerId, status: 'registered' });
       recordTrail({ ts: new Date().toISOString(), cmd: 'mf.dispatch', note, repo: basename(repoRoot), position: ['mf-session-binding'], level: 2 });
-      return;
+      break;
     }
     case 'retire-team': {
       const rtRunIdx = args.indexOf('--run');
@@ -4914,11 +4914,38 @@ function cmdMf(note: string) {
       const retiredCount = rtStore.retireAll();
       json({ cmd: 'mf.retire-team', runId: rtRunId, retiredCount });
       recordTrail({ ts: new Date().toISOString(), cmd: 'mf.retire-team', note, repo: basename(repoRoot), position: ['mf-session-binding'], level: 2 });
-      return;
+      break;
     }
     default:
       json({ error: `Unknown mf subcommand: ${sub}`, fix: 'roadmap mf init --note "..."' });
       process.exit(1);
+  }
+
+  // Receipt enforcement — when --mf-run is active and command requires a receipt
+  enforceReceipt();
+}
+
+function enforceReceipt(): void {
+  const mfRunIdx = process.argv.indexOf('--mf-run');
+  const activeMfRun = mfRunIdx !== -1 ? process.argv[mfRunIdx + 1] : null;
+  if (!activeMfRun || !isReceiptRequired(process.argv)) return;
+
+  try {
+    const meta = readMeta(activeMfRun as RunId, repoRoot);
+    if (!meta.strictReceipts) return;
+
+    const ndjsonPath = join(repoRoot, '.roadmap', 'metaflow', 'runs', activeMfRun, 'interactions.ndjson');
+    const recentlyWritten = existsSync(ndjsonPath) &&
+      (Date.now() - statSync(ndjsonPath).mtimeMs) < 2000;
+    if (!recentlyWritten) {
+      process.stderr.write(JSON.stringify({
+        schema_version: 1, ok: false, cmd: 'error',
+        error: { code: 'INTERACTION_RECEIPT_MISSING', message: 'Command requires an InteractionReceipt but none was written for this invocation' }
+      }) + '\n');
+      process.exit(3);
+    }
+  } catch {
+    // If run meta can't be read, don't enforce (run may not be initialized)
   }
 }
 
