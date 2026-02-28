@@ -4,5 +4,2231 @@
     "completedAt": "2026-02-27T09:07:08.308Z",
     "owner": "griffin",
     "checkpointId": "cp-20260227090708"
+  },
+  {
+    "nodeId": "fix-artifact-field",
+    "completedAt": "2026-02-28T10:22:55.259Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260228102255"
+  },
+  {
+    "nodeId": "fix-post-commit-hook",
+    "completedAt": "2026-02-28T10:22:55.435Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260228102255"
+  },
+  {
+    "nodeId": "fix-orient-completions",
+    "completedAt": "2026-02-28T10:23:02.410Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260228102302"
+  },
+  {
+    "nodeId": "fr-predicates",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-cross-orient",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-cli-surface",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-consumer-unblock",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "adv-reconcile",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "adv-orient",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "adv-property",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "adv-types",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fix-reconcile",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fix-orient",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "consumer-integration",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-1-term",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "merge-spec",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "adv-merge",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "merge-impl",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-2-term",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "branch-spec",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "adv-branch",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "branch-impl",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-3-term",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "skill-finalize",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "readme-write",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "example-create",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "release-prepare",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "v0.2.0-term",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "spec-system",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "briefing-files",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 3 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "test-org-guide",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "condense-docs",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-4.5-term",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "git-state-spec",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "git-state-orient",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "bootstrap-gen-spec",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "bootstrap-gen-impl",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "bootstrap-test",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "multi-repo-pattern",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 3 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "modify-spec",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "adv-modify",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "atomic-modify-design",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "adv-atomic-modify",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-5-term",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "checkpoint-spec",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "checkpoint-impl",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "audit-spec",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "audit-impl",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "regent-integration",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-6-term",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "version-spec",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "version-migrations",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "version-validation",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-7-term",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "project-metadata-schema",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "project-type-detector",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "build-process-discoverer",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "dependency-resolver",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "auto-bootstrap-command",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-8-term",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "agent-bootstrap-spec",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "error-guidance-spec",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "agent-executor-impl",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fusion-integration",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "cockpit-integration",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-9-term",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "api-audit",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "sub-entry-points-spec",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "api-refactor",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 4 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "package-exports-update",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "api-test-migration",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-10-term",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "adoption-scenario-setup",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "adoption-scenario-1",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "adoption-scenario-2",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "adoption-scenario-3",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "adoption-scenario-4",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "adoption-scenario-5",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "adoption-scenario-6",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "adoption-scenario-7",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "adoption-scenario-8",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "adoption-scenario-9",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "adoption-scenario-10",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "survey-analysis",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "release-readiness-assessment",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-11-term",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "integrate-gen-spec",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "integrate-gen-impl",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "integrate-cli",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "integrate-test",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "integrate-docs",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-12-term",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "docs-restructure",
+    "completedAt": "2026-02-28T10:53:05.203Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 8 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "api-surface-docs",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "predicate-builders",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "parallel-order",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "error-model",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "cli-binary",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-13-term",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "file-headers",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "repo-cleanup",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "claude-md",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "git-library",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "consumer-categories",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 6 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "git-ops-impl",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "migration-script",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "memory-docs",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "memory-tests",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-14-term",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "locate-readmaps",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "cli-cross-project",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "git-hook-test-enforcement",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-15-term",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "batch-position-types",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "batch-validation-layer",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "batch-cli-trail",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "batch-enforcement-hook",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "batch-position-tests",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-16-term",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "plan-mode-types",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "plan-mode-orient",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "plan-mode-validate",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "plan-mode-brief",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "plan-mode-cli",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "plan-mode-tests",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-17-term",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "shell-validate-rule",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "silent-orient",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "pending-contracts",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "speckit-import",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-18-term",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "agent-dispatch-api",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 4 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "loop-signal-types",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "cli-agent-commands",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 7 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "orient-staged-flag",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-19-term",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "complete-command",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "ambient-field",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "loop-validation",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "iter-id-command",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "ergonomics-fixes",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 4 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-20-term",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "trail-metrics",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-21-term",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "spawn-plan-impl",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "spawn-plan-cli",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "spawn-plan-tests",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-22-term",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "validate-protocol",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "validate-cli",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "validate-tests",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-23-term",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "scaffold-impl",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "cluster-impl",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "schedule-impl",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "dag-compiler-cli",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "dag-compiler-tests",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-24-term",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-impl-init",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-compile-prompts-intent",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-emit-node-type",
+    "completedAt": "2026-02-28T10:53:05.204Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-strategies",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-gallery-core",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-cost-estimator",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-gallery-templates",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-emit-gallery-core",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-blend",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-plan-gallery-cli",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-emit-gallery-cli",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-gallery-tests",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-emit-gallery-tests",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "fr-intent-selfcheck-tests",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-25-term",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "spec-threading-feature",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "clarify-to-contract",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "spec-contract-tests",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "verify-against-contract",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "verifier-tests",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "explore-script-template",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "terminal-gate-update",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "e2e-spec-threading",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "spec-docs",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-26-init",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
+  },
+  {
+    "nodeId": "completion-record-evidence",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 2 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "orient-receipt-semantics",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "skip-validate-quarantine",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "all 1 artifact(s) exist on disk"
+      }
+    ]
+  },
+  {
+    "nodeId": "phase-26-term",
+    "completedAt": "2026-02-28T10:53:05.205Z",
+    "legacy": true,
+    "validationChecks": [
+      {
+        "rule": "legacy-migration",
+        "passed": true,
+        "evidence": "produce-less node, migrated as legacy"
+      }
+    ]
   }
 ]
