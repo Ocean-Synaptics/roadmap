@@ -17,7 +17,16 @@
   "scripts": {
     "check": "tsc --noEmit",
     "check:surface": "npx tsx scripts/check-explore-surface.ts",
+    "check:dag": "npx tsx scripts/ci-dag-check.ts",
+    "check:dag:define": "npx tsx scripts/ci-dag-check.ts --define",
+    "check:dag:verify": "npx tsx scripts/ci-dag-check.ts --verify",
+    "check:intent": "npx tsx scripts/ci-intent-check.ts",
     "test": "vitest run",
+    "test:ci": "vitest run --reporter=json --outputFile=.vitest-results.json",
+    "gate:tests": "npx tsx scripts/ci-test-ledger.ts",
+    "ledger:tests:init": "npx tsx scripts/test-ledger-init.ts",
+    "ledger:tests:prune": "npx tsx scripts/test-ledger-prune.ts",
+    "promotion:ledger": "npx tsx scripts/generate-promotion-ledger.ts",
     "seed": "node --experimental-strip-types roadmap.ts",
     "postinstall": "node --experimental-strip-types bin/install-hooks.ts || true"
   },

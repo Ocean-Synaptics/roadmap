@@ -8,6 +8,7 @@ import { readFileSync, existsSync, writeFileSync, appendFileSync, mkdirSync, rea
 import { join, resolve, basename } from 'node:path';
 import { homedir } from 'node:os';
 import { execSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import {
   define, check, verify, order, parallelOrder, batchConflicts, orient, readyNodes, nextBatch, criticalPath, reconcile,
   validateNode, validateGraph, consumeArtifact,
@@ -19,6 +20,8 @@ import { crossOrient } from '../src/lib/cross-orient.ts';
 import { discoverDependencies, resolveSiblingPath } from '../src/lib/dependency-resolver.ts';
 import { loadClaims, saveClaims, isExpired, activeClaims, annotateWithClaims, assignBatch } from '../src/lib/claims.ts';
 import { parseTasksMd, tasksToDAG } from '../src/lib/speckit-import.ts';
+import { compileIR, parseIRFile, defaultConfig } from '../src/lib/spec-ir.ts';
+import type { SpecConfig, SpecIR, SpecIRTask, SpecInput } from '../src/lib/spec-ir.ts';
 import { enrichIntentGate } from '../src/lib/intent-gate-enrichment.ts';
 import { loadCompletions, getCompletedNodeIds } from '../src/lib/completion-tracker.ts';
 import { saveCompletionWithEvidence, loadCompletionsWithEvidence, hasPassingReceipt } from '../src/lib/completion-evidence.ts';
@@ -224,6 +227,7 @@ async function main() {
       case 'retire':    return cmdRetire(note!);
       case 'claim':     return cmdClaim();
       case 'import':    return cmdImport(note!);
+      case 'spec':      return cmdSpec(note!);
       case 'init':      return cmdInit(note!);
       case 'report':    return await cmdReport(note!);
       case 'scaffold':  return await cmdScaffold(note!);
@@ -667,6 +671,7 @@ async function cmdAdvance(note: string) {
   const dag = loadDAG();
   const predicate = fileExists(repoRoot);
   const structuralOnly = args.includes('--structural-only');
+  const allowConflicts = args.includes('--allow-conflicts');
 
   try {
     // Get current position (receipt-authoritative)
@@ -698,6 +703,25 @@ async function cmdAdvance(note: string) {
       return;
     }
 
+    // FR-GOV-004: enforce batchConflicts on next batch before advancing
+    const { exists: _ae, retired: _ar, completedIds: _ac } = getCompletionState();
+    const next = await advanceBatch(dag, _ae, _ar, _ac);
+
+    const nextConflicts = batchConflicts(dag).filter(c => c.level === next.level);
+    if (nextConflicts.length > 0 && !allowConflicts) {
+      json({
+        error: 'Next batch has produce conflicts — parallel execution unsafe',
+        nextBatch: next.position,
+        nextLevel: next.level,
+        conflicts: nextConflicts.map(c => ({ type: c.type, file: c.file, nodes: c.writers })),
+        fix: 'Resolve conflicts (split nodes or serialize) then retry. Use --allow-conflicts to override (receipted).',
+      });
+      return;
+    }
+    if (nextConflicts.length > 0 && allowConflicts) {
+      writeConflictOverrideReceipt(nextConflicts, next.level, 'advance');
+    }
+
     // Run validate[] rules on every node in the batch (default: strict).
     // --structural-only skips quality gates (artifact-existence only).
     if (!structuralOnly) {
@@ -722,10 +746,6 @@ async function cmdAdvance(note: string) {
       }
     }
 
-    // Advance to next batch (receipt-authoritative)
-    const { exists: _ae, retired: _ar, completedIds: _ac } = getCompletionState();
-    const next = await advanceBatch(dag, _ae, _ar, _ac);
-
     recordTrail({
       ts: new Date().toISOString(),
       cmd: 'advance',
@@ -741,6 +761,7 @@ async function cmdAdvance(note: string) {
       nextLevel: next.level,
       complete: next.remaining.length === 0,
       validated: !structuralOnly,
+      ...(nextConflicts.length > 0 ? { conflictsOverridden: nextConflicts.length } : {}),
     });
   } catch (e: any) {
     json({ error: e.message || 'Failed to advance batch' });
@@ -868,6 +889,19 @@ async function cmdExpand(note: string) {
       node: terminalError.node,
       fix: terminalError.fix,
     }, terminalError.message);
+  }
+
+  // FR-GOV-004: enforce batchConflicts on expanded DAG
+  const allowConflicts = args.includes('--allow-conflicts');
+  const expandConflicts = batchConflicts(dagAfter);
+  if (expandConflicts.length > 0 && !allowConflicts) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      fix: 'Resolve conflicts (split nodes or serialize) then re-run. Use --allow-conflicts to override (receipted).',
+      conflicts: expandConflicts.map(c => ({ type: c.type, file: c.file, nodes: c.writers, level: c.level })),
+    }, `Expansion introduces ${expandConflicts.length} batch conflict(s) — parallel execution unsafe`);
+  }
+  if (expandConflicts.length > 0 && allowConflicts) {
+    writeConflictOverrideReceipt(expandConflicts, -1, 'expand');
   }
 
   // Commit
@@ -2646,11 +2680,16 @@ function cmdClaim() {
 }
 
 // --- import: parse spec-kit tasks.md into candidate roadmap DAG ---
-// roadmap import --from speckit <file.md> --id <dag-id> [--desc "..."]
+// roadmap import --from speckit <file.md> --id <dag-id> [--desc "..."] [--allow-drift]
+// FR-GOV-001: receipted import with input hashing, hard validation, drift detection.
 function cmdImport(note: string) {
+  // FR-SPEC-001: engine-agnostic import from spec-compiled IR
+  const compiledIdx = args.indexOf('--spec-compiled');
+  if (compiledIdx !== -1) return cmdImportCompiled(note, args[compiledIdx + 1]);
+
   const fromIdx = args.indexOf('--from');
   if (fromIdx === -1 || args[fromIdx + 1] !== 'speckit') {
-    json({ error: 'Missing --from speckit', fix: 'roadmap import --from speckit tasks.md --id my-project --note "..."' });
+    json({ error: 'Missing --from speckit or --spec-compiled <path>', fix: 'roadmap import --from speckit tasks.md --id my-project --note "..." OR roadmap import --spec-compiled spec-compiled.json --note "..."' });
     process.exit(1);
   }
 
@@ -2669,8 +2708,14 @@ function cmdImport(note: string) {
 
   const descIdx = args.indexOf('--desc');
   const dagDesc = descIdx !== -1 ? args[descIdx + 1] : undefined;
+  const allowDrift = args.includes('--allow-drift');
 
-  const content = readFileSync(filePath, 'utf-8');
+  // --- FR-GOV-001: hash inputs ---
+  const resolvedPath = resolve(filePath);
+  const content = readFileSync(resolvedPath, 'utf-8');
+  const inputHash = createHash('sha256').update(content).digest('hex');
+  const specInputs = [{ path: filePath, sha256: inputHash }];
+
   const tasks = parseTasksMd(content);
   if (tasks.length === 0) {
     json({ error: 'No tasks found in file', fix: 'Use format: - [P0] task-id: description' });
@@ -2678,26 +2723,124 @@ function cmdImport(note: string) {
   }
 
   let dag = tasksToDAG(tasks, { dagId, dagDesc });
-
-  // Auto-enrich with platform-specific intent-gate validators (Electron detection, spec context)
   dag = enrichIntentGate(dag, repoRoot);
 
-  // Terminal intent gate invariant — warn (non-blocking on import, since enrichment adds gates)
+  // --- FR-GOV-001: hard validation before write ---
+  const warnings: string[] = [];
+
+  try {
+    define(dag);
+  } catch (e: any) {
+    json({ error: 'define() failed — DAG has structural errors', detail: e.message, fix: 'Fix the spec input and re-import' });
+    process.exit(1);
+  }
+
+  const verifyErrors = verify(dag);
+  if (verifyErrors.length > 0) {
+    warnings.push(`verify: ${verifyErrors.length} contract warning(s): ${verifyErrors.slice(0, 3).join('; ')}`);
+  }
+
+  const checkResult = check(dag);
+  if (!checkResult.done && checkResult.orphans.length > 0) {
+    warnings.push(`check: ${checkResult.orphans.length} unreachable node(s)`);
+  }
+
+  // Intent gate warnings (non-blocking on import, since enrichment adds gates)
   const terminalError = validateTerminalIntentGate(dag);
-
-  // Init intent gate invariant — warn (non-blocking on import)
   const initError = validateInitIntentGate(dag);
+  if (terminalError) warnings.push(`terminal-intent: ${terminalError.message}`);
+  if (initError) warnings.push(`init-intent: ${initError.message}`);
 
-  // Write to .roadmap/head.json
+  // --- FR-GOV-001: compute DAG hash ---
+  const dagJson = JSON.stringify(dag, null, 2) + '\n';
+  const dagHash = createHash('sha256').update(dagJson).digest('hex');
+
+  // --- FR-GOV-001: drift detection ---
   const outDir = join(repoRoot, '.roadmap');
   if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+  const receiptsDir = join(outDir, 'receipts');
+  if (!existsSync(receiptsDir)) mkdirSync(receiptsDir, { recursive: true });
+
+  // Check for existing receipt with same input hashes
+  let driftDetected = false;
+  let priorReceipt: Record<string, unknown> | null = null;
+  if (existsSync(receiptsDir)) {
+    for (const f of readdirSync(receiptsDir).filter(f => f.startsWith('import-') && f.endsWith('.json'))) {
+      try {
+        const r = JSON.parse(readFileSync(join(receiptsDir, f), 'utf-8'));
+        const sameInputs = Array.isArray(r.spec_inputs) && r.spec_inputs.length === specInputs.length
+          && r.spec_inputs.every((s: any, i: number) => s.sha256 === specInputs[i].sha256);
+        if (sameInputs && r.dag_hash !== dagHash) {
+          driftDetected = true;
+          priorReceipt = r;
+          break;
+        }
+      } catch { /* skip corrupt receipts */ }
+    }
+  }
+
+  if (driftDetected && !allowDrift) {
+    json({
+      error: 'Drift detected: same inputs produce different DAG hash',
+      prior_dag_hash: (priorReceipt as any)?.dag_hash,
+      new_dag_hash: dagHash,
+      fix: 'Use --allow-drift to acknowledge and overwrite, or investigate why the transform changed',
+    });
+    process.exit(1);
+  }
+
+  // --- Write head.json ---
   const outPath = join(outDir, 'head.json');
-  writeFileSync(outPath, JSON.stringify(dag, null, 2) + '\n');
+  writeFileSync(outPath, dagJson);
+
+  // --- FR-GOV-001: write receipt ---
+  let gitSha = 'unknown';
+  try { gitSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim(); } catch {}
+
+  let commitTimestamp: string;
+  try {
+    commitTimestamp = execSync(`git show -s --format=%cI ${gitSha}`, { cwd: repoRoot, encoding: 'utf-8' }).trim();
+  } catch {
+    commitTimestamp = new Date().toISOString();
+  }
+
+  // spec-kit version (best effort)
+  let specKitVersion: string | null = null;
+  try {
+    specKitVersion = execSync('npx spec-kit --version', { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 5000 }).trim().split('\n')[0];
+  } catch {
+    // Try reading from a known path
+    const skPkg = resolve(homedir(), 'src/spec-kit/package.json');
+    if (existsSync(skPkg)) {
+      try { specKitVersion = JSON.parse(readFileSync(skPkg, 'utf-8')).version ?? null; } catch {}
+    }
+  }
+
+  const receipt = {
+    schema_version: 1,
+    git_sha: gitSha,
+    timestamp: commitTimestamp,
+    spec_inputs: specInputs,
+    spec_kit_version: specKitVersion,
+    dag_id: dagId,
+    dag_hash: dagHash,
+    nodes: Object.keys(dag.nodes).length,
+    validation: {
+      define_passed: true,
+      verify_warnings: verifyErrors.length,
+      check_orphans: checkResult.orphans.length,
+    },
+    warnings,
+    ...(driftDetected ? { drift: { acknowledged: true, prior_dag_hash: (priorReceipt as any)?.dag_hash } } : {}),
+  };
+
+  const receiptPath = join(receiptsDir, `import-${gitSha.slice(0, 8)}.json`);
+  writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + '\n');
 
   recordTrail({
     ts: new Date().toISOString(), cmd: 'import', note,
     repo: basename(repoRoot), position: ['init'], level: 0, dagId,
-    detail: { source: filePath, tasks: tasks.length, nodes: Object.keys(dag.nodes).length },
+    detail: { source: filePath, tasks: tasks.length, nodes: Object.keys(dag.nodes).length, receiptPath, dagHash: dagHash.slice(0, 12) },
   });
 
   const spawnPlan = buildSpawnPlan(dag);
@@ -2711,6 +2854,9 @@ function cmdImport(note: string) {
     init: dag.init,
     term: dag.term,
     path: outPath,
+    receipt: receiptPath,
+    dag_hash: dagHash.slice(0, 12),
+    input_hash: inputHash.slice(0, 12),
     spawnPlan,
   };
 
@@ -2725,7 +2871,419 @@ function cmdImport(note: string) {
     result.initGateSuggestion = `roadmap init ${dagId}`;
   }
 
+  if (warnings.length > 0) {
+    result.warnings = warnings;
+  }
+
   json(result);
+}
+
+// --- import --spec-compiled: engine-agnostic import from roadmap IR ---
+function cmdImportCompiled(note: string, irPath: string | undefined) {
+  if (!irPath || !existsSync(irPath)) {
+    json({ error: `spec-compiled file not found: ${irPath}`, fix: 'roadmap import --spec-compiled <path> --note "..."' });
+    process.exit(1);
+  }
+
+  const allowDrift = args.includes('--allow-drift');
+  const resolvedPath = resolve(irPath);
+  const irContent = readFileSync(resolvedPath, 'utf-8');
+  const inputHash = createHash('sha256').update(irContent).digest('hex');
+
+  let ir: SpecIR;
+  try {
+    ir = parseIRFile(irContent);
+  } catch (e: any) {
+    json({ error: `Invalid spec-compiled: ${e.message}`, fix: 'Ensure the file was generated by roadmap spec compile' });
+    process.exit(1);
+  }
+
+  let dag = compileIR(ir);
+  dag = enrichIntentGate(dag, repoRoot);
+
+  // Hard validation before write
+  const warnings: string[] = [];
+  try { define(dag); } catch (e: any) {
+    json({ error: 'define() failed — compiled DAG has structural errors', detail: e.message });
+    process.exit(1);
+  }
+
+  const verifyErrors = verify(dag);
+  if (verifyErrors.length > 0) warnings.push(`verify: ${verifyErrors.length} contract warning(s)`);
+
+  const checkResult = check(dag);
+  if (!checkResult.done && checkResult.orphans.length > 0) warnings.push(`check: ${checkResult.orphans.length} unreachable node(s)`);
+
+  const terminalError = validateTerminalIntentGate(dag);
+  const initError = validateInitIntentGate(dag);
+  if (terminalError) warnings.push(`terminal-intent: ${terminalError.message}`);
+  if (initError) warnings.push(`init-intent: ${initError.message}`);
+
+  const dagJson = JSON.stringify(dag, null, 2) + '\n';
+  const dagHash = createHash('sha256').update(dagJson).digest('hex');
+
+  // Drift detection (same as speckit import)
+  const outDir = join(repoRoot, '.roadmap');
+  if (!existsSync(outDir)) mkdirSync(outDir, { recursive: true });
+  const receiptsDir = join(outDir, 'receipts');
+  if (!existsSync(receiptsDir)) mkdirSync(receiptsDir, { recursive: true });
+
+  let driftDetected = false;
+  let priorReceipt: Record<string, unknown> | null = null;
+  for (const f of readdirSync(receiptsDir).filter(f => f.startsWith('import-') && f.endsWith('.json'))) {
+    try {
+      const r = JSON.parse(readFileSync(join(receiptsDir, f), 'utf-8'));
+      const sameInputs = Array.isArray(r.spec_inputs) && r.spec_inputs.length === 1
+        && r.spec_inputs[0].sha256 === inputHash;
+      if (sameInputs && r.dag_hash !== dagHash) { driftDetected = true; priorReceipt = r; break; }
+    } catch {}
+  }
+
+  if (driftDetected && !allowDrift) {
+    json({ error: 'Drift detected: same IR produces different DAG hash', prior_dag_hash: (priorReceipt as any)?.dag_hash, new_dag_hash: dagHash, fix: 'Use --allow-drift to override' });
+    process.exit(1);
+  }
+
+  // Write head.json
+  const outPath = join(outDir, 'head.json');
+  writeFileSync(outPath, dagJson);
+
+  // Write receipt
+  let gitSha = 'unknown';
+  try { gitSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim(); } catch {}
+
+  let commitTimestamp: string;
+  try { commitTimestamp = execSync(`git show -s --format=%cI ${gitSha}`, { cwd: repoRoot, encoding: 'utf-8' }).trim(); }
+  catch { commitTimestamp = new Date().toISOString(); }
+
+  const receipt = {
+    schema_version: 1,
+    type: 'import-compiled',
+    git_sha: gitSha,
+    timestamp: commitTimestamp,
+    spec_inputs: [{ path: irPath, sha256: inputHash }],
+    ir_inputs: ir.inputs,
+    engine: ir.engine,
+    dag_id: ir.dag_id,
+    dag_hash: dagHash,
+    compile_hash: ir.metadata.compile_hash,
+    nodes: Object.keys(dag.nodes).length,
+    validation: { define_passed: true, verify_warnings: verifyErrors.length, check_orphans: checkResult.orphans.length },
+    warnings,
+    ...(driftDetected ? { drift: { acknowledged: true, prior_dag_hash: (priorReceipt as any)?.dag_hash } } : {}),
+  };
+
+  const receiptPath = join(receiptsDir, `import-${gitSha.slice(0, 8)}.json`);
+  writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + '\n');
+
+  recordTrail({
+    ts: new Date().toISOString(), cmd: 'import', note,
+    repo: basename(repoRoot), position: ['init'], level: 0, dagId: ir.dag_id,
+    detail: { source: irPath, type: 'spec-compiled', engine: ir.engine.name, nodes: Object.keys(dag.nodes).length, receiptPath, dagHash: dagHash.slice(0, 12) },
+  });
+
+  const spawnPlan = buildSpawnPlan(dag);
+
+  json({
+    imported: true,
+    type: 'spec-compiled',
+    dagId: ir.dag_id,
+    engine: ir.engine,
+    source: irPath,
+    nodes: Object.keys(dag.nodes).length,
+    init: dag.init,
+    term: dag.term,
+    path: outPath,
+    receipt: receiptPath,
+    dag_hash: dagHash.slice(0, 12),
+    input_hash: inputHash.slice(0, 12),
+    spawnPlan,
+    ...(warnings.length > 0 ? { warnings } : {}),
+  });
+}
+
+// --- spec: front-end for spec generation pipeline ---
+// FR-SPEC-001: roadmap owns the spec interface; spec-kit is a pluggable backend.
+function cmdSpec(note: string) {
+  const sub = args[1];
+  switch (sub) {
+    case 'init':     return cmdSpecInit(note);
+    case 'generate': return cmdSpecGenerate(note);
+    case 'compile':  return cmdSpecCompile(note);
+    default:
+      json({ error: `Unknown spec subcommand: ${sub}`, fix: 'roadmap spec init|generate|compile --note "..."' });
+      process.exit(1);
+  }
+}
+
+function cmdSpecInit(note: string) {
+  const idIdx = args.indexOf('--id');
+  const dagId = idIdx !== -1 ? args[idIdx + 1] : undefined;
+  if (!dagId) {
+    json({ error: 'Missing --id', fix: 'roadmap spec init --id <dag-id> --note "..."' });
+    process.exit(1);
+  }
+
+  const specDir = join(repoRoot, '.roadmap', 'spec');
+  if (!existsSync(specDir)) mkdirSync(specDir, { recursive: true });
+
+  const configPath = join(specDir, 'spec.config.json');
+  const config = defaultConfig(dagId);
+
+  // Allow --engine override
+  const engineIdx = args.indexOf('--engine');
+  if (engineIdx !== -1) config.engine = args[engineIdx + 1];
+
+  const engineCmdIdx = args.indexOf('--engine-command');
+  if (engineCmdIdx !== -1) config.engine_command = args[engineCmdIdx + 1];
+
+  writeFileSync(configPath, JSON.stringify(config, null, 2) + '\n');
+
+  recordTrail({
+    ts: new Date().toISOString(), cmd: 'spec-init', note,
+    repo: basename(repoRoot), position: ['untracked'], level: 0, dagId,
+  });
+
+  json({
+    initialized: true,
+    dagId,
+    config: configPath,
+    engine: config.engine,
+    inputPaths: config.inputs,
+  });
+}
+
+function cmdSpecGenerate(note: string) {
+  const specDir = join(repoRoot, '.roadmap', 'spec');
+  const configPath = join(specDir, 'spec.config.json');
+
+  if (!existsSync(configPath)) {
+    json({ error: 'No spec config found', fix: 'Run roadmap spec init --id <dag-id> first' });
+    process.exit(1);
+  }
+
+  const config: SpecConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
+
+  // Determine engine command
+  const engineCmd = config.engine_command || `npx ${config.engine}`;
+
+  // Check if engine is available
+  let engineVersion: string | null = null;
+  try {
+    engineVersion = execSync(`${engineCmd} --version`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 10000 }).trim().split('\n')[0];
+  } catch {
+    // Try local path resolution
+    const localPath = resolve(homedir(), `src/${config.engine}/package.json`);
+    if (existsSync(localPath)) {
+      try { engineVersion = JSON.parse(readFileSync(localPath, 'utf-8')).version; } catch {}
+    }
+  }
+
+  // Collect input files and hash them
+  const inputs: SpecInput[] = [];
+  const inputEntries: [string, string | undefined][] = [
+    ['pre_spec', config.inputs.pre_spec],
+    ['spec', config.inputs.spec],
+    ['plan', config.inputs.plan],
+    ['tasks', config.inputs.tasks],
+    ['data_model', config.inputs.data_model],
+  ];
+
+  for (const [role, path] of inputEntries) {
+    if (!path) continue;
+    const resolved = resolve(repoRoot, path);
+    if (existsSync(resolved)) {
+      const hash = createHash('sha256').update(readFileSync(resolved)).digest('hex');
+      inputs.push({ path, sha256: hash, role: role.replace('_', '-') as SpecInput['role'] });
+    }
+  }
+
+  for (const extra of config.inputs.extra ?? []) {
+    const resolved = resolve(repoRoot, extra);
+    if (existsSync(resolved)) {
+      const hash = createHash('sha256').update(readFileSync(resolved)).digest('hex');
+      inputs.push({ path: extra, sha256: hash, role: 'other' });
+    }
+  }
+
+  if (inputs.length === 0) {
+    json({
+      error: 'No spec input files found',
+      searched: Object.values(config.inputs).filter(Boolean),
+      fix: 'Create spec inputs or update paths in .roadmap/spec/spec.config.json',
+    });
+    process.exit(1);
+  }
+
+  // Write receipt
+  let gitSha = 'unknown';
+  try { gitSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim(); } catch {}
+
+  const receiptsDir = join(repoRoot, '.roadmap', 'receipts');
+  if (!existsSync(receiptsDir)) mkdirSync(receiptsDir, { recursive: true });
+
+  const receipt = {
+    schema_version: 1,
+    type: 'spec-generate',
+    git_sha: gitSha,
+    timestamp: new Date().toISOString(),
+    engine: config.engine,
+    engine_version: engineVersion,
+    dag_id: config.dag_id,
+    inputs,
+    artifacts_found: inputs.map(i => i.path),
+  };
+
+  const receiptPath = join(receiptsDir, `spec-generate-${gitSha.slice(0, 8)}.json`);
+  writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + '\n');
+
+  recordTrail({
+    ts: new Date().toISOString(), cmd: 'spec-generate', note,
+    repo: basename(repoRoot), position: ['untracked'], level: 0, dagId: config.dag_id,
+    detail: { engine: config.engine, inputs: inputs.length },
+  });
+
+  json({
+    generated: true,
+    engine: config.engine,
+    engine_version: engineVersion,
+    dagId: config.dag_id,
+    inputs,
+    receipt: receiptPath,
+  });
+}
+
+function cmdSpecCompile(note: string) {
+  const specDir = join(repoRoot, '.roadmap', 'spec');
+  const configPath = join(specDir, 'spec.config.json');
+
+  if (!existsSync(configPath)) {
+    json({ error: 'No spec config found', fix: 'Run roadmap spec init --id <dag-id> first' });
+    process.exit(1);
+  }
+
+  const config: SpecConfig = JSON.parse(readFileSync(configPath, 'utf-8'));
+
+  // Find tasks file (primary input for compilation)
+  const tasksPath = config.inputs.tasks ? resolve(repoRoot, config.inputs.tasks) : null;
+  if (!tasksPath || !existsSync(tasksPath)) {
+    json({ error: `Tasks file not found: ${config.inputs.tasks}`, fix: 'Run roadmap spec generate or create tasks file manually' });
+    process.exit(1);
+  }
+
+  // Hash all inputs
+  const inputs: SpecInput[] = [];
+  const inputEntries: [string, string | undefined][] = [
+    ['pre_spec', config.inputs.pre_spec],
+    ['spec', config.inputs.spec],
+    ['plan', config.inputs.plan],
+    ['tasks', config.inputs.tasks],
+    ['data_model', config.inputs.data_model],
+  ];
+
+  for (const [role, path] of inputEntries) {
+    if (!path) continue;
+    const resolved = resolve(repoRoot, path);
+    if (existsSync(resolved)) {
+      const hash = createHash('sha256').update(readFileSync(resolved)).digest('hex');
+      inputs.push({ path, sha256: hash, role: role.replace('_', '-') as SpecInput['role'] });
+    }
+  }
+
+  // Parse tasks
+  const tasksContent = readFileSync(tasksPath, 'utf-8');
+  const tasks = parseTasksMd(tasksContent);
+  if (tasks.length === 0) {
+    json({ error: 'No tasks found in tasks file', fix: 'Ensure tasks file uses format: - [P0] task-id: description' });
+    process.exit(1);
+  }
+
+  // Engine version
+  let engineVersion: string | null = null;
+  const engineCmd = config.engine_command || `npx ${config.engine}`;
+  try {
+    engineVersion = execSync(`${engineCmd} --version`, { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 10000 }).trim().split('\n')[0];
+  } catch {
+    const localPath = resolve(homedir(), `src/${config.engine}/package.json`);
+    if (existsSync(localPath)) {
+      try { engineVersion = JSON.parse(readFileSync(localPath, 'utf-8')).version; } catch {}
+    }
+  }
+
+  const configHash = createHash('sha256').update(readFileSync(configPath)).digest('hex');
+
+  // Build IR tasks
+  const irTasks: SpecIRTask[] = tasks.map(t => ({
+    id: t.id,
+    desc: t.desc,
+    priority: t.priority,
+    depends: t.depends,
+    produces: t.produces,
+    consumes: t.consumes,
+    mode: t.mode,
+    validate: t.validate,
+  }));
+
+  const compileContent = JSON.stringify(irTasks, null, 0);
+  const compileHash = createHash('sha256').update(compileContent).digest('hex');
+
+  const ir: SpecIR = {
+    schema_version: 1,
+    engine: { name: config.engine, version: engineVersion, config_hash: configHash },
+    dag_id: config.dag_id,
+    dag_desc: config.dag_desc,
+    inputs,
+    tasks: irTasks,
+    metadata: {
+      generated: new Date().toISOString(),
+      compile_hash: compileHash,
+    },
+  };
+
+  // Write spec-compiled.json
+  const compiledPath = join(specDir, 'spec-compiled.json');
+  writeFileSync(compiledPath, JSON.stringify(ir, null, 2) + '\n');
+
+  // Write receipt
+  let gitSha = 'unknown';
+  try { gitSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim(); } catch {}
+
+  const receiptsDir = join(repoRoot, '.roadmap', 'receipts');
+  if (!existsSync(receiptsDir)) mkdirSync(receiptsDir, { recursive: true });
+
+  const receipt = {
+    schema_version: 1,
+    type: 'spec-compile',
+    git_sha: gitSha,
+    timestamp: new Date().toISOString(),
+    engine: ir.engine,
+    dag_id: config.dag_id,
+    inputs,
+    tasks: tasks.length,
+    compile_hash: compileHash,
+    compiled_path: compiledPath,
+  };
+
+  const receiptPath = join(receiptsDir, `spec-compile-${gitSha.slice(0, 8)}.json`);
+  writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + '\n');
+
+  recordTrail({
+    ts: new Date().toISOString(), cmd: 'spec-compile', note,
+    repo: basename(repoRoot), position: ['untracked'], level: 0, dagId: config.dag_id,
+    detail: { tasks: tasks.length, compileHash: compileHash.slice(0, 12) },
+  });
+
+  json({
+    compiled: true,
+    dagId: config.dag_id,
+    engine: ir.engine,
+    tasks: tasks.length,
+    inputs: inputs.length,
+    compile_hash: compileHash.slice(0, 12),
+    path: compiledPath,
+    receipt: receiptPath,
+    next: `roadmap import --spec-compiled ${compiledPath} --note "..."`,
+  });
 }
 
 // --- init: add init gate node to DAG ---
@@ -3137,6 +3695,7 @@ Commands:
   orient --assign     Round-robin assign batchRemaining to --owners (JSON)
   advance             Advance to next batch — runs validate[] on all nodes (JSON)
   advance --structural-only  Skip quality gates, advance on artifact existence only
+  advance --allow-conflicts  Override batch conflict enforcement (receipted)
   commit --node <id>  Stage node's produces, commit with [node: X] trailer, update git-state
   complete <node-id>  Atomic: claim → checkpoint → reorient → auto-advance if last in batch (--no-advance to suppress)
   checkpoint --label <name>  Save checkpoint (--note optional when --label given)
@@ -3146,6 +3705,7 @@ Commands:
   validate [node]     Run validation rules (all nodes or specific)
   expand <script.ts>  Run expansion script, validate DAG, commit
   expand <script> --type structural|iteration  Structural (idempotent) vs iteration (one-shot)
+  expand <script> --allow-conflicts  Override batch conflict enforcement (receipted)
   branch <name> [dag] Create git branch with optional separate DAG
   parallel            Show parallel execution batches (current repo)
   parallel --cross-repo  Show parallel structure with sibling repos
@@ -3170,7 +3730,13 @@ Commands:
   claim <id> --renew         Extend TTL; fails if claim expired or owner mismatch
   claim <id> --release       Release a claim
   claim --list        Show all claims with expiry status
-  import --from speckit <file.md> --id <dag-id>  Parse tasks.md → roadmap DAG
+  import --from speckit <file.md> --id <dag-id>  Parse tasks.md → roadmap DAG (receipted: input hash + DAG hash)
+  import --spec-compiled <path>  Import from spec-compiled IR (engine-agnostic, receipted)
+  import ... --allow-drift  Acknowledge and overwrite when same inputs produce different DAG
+  spec init --id <dag-id>  Create spec workspace + config (.roadmap/spec/)
+  spec init --engine <name>  Use alternate backend engine (default: spec-kit)
+  spec generate             Hash + receipt spec inputs via configured engine
+  spec compile              Parse tasks → spec-compiled.json (roadmap IR) + receipt
   init <dag-id>       Add plan clarity gate to existing DAG
   init <id> --statement "..." --threshold 0.95  Custom intent statement and confidence threshold
   report                      Aggregate validation gap report across all nodes
@@ -3827,6 +4393,28 @@ async function cmdPlanGallery(note: string) {
 }
 
 // --- Helpers ---
+
+// FR-GOV-004: write receipt when --allow-conflicts overrides batch conflict enforcement
+function writeConflictOverrideReceipt(conflicts: { level: number; file: string; writers: string[]; type: string }[], level: number, command: string) {
+  const receiptsDir = join(repoRoot, '.roadmap', 'receipts');
+  if (!existsSync(receiptsDir)) mkdirSync(receiptsDir, { recursive: true });
+
+  let gitSha = 'unknown';
+  try { gitSha = execSync('git rev-parse --short HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim(); } catch {}
+
+  const receipt = {
+    schema_version: 1,
+    type: 'conflict-override',
+    command,
+    git_sha: gitSha,
+    timestamp: new Date().toISOString(),
+    level,
+    conflicts: conflicts.map(c => ({ type: c.type, file: c.file, nodes: c.writers })),
+  };
+
+  const receiptPath = join(receiptsDir, `conflict-override-${gitSha}.json`);
+  writeFileSync(receiptPath, JSON.stringify(receipt, null, 2) + '\n');
+}
 
 function loadDAG(): Graph<string> {
   const headPath = join(repoRoot, '.roadmap', 'head.json');
