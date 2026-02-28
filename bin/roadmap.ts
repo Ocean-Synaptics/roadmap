@@ -50,6 +50,7 @@ import { certifyAutoIntake } from '../src/lib/auto-intake.ts';
 import { estimateCost } from '../src/lib/cost-estimator.ts';
 import { runEnvAudit } from '../src/lib/env-audit.ts';
 import { runAuditIngest } from '../src/lib/audit-ingest.ts';
+import { runAuditRecommend } from '../src/lib/audit-recommend.ts';
 import { runProfile } from '../src/lib/profile-cmd.ts';
 import { runPatchStack } from '../src/lib/patch-stack-cmd.ts';
 import { installAll, extractVersionHash, readPackageVersion, computeSkillHash } from '../src/lib/install-skills.ts';
@@ -3613,8 +3614,23 @@ function cmdIntake(note: string) {
       json(result);
       return;
     }
+    case 'auto-certify': {
+      try {
+        certifyAutoIntake(repoRoot);
+      } catch (e) {
+        json({ error: (e as Error).message, fix: 'Nothing to certify — run auto-intake first' });
+        process.exit(1);
+      }
+      recordTrail({
+        ts: new Date().toISOString(), cmd: 'intake auto-certify', note,
+        repo: basename(repoRoot), position: [], level: 0,
+        detail: { cleared: 'pending-certify.json' },
+      });
+      json({ ok: true, cleared: '.roadmap/pending-certify.json' });
+      return;
+    }
     default:
-      json({ error: `Unknown intake subcommand: ${sub}`, fix: 'roadmap intake scan|import|certify|absorb --note "..."' });
+      json({ error: `Unknown intake subcommand: ${sub}`, fix: 'roadmap intake scan|import|certify|absorb|auto-certify --note "..."' });
       process.exit(1);
   }
 }
