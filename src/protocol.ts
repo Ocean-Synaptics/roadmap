@@ -422,7 +422,8 @@ export function parallelOrder<T extends string>(g: Graph<T>): string[][] {
 
   let ready = [...deg].filter(([, d]) => d === 0).map(([id]) => id);
   while (ready.length) {
-    batches.push(ready.sort()); // sort for determinism
+    // Lexicographic sort within batch — stable by policy (FR-DET-001)
+    batches.push(ready.sort((a, b) => a.localeCompare(b)));
     const next: string[] = [];
     for (const n of ready) {
       for (const s of a.get(n) ?? []) {
@@ -507,6 +508,13 @@ export interface LoopSignal {
   convergenceCheck?: { maxCoverageDelta?: number; requireEmptyProposals?: boolean };
 }
 
+export interface PlanReceipt {
+  nodeId: string;
+  mode: 'plan';
+  preGateActive: boolean;
+  expandedChildren: string[];
+}
+
 export interface Orientation {
   position: string[];         // batch: array of nodes that can run in parallel
   level: number;              // batch index (0-based)
@@ -518,6 +526,8 @@ export interface Orientation {
   consumes: readonly string[];
   remaining: string[];
   loop?: LoopSignal;          // present if a position node has loopTarget (soft loop)
+  planReceipts?: PlanReceipt[];  // plan nodes in current batch — allows orchestrators to distinguish plan vs execute (FR-ORIENT-001)
+  intentPolicyActive?: boolean;  // true when kernel.json intentPolicy is enforcing advancement gates
 }
 
 export function orient<T extends string>(
@@ -585,6 +595,17 @@ export function orient<T extends string>(
       const loopNode = batch.map(id => nm.get(id)!).find(n => n.loopTarget);
       const loop = loopNode ? { target: loopNode.loopTarget!, ...(loopNode.convergenceCheck ? { convergenceCheck: loopNode.convergenceCheck } : {}) } : undefined;
 
+      // Plan receipts: plan-mode nodes in current batch (FR-ORIENT-001)
+      const planReceiptsArr: PlanReceipt[] = batch
+        .map(id => nm.get(id)!)
+        .filter(n => n.mode === 'plan')
+        .map(n => ({
+          nodeId: n.id,
+          mode: 'plan' as const,
+          preGateActive: preGate.includes(n.id),
+          expandedChildren: expansionChildren.get(n.id) ?? [],
+        }));
+
       return {
         position: batch,
         level: batches.indexOf(batch),
@@ -596,6 +617,7 @@ export function orient<T extends string>(
         consumes: batchConsumes,
         remaining: remainingBatches,
         ...(loop ? { loop } : {}),
+        ...(planReceiptsArr.length > 0 ? { planReceipts: planReceiptsArr } : {}),
       };
     }
 
