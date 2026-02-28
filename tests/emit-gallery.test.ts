@@ -204,7 +204,8 @@ describe('ConvergenceConfig / runGallery()', () => {
     });
 
     expect(result.failures).toHaveLength(1);
-    expect(result.failures[0].unreachable).toBe(stmt);
+    expect(result.failures[0].code).toBe('guardRejection');
+    expect(result.failures[0].evidence.guard).toBe(stmt);
   });
 
   it('GalleryFailure includes bestConfidence, threshold, diagnosis', async () => {
@@ -237,9 +238,12 @@ describe('ConvergenceConfig / runGallery()', () => {
 
     expect(result.failures).toHaveLength(1);
     const f = result.failures[0];
-    expect(f.bestConfidence).toBe(0.72);
-    expect(f.threshold).toBe(0.85);
-    expect(f.diagnosis).toContain('4');
+    expect(f.code).toBe('guardRejection');
+    // check field encodes best confidence (0.72) and threshold (0.85)
+    expect(f.evidence.check).toContain('0.72');
+    expect(f.evidence.check).toContain('0.85');
+    // evaluated field encodes candidate count (4)
+    expect(f.evidence.evaluated).toBe(4);
   });
 });
 

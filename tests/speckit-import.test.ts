@@ -171,7 +171,8 @@ describe('round-trip: parse → DAG → define', () => {
 - [P3] release: Cut v1.0.0
   - depends: api-gateway, admin-panel
   - consumes: src/gateway.ts, src/admin.ts
-  - validate: shell:npm run build, shell:npm test
+  - validate: shell:npm run build
+  - validate: shell:npm test
 `;
     const tasks = parseTasksMd(md);
     expect(tasks).toHaveLength(6);
