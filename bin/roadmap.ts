@@ -62,7 +62,9 @@ import { render, renderDagLayers, type RenderOpts, type RenderModel, type Render
 import { resolveWidth } from '../src/lib/render/layout.ts';
 import { renderOrient, renderChart, renderPlanGallery, renderPlanSelect, renderPlanStatus, renderDoctor, renderValidate, renderTrail, renderRemaining } from '../src/lib/cli-human.ts';
 import type { OrientData, ChartData, GalleryData, PlanSelectData, PlanStatusData, DoctorData, ValidateData, TrailData, RemainingData } from '../src/lib/cli-human.ts';
-import { ensureRunDir, writeMeta, type RunId, type RunMeta, generateRunId } from '../src/lib/metaflow/index.ts';
+import { ensureRunDir, readMeta, writeMeta, type RunId, type RunMeta, generateRunId } from '../src/lib/metaflow/index.ts';
+import { isReceiptRequired } from '../src/lib/metaflow/command-registry.ts';
+import { SessionStore } from '../src/lib/metaflow/session-store.ts';
 
 const rawArgs = process.argv.slice(2);
 const repoRoot = process.cwd();
@@ -98,6 +100,8 @@ function deriveEnvelopeCmd(): string {
   }
   if (cmd === 'mf') {
     if (args[1] === 'init') return 'mf.init';
+    if (args[1] === 'dispatch') return 'mf.dispatch';
+    if (args[1] === 'retire-team') return 'mf.retire-team';
     return 'mf';
   }
   return cmd;
@@ -4861,6 +4865,55 @@ function cmdMf(note: string) {
 
       json({ cmd: 'mf.init', runId, repoRoot: process.cwd(), headSha, strictReceipts });
       recordTrail({ ts: new Date().toISOString(), cmd: 'mf.init', note, repo: basename(repoRoot), position: ['mf-init'], level: 0 });
+      return;
+    }
+    case 'dispatch': {
+      const runIdx = args.indexOf('--run');
+      if (runIdx === -1 || !args[runIdx + 1]) {
+        json({ error: 'Missing --run <runId>', fix: 'roadmap mf dispatch --run <runId> --worker-id <id> --note "..."' });
+        process.exit(1);
+      }
+      const dRunId = args[runIdx + 1] as RunId;
+      const workerIdx = args.indexOf('--worker-id');
+      const dWorkerId = workerIdx !== -1 ? args[workerIdx + 1] : `worker-${Date.now()}`;
+      const agentSessionIdx = args.indexOf('--agent-session');
+      const dAgentSessionId = agentSessionIdx !== -1 ? args[agentSessionIdx + 1] : '';
+      const gitIndexIdx = args.indexOf('--git-index');
+      const dGitIndexFile = gitIndexIdx !== -1 ? args[gitIndexIdx + 1] : '';
+      const hookProfileIdx = args.indexOf('--hook-profile');
+      const dHookProfile = hookProfileIdx !== -1 ? args[hookProfileIdx + 1] : '';
+      const capIdx = args.indexOf('--capabilities');
+      const dCapabilities = capIdx !== -1 && args[capIdx + 1] ? args[capIdx + 1].split(',') : [];
+
+      let dHeadSha = '';
+      try {
+        dHeadSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+      } catch {
+        dHeadSha = '000000000000';
+      }
+
+      const dStore = new SessionStore(dRunId, { base: repoRoot });
+      const reusable = dStore.findReusable(dCapabilities);
+      if (reusable) {
+        dStore.markTeamReuseMissed();
+      }
+      dStore.register({ workerId: dWorkerId, agentSessionId: dAgentSessionId, headSha: dHeadSha, gitIndexFile: dGitIndexFile, hookProfile: dHookProfile, capabilities: dCapabilities });
+
+      json({ cmd: 'mf.dispatch', runId: dRunId, workerId: dWorkerId, status: 'registered' });
+      recordTrail({ ts: new Date().toISOString(), cmd: 'mf.dispatch', note, repo: basename(repoRoot), position: ['mf-session-binding'], level: 2 });
+      return;
+    }
+    case 'retire-team': {
+      const rtRunIdx = args.indexOf('--run');
+      if (rtRunIdx === -1 || !args[rtRunIdx + 1]) {
+        json({ error: 'Missing --run <runId>', fix: 'roadmap mf retire-team --run <runId> --note "..."' });
+        process.exit(1);
+      }
+      const rtRunId = args[rtRunIdx + 1] as RunId;
+      const rtStore = new SessionStore(rtRunId, { base: repoRoot });
+      const retiredCount = rtStore.retireAll();
+      json({ cmd: 'mf.retire-team', runId: rtRunId, retiredCount });
+      recordTrail({ ts: new Date().toISOString(), cmd: 'mf.retire-team', note, repo: basename(repoRoot), position: ['mf-session-binding'], level: 2 });
       return;
     }
     default:
