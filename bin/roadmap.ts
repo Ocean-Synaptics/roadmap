@@ -100,7 +100,7 @@ if (_humanRenderers[_outputOpts.cmd]) {
 
 // Commands that don't require a note
 // Special case: orient/position with --check is note-exempt (silent polling)
-const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'trail', 'chart', 'install', 'dig', 'claim', 'diff', 'show', 'iter-id', 'explore', 'remaining', 'doctor']);
+const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'trail', 'chart', 'install', 'dig', 'claim', 'diff', 'show', 'iter-id', 'explore', 'remaining', 'doctor', 'status']);
 const isOrientCheck = (cmd === 'orient' || cmd === 'position') && args.includes('--check');
 if (isOrientCheck) {
   NOTE_EXEMPT.add('orient');
@@ -274,6 +274,7 @@ async function main() {
       case 'propagate': return cmdPropagate(note!);
       case 'remaining': return cmdRemaining();
       case 'doctor':    return cmdDoctor();
+      case 'status':    return cmdStatus();
       case 'explore':   return await cmdExplore();
       case 'compile-prompts': return cmdCompilePrompts(note!);
       case 'compile-brief': return cmdCompileBrief(note!);
@@ -1541,6 +1542,49 @@ function cmdRemaining() {
     console.log(`  ${stateTag} ${r.id}${modeTag}  ← ${r.blockedBy}`);
   }
   console.log('');
+}
+
+function cmdStatus() {
+  if (!hasLocalDAG) {
+    json({ error: 'No roadmap in this repo.' });
+    process.exit(1);
+  }
+
+  const dag = loadDAG();
+  const completion = loadStore();
+  const retired = retiredSet();
+  const dagNodeIds = new Set(Object.keys(dag.nodes));
+
+  const passingIds = completion.passingIds();
+  const failingIds = completion.failingIds();
+  const skippedNodes = [...retired].filter(id => dagNodeIds.has(id));
+
+  let pendingCount = 0;
+  let plannedCount = 0;
+
+  for (const id of dagNodeIds) {
+    if (retired.has(id)) continue;
+    if (passingIds.has(id)) continue;
+    const node = (dag.nodes as Record<string, any>)[id];
+    if (node?.mode === 'plan') {
+      plannedCount++;
+      if (!completion.hasRecord(id)) pendingCount++;
+      continue;
+    }
+    if (!completion.hasRecord(id)) pendingCount++;
+  }
+
+  const status = {
+    dagId: dag.id,
+    total: dagNodeIds.size,
+    done: passingIds.size,
+    pending: pendingCount,
+    failed: failingIds.size,
+    skipped: skippedNodes.length,
+    planned: plannedCount,
+  };
+
+  json(status);
 }
 
 function cmdDiff() {
