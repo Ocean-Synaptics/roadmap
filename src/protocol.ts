@@ -646,6 +646,7 @@ export function readyNodes<T extends string>(
   g: Graph<T>,
   exists: (artifact: string) => boolean,
   retired?: ReadonlySet<string>,
+  completed?: ReadonlySet<string>,
 ): ReadyNode[] {
   const batches = parallelOrder(g);
   const nodes = flat(g);
@@ -661,14 +662,17 @@ export function readyNodes<T extends string>(
     }
   }
 
-  // Compute done set — same artifact/expansion logic as orient()
+  // Compute done set — same receipt+artifact logic as orient()
   const done = new Set<string>();
   for (const n of nodes) {
     if (retired?.has(n.id)) { done.add(n.id); continue; }
     if (n.mode === 'plan') {
+      if (completed?.has(n.id)) { done.add(n.id); continue; }
       if ((expansionChildren.get(n.id) ?? []).length > 0) done.add(n.id);
+    } else if (n.produces.length) {
+      if (n.produces.every(exists) && (completed?.has(n.id) ?? false)) done.add(n.id);
     } else {
-      if (!n.produces.length || n.produces.every(exists)) done.add(n.id);
+      if (completed?.has(n.id) ?? false) done.add(n.id);
     }
   }
 
@@ -725,9 +729,10 @@ export function nextBatch<T extends string>(
   g: Graph<T>,
   exists: (artifact: string) => boolean,
   retired?: ReadonlySet<string>,
+  completed?: ReadonlySet<string>,
 ): NextBatch | null {
   const batches = parallelOrder(g);
-  const current = orient(g, exists, retired);
+  const current = orient(g, exists, retired, completed);
   const nextLevel = current.level + 1;
 
   if (nextLevel >= batches.length) return null;

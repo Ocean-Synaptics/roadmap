@@ -106,6 +106,26 @@ function retiredSet(): Set<string> {
   return new Set(loadRetired().keys());
 }
 
+// --- Completion state: single entry point for orient evidence ---
+// All orient() calls in this CLI MUST use orientWithState() or getCompletionState().
+// Direct orient() calls bypass receipt semantics.
+function getCompletionState() {
+  const completions = loadCompletions(repoRoot);
+  const completedIds = getCompletedNodeIds(completions);
+  const retired = retiredSet();
+  return { completedIds, retired, exists: fileExists(repoRoot) };
+}
+
+function orientWithState(dag: Graph<string>) {
+  const { exists, retired, completedIds } = getCompletionState();
+  return orient(dag, exists, retired, completedIds);
+}
+
+async function crossOrientWithState(dag: Graph<string>) {
+  const { exists, retired, completedIds } = getCompletionState();
+  return crossOrient(dag, repoRoot, exists, retired, completedIds);
+}
+
 // --- iter-id: loop iteration counter ---
 // Reads/writes .roadmap/iter.json: { iteration: number, startedAt: string }
 // Canonical iteration number for namespacing loop artifacts (evidence-iter-3.json, etc.)
@@ -249,41 +269,13 @@ async function cmdOrient(note: string | undefined) {
   }
 
   const dag = loadDAG();
-  const completions = loadCompletions(repoRoot);
-  const completedIds = getCompletedNodeIds(completions);
 
-  const pos = await crossOrient(dag, repoRoot, undefined, retiredSet(), completedIds);
+  const pos = await crossOrientWithState(dag);
 
-  // Filter out completed nodes from position and batchRemaining
-  const filteredPosition = pos.position.filter(nodeId => !completedIds.has(nodeId));
-  const filteredBatchRemaining = pos.batchRemaining.filter(nodeId => !completedIds.has(nodeId));
-
-  // Determine next position and batch remaining
-  let nextPosition: string[];
-  let nextBatchRemaining: string[];
+  // Position is receipt-authoritative — no post-hoc filtering needed
+  let nextPosition = pos.position;
+  let nextBatchRemaining = pos.batchRemaining;
   let nextLevel = pos.level;
-
-  if (filteredPosition.length > 0) {
-    // Current batch still has unfinished nodes
-    nextPosition = filteredPosition;
-    nextBatchRemaining = filteredBatchRemaining;
-  } else if (filteredBatchRemaining.length > 0) {
-    // Current batch is complete, advance within same level
-    nextPosition = filteredBatchRemaining;
-    nextBatchRemaining = [];
-  } else {
-    // All current batch done, get next batch from DAG
-    const upcomingBatch = nextBatch(dag, fileExists(repoRoot), retiredSet());
-    if (upcomingBatch && upcomingBatch.position) {
-      nextPosition = upcomingBatch.position.filter(n => !completedIds.has(n));
-      nextBatchRemaining = (upcomingBatch.remaining || []).filter(n => !completedIds.has(n));
-      nextLevel = upcomingBatch.level;
-    } else {
-      // No next batch, stay at current (this shouldn't happen unless DAG is complete)
-      nextPosition = pos.position;
-      nextBatchRemaining = [];
-    }
-  }
 
   // Annotate current batch nodes with their mode
   const batchModes: Record<string, string> = {};
@@ -303,9 +295,9 @@ async function cmdOrient(note: string | undefined) {
     consumes: pos.consumes,
     batchRemaining: nextBatchRemaining,
     batchComplete: nextBatchRemaining.length === 0,
-    done: pos.done.length + completedIds.size,
-    remaining: pos.remaining.length - completedIds.size,
-    complete: (pos.remaining.length - completedIds.size) === 0,
+    done: pos.done.length,
+    remaining: pos.remaining.length,
+    complete: pos.remaining.length === 0,
   };
   if (Object.keys(batchModes).length) result.planNodes = batchModes;
   if (Object.keys(claimAnnotations).length) result.claims = claimAnnotations;
@@ -387,7 +379,8 @@ async function cmdOrient(note: string | undefined) {
 
   // --ready: eager dispatch — nodes beyond current batch whose deps are met
   if (args.includes('--ready')) {
-    const ready = readyNodes(dag, fileExists(repoRoot), retiredSet());
+    const { exists: _re, retired: _rr, completedIds: _rc } = getCompletionState();
+    const ready = readyNodes(dag, _re, _rr, _rc);
     const active = activeClaims(claimStore);
     const callingOwner = process.env['AGENT_ID'] ?? process.env['USER'] ?? '';
     result.ready = ready.map(n => ({
@@ -404,7 +397,8 @@ async function cmdOrient(note: string | undefined) {
 
   // --next: lookahead for orchestrator pre-warming
   if (args.includes('--next')) {
-    const next = nextBatch(dag, fileExists(repoRoot), retiredSet());
+    const { exists: _e, retired: _r, completedIds: _c } = getCompletionState();
+    const next = nextBatch(dag, _e, _r, _c);
     result.next = next;
   }
 
@@ -513,13 +507,11 @@ async function cmdAdvance(note: string) {
   const { advanceBatch, validateBatch } = await import('../src/protocol.ts');
   const dag = loadDAG();
   const predicate = fileExists(repoRoot);
-  const completions = loadCompletions(repoRoot);
-  const completedIds = getCompletedNodeIds(completions);
   const structuralOnly = args.includes('--structural-only');
 
   try {
-    // Get current position (including explicit completions)
-    const current = orient(dag, predicate, retiredSet(), completedIds);
+    // Get current position (receipt-authoritative)
+    const current = orientWithState(dag);
 
     // Validate batch is complete (artifact existence)
     if (!current.batchComplete) {
@@ -571,8 +563,9 @@ async function cmdAdvance(note: string) {
       }
     }
 
-    // Advance to next batch (with completed nodes)
-    const next = await advanceBatch(dag, predicate, retiredSet(), completedIds);
+    // Advance to next batch (receipt-authoritative)
+    const { exists: _ae, retired: _ar, completedIds: _ac } = getCompletionState();
+    const next = await advanceBatch(dag, _ae, _ar, _ac);
 
     recordTrail({
       ts: new Date().toISOString(),
@@ -597,7 +590,7 @@ async function cmdAdvance(note: string) {
 
 function cmdDescribe(note: string) {
   const dag = loadDAG();
-  const pos = orient(dag, fileExists(repoRoot));
+  const pos = orientWithState(dag);
   const batches = parallelOrder(dag);
   const apiSurface = scanExports();
 
@@ -634,7 +627,7 @@ function cmdDescribe(note: string) {
 async function cmdValidate(note: string) {
   const dag = loadDAG();
   const nodeId = args[1];
-  const pos = orient(dag, fileExists(repoRoot));
+  const pos = orientWithState(dag);
 
   recordTrail({ ts: new Date().toISOString(), cmd: 'validate', note, repo: basename(repoRoot), position: pos.position, level: pos.level, dagId: dag.id, detail: { nodeId: nodeId || 'all' } });
 
@@ -805,7 +798,7 @@ function cmdParallel(note: string) {
   const batches = parallelOrder(dag);
   const showGraph = args.includes('--graph');
   const crossRepo = args.includes('--cross-repo');
-  const pos = orient(dag, fileExists(repoRoot));
+  const pos = orientWithState(dag);
 
   recordTrail({
     ts: new Date().toISOString(),
@@ -994,10 +987,7 @@ async function cmdChart() {
   const showDeps = args.includes('--deps');
   const showCritical = args.includes('--critical-path');
   const dag = loadDAG();
-  const retiredIds = retiredSet();
-  const chartCompletions = loadCompletions(repoRoot);
-  const chartCompletedIds = getCompletedNodeIds(chartCompletions);
-  const pos = await crossOrient(dag, repoRoot, undefined, retiredIds, chartCompletedIds);
+  const pos = await crossOrientWithState(dag);
   const batches = parallelOrder(dag);
   const claimStore = loadClaims(repoRoot);
   const now = new Date();
@@ -1099,7 +1089,7 @@ async function cmdChart() {
         }
         return `👉 ${cpTag}${planTag}${n}${claimTag}`;
       }
-      if (retiredIds.has(n)) return `⏭️ ${n}`;
+      if (retiredSet().has(n)) return `⏭️ ${n}`;
       if (doneSet.has(n)) return `✅ ${cpTag}${planTag}${n}`;
       if (preGateSet.has(n)) return `🔍 ${cpTag}${planTag}${n}`;
       return `⬜ ${cpTag}${planTag}${n}`;
@@ -1253,8 +1243,7 @@ function cmdShow() {
   }
 
   const dag = loadDAG();
-  const retiredIds = retiredSet();
-  const pos = orient(dag, fileExists(repoRoot), retiredIds);
+  const pos = orientWithState(dag);
   const doneSet = new Set(pos.done);
   const claimStore = loadClaims(repoRoot);
   const active = activeClaims(claimStore);
@@ -1283,7 +1272,7 @@ function cmdShow() {
       ...(node.expandedFrom ? { expandedFrom: node.expandedFrom } : {}),
       ...(node.loopTarget ? { loopTarget: node.loopTarget, ...(node.convergenceCheck ? { convergenceCheck: node.convergenceCheck } : {}) } : {}),
       level: levelOf.get(id) ?? -1,
-      status: retiredIds.has(id) ? 'retired' : doneSet.has(id) ? 'done' : pos.batchRemaining.includes(id) ? 'in-progress' : 'pending',
+      status: retiredSet().has(id) ? 'retired' : doneSet.has(id) ? 'done' : pos.batchRemaining.includes(id) ? 'in-progress' : 'pending',
       ...(claim ? { claim: { owner: claim.owner, expiry: claim.claimExpiry } } : {}),
     };
   }
@@ -1408,7 +1397,7 @@ async function cmdCheckpoint(note: string | undefined) {
   }
 
   const dag = loadDAG();
-  const pos = orient(dag, fileExists(repoRoot), retiredSet());
+  const pos = orientWithState(dag);
 
   // Collect existing artifact paths
   const allProduces: string[] = [];
@@ -1473,9 +1462,7 @@ async function cmdComplete(note: string) {
   // 1. Claim — idempotent if this owner already holds it
   const claimStore = loadClaims(repoRoot);
   const existing = claimStore[nodeId];
-  const completions = loadCompletions(repoRoot);
-  const completedIds = getCompletedNodeIds(completions);
-  const pos = orient(dag, fileExists(repoRoot), retiredSet(), completedIds);
+  const pos = orientWithState(dag);
 
   if (!pos.position.includes(nodeId) && !pos.batchRemaining.includes(nodeId)) {
     json({
@@ -1784,7 +1771,7 @@ async function cmdComplete(note: string) {
   });
 
   // 3. Reorient
-  const posAfter = orient(dag, fileExists(repoRoot), retiredSet());
+  const posAfter = orientWithState(dag);
 
   // 4. Auto-advance if this agent completed the last node in the batch.
   // Suppress with --no-advance for orchestrators that want to gate manually.
@@ -1793,7 +1780,8 @@ async function cmdComplete(note: string) {
   if (posAfter.batchComplete && !noAdvance && !posAfter.complete) {
     try {
       const { advanceBatch } = await import('../src/protocol.ts');
-      const next = await advanceBatch(dag, fileExists(repoRoot), retiredSet());
+      const { exists: _ce, retired: _cr, completedIds: _cc } = getCompletionState();
+      const next = await advanceBatch(dag, _ce, _cr, _cc);
       advanced = { previousBatch: posAfter.position, nextBatch: next.position, nextLevel: next.level };
     } catch {
       // advanceBatch failed (e.g. missing artifacts) — surface batchComplete without advancing
@@ -1801,11 +1789,12 @@ async function cmdComplete(note: string) {
   }
 
   const finalPos = advanced
-    ? orient(dag, fileExists(repoRoot), retiredSet())
+    ? orientWithState(dag)
     : posAfter;
 
   // 5. Surface newly unblocked nodes — downstream nodes whose deps are now all satisfied.
-  const nowReady = readyNodes(dag, fileExists(repoRoot), retiredSet());
+  const { exists: _ne, retired: _nr, completedIds: _nc } = getCompletionState();
+  const nowReady = readyNodes(dag, _ne, _nr, _nc);
   const unblocked = nowReady.map(n => n.id);
 
   // Save completion with evidence to persistent tracking (receipt-authoritative)
@@ -1859,7 +1848,7 @@ function cmdCommit(note: string) {
     process.exit(1);
   }
 
-  const pos = orient(dag, fileExists(repoRoot), retiredSet());
+  const pos = orientWithState(dag);
 
   // Stage the node's produces
   const produces: string[] = node.produces ?? [];
@@ -2296,7 +2285,7 @@ function cmdRetire(note: string) {
     retired.delete(nodeId);
     saveRetired(retired);
     const dag = loadDAG();
-    const pos = orient(dag, fileExists(repoRoot));
+    const pos = orientWithState(dag);
     recordTrail({
       ts: new Date().toISOString(), cmd: 'retire', note,
       repo: basename(repoRoot), position: pos.position, level: pos.level, dagId: dag.id,
@@ -2349,7 +2338,7 @@ function cmdRetire(note: string) {
   }
   saveRetired(retired);
 
-  const pos = orient(dag, fileExists(repoRoot));
+  const pos = orientWithState(dag);
   recordTrail({
     ts, cmd: 'retire', note,
     repo: basename(repoRoot), position: pos.position, level: pos.level, dagId: dag.id,
@@ -2440,7 +2429,7 @@ function cmdClaim() {
   }
 
   // Validate node is in current batch
-  const pos = orient(dag, fileExists(repoRoot), retiredSet());
+  const pos = orientWithState(dag);
   if (!pos.position.includes(nodeId)) {
     json({
       error: `Node "${nodeId}" is not in the current batch`,
@@ -2906,7 +2895,7 @@ function cmdLocate(note: string) {
     const result = JSON.parse(output);
     if (hasLocalDAG) {
       const dag = loadDAG();
-      const pos = orient(dag, fileExists(repoRoot));
+      const pos = orientWithState(dag);
       recordTrail({ ts: new Date().toISOString(), cmd: 'locate', note, repo: basename(repoRoot), position: pos.position, level: pos.level });
     } else {
       recordTrail({ ts: new Date().toISOString(), cmd: 'locate', note, repo: basename(repoRoot), position: 'untracked' });
@@ -2945,7 +2934,7 @@ function cmdSync(note: string) {
   let trailEntry: TrailEntry = { ts: new Date().toISOString(), cmd: 'sync', note, repo: basename(repoRoot) };
   if (hasLocalDAG) {
     const dag = loadDAG();
-    const pos = orient(dag, fileExists(repoRoot));
+    const pos = orientWithState(dag);
     trailEntry.position = pos.position;
     trailEntry.level = pos.level;
   } else {
