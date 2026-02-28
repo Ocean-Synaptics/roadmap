@@ -41,6 +41,7 @@ import type { SpecOrigin, SpecImportReceipt } from '../src/lib/spec-origin.ts';
 import { scanIntake, importIntake, certifyIntake } from '../src/lib/intake.ts';
 import { addPeer, removePeer, buildFederationView, federationStatus } from '../src/lib/federation.ts';
 import { buildPlanOverlay, writePlanOverlay, loadPlanOverlay, isOverlayValid } from '../src/lib/plan-overlay.ts';
+import { createDispatchPlan, applyDispatchPlan, loadDispatchPlan, dispatchStatus } from '../src/lib/dispatch.ts';
 import { buildGallery } from '../src/lib/gallery-templates/index.ts';
 import { estimateCost } from '../src/lib/cost-estimator.ts';
 import { installAll, extractVersionHash, readPackageVersion, computeSkillHash } from '../src/lib/install-skills.ts';
@@ -246,6 +247,7 @@ async function main() {
       case 'describe':  return cmdDescribe(note!);
       case 'validate':  return cmdValidate(note!);
       case 'verify':    return await cmdVerify(note!);
+      case 'check':     return await cmdCheck(note!);
       case 'expand':    return await cmdExpand(note!);
       case 'branch':    return cmdBranch(note!);
       case 'position':  return cmdOrient(note); // alias
@@ -262,6 +264,7 @@ async function main() {
       case 'import':    return cmdImport(note!);
       case 'intake':    return cmdIntake(note!);
       case 'federation': return cmdFederation(note!);
+      case 'dispatch':  return cmdDispatch(note!);
       case 'spec':      return cmdSpec(note!);
       case 'init':      return cmdInit(note!);
       case 'report':    return await cmdReport(note!);
@@ -893,6 +896,62 @@ async function cmdVerify(note: string) {
   }
 
   json(result);
+
+  if (result.violations.length > 0) process.exit(1);
+}
+
+async function cmdCheck(note: string) {
+  const idIdx = args.indexOf('--id');
+  const checkId = idIdx !== -1 ? args[idIdx + 1] : 'roadmap.verify';
+
+  const { runVerify } = await import('../src/lib/verify.ts');
+  const result = runVerify(repoRoot);
+
+  let commitSha: string | undefined;
+  let treeSha: string | undefined;
+  try {
+    commitSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+    treeSha = execSync('git rev-parse HEAD^{tree}', { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+  } catch { /* not a git repo */ }
+
+  // Collect artifact paths from .roadmap/artifacts/
+  const artifactsDir = join(repoRoot, '.roadmap', 'artifacts');
+  let artifacts: string[] = [];
+  if (existsSync(artifactsDir)) {
+    try {
+      const nodes = readdirSync(artifactsDir);
+      for (const node of nodes) {
+        const nodeDir = join(artifactsDir, node);
+        const runs = readdirSync(nodeDir);
+        for (const run of runs) {
+          const runDir = join(nodeDir, run);
+          const files = readdirSync(runDir);
+          artifacts.push(...files.map(f => join('.roadmap', 'artifacts', node, run, f)));
+        }
+      }
+    } catch { /* ignore */ }
+  }
+
+  if (hasLocalDAG) {
+    const dag = loadDAG();
+    const pos = orientWithState(dag);
+    recordTrail({
+      ts: new Date().toISOString(), cmd: 'check', note,
+      repo: basename(repoRoot),
+      position: pos.position, level: pos.level, dagId: dag.id,
+      detail: { checkId },
+    });
+  }
+
+  json({
+    checkId,
+    commitSha,
+    treeSha,
+    violations: result.violations,
+    warnings: result.warnings,
+    artifacts,
+    passed: result.violations.length === 0,
+  });
 
   if (result.violations.length > 0) process.exit(1);
 }
@@ -3040,6 +3099,57 @@ function cmdClaim() {
   saveClaims(repoRoot, store);
 
   json({ claimed: nodeId, owner, claimedAt, claimExpiry, ttlSeconds });
+}
+
+// --- dispatch: plan, apply, status for cluster-based work distribution ---
+function cmdDispatch(note: string) {
+  const sub = args[1];
+  switch (sub) {
+    case 'plan': {
+      const overlay = loadPlanOverlay(repoRoot);
+      if (!overlay) {
+        json({ error: 'No plan overlay found', fix: 'roadmap plan overlay --select <id> --note "..." first' });
+        process.exit(1);
+      }
+      if (!isOverlayValid(repoRoot, overlay)) {
+        json({ error: 'Plan overlay is stale', fix: 'Rebuild: roadmap plan overlay --select <id> --note "..."' });
+        process.exit(1);
+      }
+      const workersIdx = args.indexOf('--workers');
+      const workers = workersIdx !== -1 ? parseInt(args[workersIdx + 1] ?? '0', 10) : undefined;
+      const plan = createDispatchPlan(repoRoot, overlay, workers ? { workers } : undefined);
+      recordTrail({
+        ts: new Date().toISOString(), cmd: 'dispatch plan', note,
+        repo: basename(repoRoot), position: [], level: 0,
+        detail: { planHash: plan.planHash.slice(0, 12), worktrees: plan.worktrees.length, workers: plan.workers },
+      });
+      json({ planned: true, planHash: plan.planHash.slice(0, 12), worktrees: plan.worktrees.length, workers: plan.workers, assignments: plan.worktrees.map(w => ({ id: w.id, cluster: w.clusterId, owner: w.owner, nodes: w.nodes.length })) });
+      return;
+    }
+    case 'apply': {
+      const plan = loadDispatchPlan(repoRoot);
+      if (!plan) {
+        json({ error: 'No dispatch plan found', fix: 'roadmap dispatch plan --note "..." first' });
+        process.exit(1);
+      }
+      const result = applyDispatchPlan(repoRoot, plan);
+      recordTrail({
+        ts: new Date().toISOString(), cmd: 'dispatch apply', note,
+        repo: basename(repoRoot), position: [], level: 0,
+        detail: { planHash: result.planHash.slice(0, 12), worktrees: result.worktrees.length, receipt: result.receiptPath },
+      });
+      json({ applied: result.applied, planHash: result.planHash.slice(0, 12), worktrees: result.worktrees.length, receipt: result.receiptPath });
+      return;
+    }
+    case 'status': {
+      const status = dispatchStatus(repoRoot);
+      json(status);
+      return;
+    }
+    default:
+      json({ error: `Unknown dispatch subcommand: ${sub}`, fix: 'roadmap dispatch plan|apply|status --note "..."' });
+      process.exit(1);
+  }
 }
 
 // --- intake: scan, import, certify from git diffs ---
