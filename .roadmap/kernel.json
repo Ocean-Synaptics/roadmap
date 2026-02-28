@@ -1,5 +1,9 @@
 {
   "schemaVersion": 1,
+  "comparatorPolicy": { "type": "lexicographic" },
+  "envPolicy": { "allowedVars": ["SKIP_BATCH_COMMIT", "ROADMAP_VALIDATING"] },
+  "intentPolicy": { "minConfidence": 0.7, "escalateOnStall": true, "maxRecursionDepth": 3 },
+  "batchConflictPolicy": { "onConflict": "reject" },
   "policies": [
     {
       "id": "no-gate-disable",
