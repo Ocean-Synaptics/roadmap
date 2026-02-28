@@ -43,6 +43,8 @@ import type { Graph } from '../src/protocol.ts';
 import type { SiblingStatus } from '../src/lib/cross-orient.ts';
 import type { OrientV1, OrientDag, OrientDagNode, OrientDagEdge, OrientBlockedNode } from '../src/lib/orient-schema.ts';
 import { emit, emitError, parseOutputOpts, ErrorCode, type OutputFormat } from '../src/lib/cli-envelope.ts';
+import { renderOrient, renderChart, renderPlanGallery, renderPlanSelect, renderPlanStatus, renderDoctor, renderValidate, renderTrail, renderRemaining } from '../src/lib/cli-human.ts';
+import type { OrientData, ChartData, GalleryData, PlanSelectData, PlanStatusData, DoctorData, ValidateData, TrailData, RemainingData } from '../src/lib/cli-human.ts';
 
 const rawArgs = process.argv.slice(2);
 const repoRoot = process.cwd();
@@ -77,6 +79,22 @@ function deriveEnvelopeCmd(): string {
   return cmd;
 }
 const _outputOpts = parseOutputOpts(rawArgs, deriveEnvelopeCmd());
+
+// --- Human renderer dispatch (FR-CLI-001) ---
+const _humanRenderers: Record<string, (data: unknown) => string> = {
+  orient: (d) => renderOrient(d as OrientData),
+  chart: (d) => renderChart(d as ChartData),
+  'plan.gallery': (d) => renderPlanGallery(d as GalleryData),
+  'plan.select': (d) => renderPlanSelect(d as PlanSelectData),
+  'plan.status': (d) => renderPlanStatus(d as PlanStatusData),
+  doctor: (d) => renderDoctor(d as DoctorData),
+  validate: (d) => renderValidate(d as ValidateData),
+  trail: (d) => renderTrail(d as TrailData),
+  remaining: (d) => renderRemaining(d as RemainingData),
+};
+if (_humanRenderers[_outputOpts.cmd]) {
+  _outputOpts.humanRenderer = _humanRenderers[_outputOpts.cmd];
+}
 
 // Commands that don't require a note
 // Special case: orient/position with --check is note-exempt (silent polling)
