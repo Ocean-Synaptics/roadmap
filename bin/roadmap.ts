@@ -4060,6 +4060,11 @@ Commands:
   dig <path> --restore  Recover archived file to working tree
   help                This message
 
+Global flags (FR-CLI-001):
+  --human             Human-readable formatted output instead of JSON
+  --json              Force JSON output (overrides --human)
+  --quiet             Suppress non-fatal output
+
 All commands (except help/trail/chart/install/dig/claim/diff/show/orient/explore) require --note "reason".
   orient --check is note-exempt for swarm agents that reorient without trail pollution.
 
