@@ -405,3 +405,6 @@
 {"tokenId":"tok-165dd8a74b035a9a","type":"claim","subject":"state-recovery","issuedAt":"2026-03-01T19:52:22.933Z","ok":false}
 {"tokenId":"tok-540cbf8e7daf302e","type":"claim","subject":"state-recovery","issuedAt":"2026-03-01T19:51:25.038Z","ok":false}
 {"tokenId":"tok-fce2b00cd53a8f03","type":"claim","subject":"state-recovery","issuedAt":"2026-03-01T19:52:56.299Z","ok":true}
+{"tokenId":"tok-81d65aaa4cbd7b79","type":"claim","subject":"audit-initial","issuedAt":"2026-03-01T20:15:40.595Z","ok":true}
+{"tokenId":"tok-bee5eb4c707111d8","type":"claim","subject":"load-transitions","issuedAt":"2026-03-01T20:15:40.595Z","ok":true}
+{"tokenId":"tok-e9d329b9e2b76fc5","type":"claim","subject":"mine-latency","issuedAt":"2026-03-01T20:15:40.595Z","ok":true}
