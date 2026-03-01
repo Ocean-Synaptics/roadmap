@@ -5497,5 +5497,39 @@
     ],
     "gitSha": "470e52af2631e98df212fc59ffdd50e2d578ed55",
     "treeSha": "776e16b3c8fe0bae836d97f6eb59e8b217da43e8"
+  },
+  {
+    "nodeId": "tu-cli-surface",
+    "completedAt": "2026-03-01T09:19:35.398Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301091934",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): bin/roadmap token list 2>/dev/null | python3 -m json.tool > /dev/null"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:bin/roadmap token list 2>/dev/null | python3 -m json.tool > /dev/null",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "d40e20cab3ade773fc6eef105452a8b0b3909f67",
+    "treeSha": "949104e3b742f00293cec955224a75d1235c05d4"
   }
 ]
