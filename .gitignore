@@ -2,3 +2,16 @@ node_modules/
 .boot/
 .vitest-results.json
 governance/promotion/
+
+# Roadmap runtime artifacts (checkpoints, tokens, receipts, git state)
+.roadmap/checkpoints/
+.roadmap/tokens/
+.roadmap/receipts/
+.roadmap/git-state.json
+.roadmap/trail.jsonl
+
+# Test artifacts
+evidence-test-*/
+
+# Spec working files (documentation only)
+.specify/
