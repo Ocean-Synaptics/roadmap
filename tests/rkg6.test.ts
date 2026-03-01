@@ -28,7 +28,7 @@ import {
 import {
   loadRateCard,
   computeRateCardHash,
-} from '../src/lib/rate-card.ts';
+} from '../src/lib/config/rate-card.ts';
 
 import type { IntentPolicy } from '../src/lib/kernel-config.ts';
 

@@ -2,7 +2,7 @@
 // @exports RunEnforceResult, requireRunId
 // @entry roadmap
 
-import { loadKernel } from '../../kernel-config.js';
+import { loadKernel } from '../../config/kernel-config.js';
 
 export interface RunEnforceResult {
   ok: boolean;

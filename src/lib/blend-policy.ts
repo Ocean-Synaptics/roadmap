@@ -10,7 +10,7 @@
 // Missing guard name = hard error.
 
 import type { GuardResult } from './blend-receipt.ts';
-import { loadKernel } from './kernel-config.ts';
+import { loadKernel } from './config/kernel-config.ts';
 
 export type GuardFn<T = unknown> = (
   input: T,

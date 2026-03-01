@@ -13,7 +13,7 @@ import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { loadKernel } from './kernel-config.ts';
+import { loadKernel } from './config/kernel-config.ts';
 
 export interface ValidatorResult {
   /** Validator identifier, e.g. "shell:npx tsc --noEmit" */

@@ -4,7 +4,7 @@
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { loadKernel, type KernelConfig } from '../kernel-config.ts';
+import { loadKernel, type KernelConfig } from '../config/kernel-config.ts';
 
 export interface SGKKernelConfig extends KernelConfig {
   requireRunId: boolean;
