@@ -6046,18 +6046,18 @@
   },
   {
     "nodeId": "surf-cli-wrap-core",
-    "completedAt": "2026-03-01T10:52:07.341Z",
-    "owner": "w-wrap-core",
-    "checkpointId": "cp-20260301105207",
+    "completedAt": "2026-03-01T10:52:11.310Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301105211",
     "validationChecks": [
       {
-        "rule": "artifact-exists",
-        "passed": true,
-        "evidence": "artifact exists: src/cli/commands/verify.ts"
+        "rule": "skip-validate",
+        "passed": false,
+        "evidence": "validation skipped by --skip-validate flag"
       }
     ],
-    "gitSha": "695374e346672e67344a98ea864094c3090b9899",
-    "treeSha": "12dca97fd634f45777c32195807037e9b7d6d48f"
+    "gitSha": "ac8ff64a13a107573022a5652c91a537c9386960",
+    "treeSha": "f48c509bc7a9fc7d1817c85dc3de9dbb603dc87f"
   },
   {
     "nodeId": "surf-layout-plan",
