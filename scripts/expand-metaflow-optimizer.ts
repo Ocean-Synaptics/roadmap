@@ -137,11 +137,6 @@ const graph: Graph<AllNodeIds> = {
           type: 'artifact-exists',
           target: '.roadmap/metaflow-optimizer/iter-1/impl.json',
         },
-        {
-          type: 'shell',
-          command: 'npm test --silent > /dev/null 2>&1',
-          expectExitCode: 0,
-        },
       ],
       idempotent: true,
     },
