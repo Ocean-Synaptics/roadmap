@@ -1,68 +1,136 @@
 // @module strategy
-// @exports readActiveLatch, writeLatch, clearLatch, isLatched, readActiveStrategy, writeActiveStrategy
+// @exports getActiveStrategy, readActiveStrategy, writeActiveStrategy, isLatched, readActiveLatch, writeLatch, clearLatch, shouldLatch
 // @types -
 // @entry roadmap
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { listTokens, writeToken, isTokenExpired, tokenId } from '../token-store.ts';
+import type { BoundToken } from '../token-store.ts';
 import type { ActiveStrategy } from './schema.js';
 
-const ACTIVE_PATH = '.roadmap/strategy/active.json';
+const HINT_TOKENS = [
+  'hallucinate',
+  'swarm',
+  'parallel',
+  'lookahead',
+  'fidelity',
+  'mass parallel',
+  'validate later',
+] as const;
 
-interface LatchState {
-  latched: boolean;
-  matchedTokens: string[];
-  latchedAt?: string;
+// -- strategy tokens (non-latch) --
+
+function findActiveStrategyToken(repoRoot: string): BoundToken | null {
+  const tokens = listTokens(repoRoot, 'strategy');
+  const now = new Date();
+  const strategyTokens = tokens
+    .filter(t => t.payload.isLatch !== true)
+    .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
+  const mostRecent = strategyTokens[0];
+  if (!mostRecent || !mostRecent.ok || isTokenExpired(mostRecent, now)) return null;
+  return mostRecent;
 }
 
-interface ActiveFile {
-  latch?: LatchState;
-  strategy?: ActiveStrategy;
+/** Find the most recent non-expired ok=true strategy token subject, or null. */
+export function getActiveStrategy(repoRoot: string): string | null {
+  const t = findActiveStrategyToken(repoRoot);
+  return t ? t.subject : null;
 }
 
-function resolvePath(root: string): string {
-  return join(root, ACTIVE_PATH);
+/** Read the active strategy as ActiveStrategy shape (compat shim). */
+export function readActiveStrategy(repoRoot: string): ActiveStrategy | undefined {
+  const t = findActiveStrategyToken(repoRoot);
+  if (!t) return undefined;
+  return {
+    schema_version: 1,
+    strategyId: t.subject,
+    runId: (t.boundTo.runId ?? '') as string,
+    latchedAt: t.issuedAt,
+    boundAt: t.issuedAt,
+    receiptPath: (t.payload.receiptPath ?? '') as string,
+  };
 }
 
-function readFile(root: string): ActiveFile {
-  const p = resolvePath(root);
-  if (!existsSync(p)) return {};
-  return JSON.parse(readFileSync(p, 'utf-8'));
+/** Write an ActiveStrategy as a BoundToken. */
+export function writeActiveStrategy(repoRoot: string, strategy: ActiveStrategy): void {
+  const issuedAt = strategy.boundAt || new Date().toISOString();
+  const token: BoundToken = {
+    schema_version: 1,
+    tokenId: tokenId('strategy', strategy.strategyId, issuedAt),
+    type: 'strategy',
+    subject: strategy.strategyId,
+    issuedAt,
+    boundTo: { headSha: '', runId: strategy.runId },
+    payload: { strategyId: strategy.strategyId, receiptPath: strategy.receiptPath },
+    ok: true,
+  };
+  writeToken(repoRoot, token);
 }
 
-function writeFile(root: string, data: ActiveFile): void {
-  const p = resolvePath(root);
-  mkdirSync(dirname(p), { recursive: true });
-  writeFileSync(p, JSON.stringify(data, null, 2) + '\n');
+// -- hint detection (moved from hints.ts) --
+
+function detectHint(text: string): { latched: boolean; matchedTokens: string[] } {
+  const lower = text.toLowerCase();
+  const matchedTokens = HINT_TOKENS.filter(token => lower.includes(token));
+  return { latched: matchedTokens.length > 0, matchedTokens };
 }
 
-export function readActiveLatch(root: string): LatchState | undefined {
-  return readFile(root).latch;
+/** Check if note contains strategy hint tokens. */
+export function shouldLatch(note: string): boolean {
+  return detectHint(note).latched;
 }
 
-export function writeLatch(root: string, matchedTokens: string[]): void {
-  const data = readFile(root);
-  data.latch = { latched: true, matchedTokens, latchedAt: new Date().toISOString() };
-  writeFile(root, data);
+// -- latch tokens --
+
+/** Read latch state from most recent latch token (ok or not). */
+export function readActiveLatch(repoRoot: string): { latched: boolean; matchedTokens: string[]; latchedAt?: string } | undefined {
+  const tokens = listTokens(repoRoot, 'strategy');
+  const latchTokens = tokens
+    .filter(t => t.payload.isLatch === true)
+    .sort((a, b) => b.issuedAt.localeCompare(a.issuedAt));
+  if (latchTokens.length === 0) return undefined;
+  const t = latchTokens[0];
+  if (!t.ok) return undefined;
+  return {
+    latched: true,
+    matchedTokens: (t.payload.matchedTokens ?? []) as string[],
+    latchedAt: t.issuedAt,
+  };
 }
 
-export function clearLatch(root: string): void {
-  const data = readFile(root);
-  delete data.latch;
-  writeFile(root, data);
+/** Write a latch as a BoundToken with payload.isLatch=true. */
+export function writeLatch(repoRoot: string, matchedTokens: string[]): void {
+  const issuedAt = new Date().toISOString();
+  const token: BoundToken = {
+    schema_version: 1,
+    tokenId: tokenId('strategy', 'latch', issuedAt),
+    type: 'strategy',
+    subject: 'latch',
+    issuedAt,
+    boundTo: { headSha: '' },
+    payload: { isLatch: true, matchedTokens },
+    ok: true,
+  };
+  writeToken(repoRoot, token);
 }
 
-export function isLatched(root: string): boolean {
-  const latch = readActiveLatch(root);
+/** Clear latch — write an ok=false latch token to supersede. */
+export function clearLatch(repoRoot: string): void {
+  const issuedAt = new Date().toISOString();
+  const token: BoundToken = {
+    schema_version: 1,
+    tokenId: tokenId('strategy', 'latch-clear', issuedAt),
+    type: 'strategy',
+    subject: 'latch',
+    issuedAt,
+    boundTo: { headSha: '' },
+    payload: { isLatch: true, matchedTokens: [] },
+    ok: false,
+  };
+  writeToken(repoRoot, token);
+}
+
+/** Check if latched — true if most recent latch token is ok=true. */
+export function isLatched(repoRoot: string): boolean {
+  const latch = readActiveLatch(repoRoot);
   return latch?.latched === true;
-}
-
-export function readActiveStrategy(root: string): ActiveStrategy | undefined {
-  return readFile(root).strategy;
-}
-
-export function writeActiveStrategy(root: string, strategy: ActiveStrategy): void {
-  const data = readFile(root);
-  data.strategy = strategy;
-  writeFile(root, data);
 }

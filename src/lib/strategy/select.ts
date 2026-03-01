@@ -3,12 +3,14 @@
 // @types SelectionResult
 // @entry roadmap
 
-import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { writeFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { createHash } from 'node:crypto';
 import { STRATEGIES, getStrategy } from './registry.js';
 import type { StrategyConfig, StrategyReceipt, ActiveStrategy } from './schema.js';
 import { writeActiveStrategy } from './active.js';
+import { writeToken, tokenId } from '../token-store.ts';
+import type { BoundToken } from '../token-store.ts';
 
 export interface SelectionResult {
   receipt: StrategyReceipt;
@@ -53,6 +55,25 @@ export function selectStrategy(
   mkdirSync(dirname(fullReceiptPath), { recursive: true });
   writeFileSync(fullReceiptPath, JSON.stringify(receipt, null, 2) + '\n');
 
+  // Write BoundToken type=strategy
+  const token: BoundToken = {
+    schema_version: 1,
+    tokenId: tokenId('strategy', strategyId, now),
+    type: 'strategy',
+    subject: strategyId,
+    issuedAt: now,
+    boundTo: { headSha: opts.headSha, treeSha: opts.treeSha, runId: opts.runId },
+    payload: {
+      strategyId,
+      selectionMethod: opts.selectionMethod,
+      candidateSetHash,
+      receiptPath,
+      autoSelectEvidence: opts.evidence ?? {},
+    },
+    ok: true,
+  };
+  writeToken(root, token);
+
   const active: ActiveStrategy = {
     schema_version: 1,
     strategyId,
@@ -61,7 +82,6 @@ export function selectStrategy(
     boundAt: now,
     receiptPath,
   };
-  writeActiveStrategy(root, active);
 
   return { receipt, active, receiptPath };
 }
@@ -81,12 +101,17 @@ export function autoSelect(
 }
 
 export function clearStrategy(root: string): void {
-  const activePath = join(root, '.roadmap/strategy/active.json');
-  try {
-    const data = JSON.parse(readFileSync(activePath, 'utf-8'));
-    delete data.strategy;
-    writeFileSync(activePath, JSON.stringify(data, null, 2) + '\n');
-  } catch {
-    // No active file — nothing to clear
-  }
+  // Write an ok=false strategy token to supersede any active strategy
+  const now = new Date().toISOString();
+  const token: BoundToken = {
+    schema_version: 1,
+    tokenId: tokenId('strategy', 'clear', now),
+    type: 'strategy',
+    subject: 'clear',
+    issuedAt: now,
+    boundTo: { headSha: '' },
+    payload: { cleared: true },
+    ok: false,
+  };
+  writeToken(root, token);
 }

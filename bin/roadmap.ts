@@ -635,12 +635,9 @@ async function cmdOrient(note: string | undefined) {
 
   // Strategy hint latch: if note contains strategy tokens and no active strategy, surface it
   if (note) {
-    const { shouldLatch } = await import('../src/lib/strategy/hints.ts');
-    const { isLatched, writeLatch, readActiveStrategy } = await import('../src/lib/strategy/active.ts');
+    const { shouldLatch, isLatched, writeLatch, readActiveStrategy } = await import('../src/lib/strategy/active.ts');
     if (shouldLatch(note) && !isLatched(repoRoot)) {
-      const { detectHint } = await import('../src/lib/strategy/hints.ts');
-      const hint = detectHint(note);
-      writeLatch(repoRoot, hint.matchedTokens);
+      writeLatch(repoRoot, []);
     }
     if (isLatched(repoRoot) && !readActiveStrategy(repoRoot)) {
       const { proposeCandidates } = await import('../src/lib/strategy/select.ts');
