@@ -79,13 +79,20 @@ export class RepairExecutor {
       }
 
       case 'update': {
+        // Determine actual file path (could be absolute or relative)
+        const filePath = targetPath.startsWith(this.root) ? targetPath : path.join(this.root, op.target);
+
         // Backup original
-        if (fs.existsSync(targetPath)) {
-          state.backup.set(targetPath, fs.readFileSync(targetPath, 'utf8'));
+        if (fs.existsSync(filePath)) {
+          state.backup.set(filePath, fs.readFileSync(filePath, 'utf8'));
         }
 
+        // Ensure directory exists
+        const dirPath = path.dirname(filePath);
+        fs.mkdirSync(dirPath, { recursive: true });
+
         // Apply update (action contains the new content or transformation)
-        fs.writeFileSync(targetPath, op.action, 'utf8');
+        fs.writeFileSync(filePath, op.action, 'utf8');
 
         return {
           operationId: op.id,

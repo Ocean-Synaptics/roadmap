@@ -43,7 +43,7 @@ describe('RepairExecutor', () => {
     const op: RepairOperation = {
       id: 'op-2',
       type: 'update',
-      target: testFile,
+      target: 'test.ts',
       action: 'updated content',
       destructive: false,
       approvalRequired: false,
@@ -61,7 +61,7 @@ describe('RepairExecutor', () => {
     const op: RepairOperation = {
       id: 'op-3',
       type: 'update',
-      target: testFile,
+      target: 'test.ts',
       action: 'updated',
       destructive: false,
       approvalRequired: false,
@@ -81,7 +81,7 @@ describe('RepairExecutor', () => {
     const op: RepairOperation = {
       id: 'op-4',
       type: 'update',
-      target: testFile,
+      target: 'test.ts',
       action: 'via-function',
       destructive: false,
       approvalRequired: false,
