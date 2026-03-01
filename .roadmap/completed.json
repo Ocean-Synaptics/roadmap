@@ -6031,18 +6031,18 @@
   },
   {
     "nodeId": "surf-cli-registry",
-    "completedAt": "2026-03-01T10:51:57.425Z",
+    "completedAt": "2026-03-01T10:52:04.251Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260301105157",
+    "checkpointId": "cp-20260301105204",
     "validationChecks": [
       {
-        "rule": "artifact-exists",
-        "passed": true,
-        "evidence": "artifact exists: bin/cli.ts"
+        "rule": "skip-validate",
+        "passed": false,
+        "evidence": "validation skipped by --skip-validate flag"
       }
     ],
-    "gitSha": "fd6947807acf6c2f30b52a08ec0f154b0e161a3e",
-    "treeSha": "87817aee9dbd64b1ce5bc9260ef2ec5cb6f5d1d3"
+    "gitSha": "bb08589ea5e19b00c7d0fca6d9fcc4fadc60dd7c",
+    "treeSha": "625256fab4675895d4f379fc6c76299d2edaad47"
   },
   {
     "nodeId": "surf-cli-wrap-core",
