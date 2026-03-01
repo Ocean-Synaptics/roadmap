@@ -1142,5 +1142,36 @@
     ],
     "gitSha": "5f66e42c523bee52fd186c40406e9df64adefccc",
     "treeSha": "b28d4d51bb2373f5ce30c5730a7dd3fc0195dccb"
+  },
+  {
+    "nodeId": "audit-exit-codes",
+    "completedAt": "2026-03-01T21:37:16.761Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301213716",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "all artifacts exist: reports/cli-exit-codes-audit.json, src/lib/cli-exit-codes.ts"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -c 'EXIT_SUCCESS\\|EXIT_USER_ERROR\\|EXIT_SYSTEM_ERROR' src/lib/cli-exit-codes.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:grep -c 'EXIT_SUCCESS\\|EXIT_USER_ERROR\\|EXIT_SYSTEM_ERROR' src/lib/cli-exit-codes.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "e6c21e8d260fe71882debdb339d2402a2ca7648529bc2303f48649bce0380017",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/audit-exit-codes/mm89tck1-wyb6l9/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "caeb896fe114e1fdbddc5f3e63c08fe281328cd9",
+    "treeSha": "d475e5f068a693bccbd41c3c40e3b324cb57780b"
   }
 ]
