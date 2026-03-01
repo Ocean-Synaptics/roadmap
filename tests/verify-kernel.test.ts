@@ -66,7 +66,7 @@ describe('verify-kernel: violation codes', () => {
     expect(r.violations.find(v => v.code === 'ORPHAN_NODES')!.nodeIds!.some(s => s.startsWith('orphan'))).toBe(true);
   });
 
-  it('UNSATISFIED_CONTRACTS when consume not produced', () => {
+  it('UNSATISFIED_CONTRACT when consume not produced', () => {
     const dag = {
       ...minDAG,
       nodes: {
@@ -77,7 +77,7 @@ describe('verify-kernel: violation codes', () => {
     };
     writeDAG(root, dag);
     const r = runVerify(root);
-    expect(r.violations.some(v => v.code === 'UNSATISFIED_CONTRACTS')).toBe(true);
+    expect(r.violations.some(v => v.code === 'UNSATISFIED_CONTRACT')).toBe(true);
   });
 
   it('SPEC_ORIGIN_MALFORMED for bad spec-origin', () => {

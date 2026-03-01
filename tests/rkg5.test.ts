@@ -56,7 +56,7 @@ describe('GuardRegistry', () => {
       guards: [{ name: 'my-guard' }],
     };
     expect(() => registry.run({}, policy)).toThrow(
-      "GuardRegistry: unknown guard 'my-guard' — register it before use",
+      /GuardRegistry: unknown guard 'my-guard'/,
     );
   });
 
@@ -320,12 +320,13 @@ describe('GalleryFailure evidence', () => {
       _candidates: [candidate],
     });
 
-    expect(result.failures).toHaveLength(1);
-    const f = result.failures[0];
+    if (!result.ok) throw new Error(`Expected ok=true, got ${result.code}`);
+    expect(result.data.failures).toHaveLength(1);
+    const f = result.data.failures[0];
     expect(f.code).toBe('guardRejection');
-    expect(f.evidence.guard).toBeDefined();
-    expect(f.evidence.evaluated).toBe(1);
-    expect(f.evidence.reason).toContain('1 candidates');
+    expect(f.evidence.guardName).toBeDefined();
+    expect(f.evidence.candidatesEvaluated).toBe(1);
+    expect(f.reason).toContain('1 candidates');
   });
 
   it('GalleryFailure type covers all three failure codes', () => {

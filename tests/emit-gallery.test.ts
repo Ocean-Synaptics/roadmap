@@ -176,8 +176,9 @@ describe('ConvergenceConfig / runGallery()', () => {
       strategies: STRATEGIES,
       workDir: '/tmp',
     });
-    expect(result.candidates).toHaveLength(4);
-    expect(result.scorecard).toContain('faithful');
+    if (!result.ok) throw new Error(`Expected ok=true, got ${result.code}`);
+    expect(result.data.candidates).toHaveLength(4);
+    expect(result.data.scorecard).toContain('faithful');
   });
 
   it('all candidates fail same intent → GalleryFailure in result.failures', async () => {
@@ -203,9 +204,10 @@ describe('ConvergenceConfig / runGallery()', () => {
       _candidates: ['A', 'B', 'C', 'D'].map(makeFailingCandidate),
     });
 
-    expect(result.failures).toHaveLength(1);
-    expect(result.failures[0].code).toBe('guardRejection');
-    expect(result.failures[0].evidence.guard).toBe(stmt);
+    if (!result.ok) throw new Error(`Expected ok=true, got ${result.code}`);
+    expect(result.data.failures).toHaveLength(1);
+    expect(result.data.failures[0].code).toBe('guardRejection');
+    expect(result.data.failures[0].evidence.guardName).toBe(stmt);
   });
 
   it('GalleryFailure includes bestConfidence, threshold, diagnosis', async () => {
@@ -236,14 +238,15 @@ describe('ConvergenceConfig / runGallery()', () => {
       ],
     });
 
-    expect(result.failures).toHaveLength(1);
-    const f = result.failures[0];
+    if (!result.ok) throw new Error(`Expected ok=true, got ${result.code}`);
+    expect(result.data.failures).toHaveLength(1);
+    const f = result.data.failures[0];
     expect(f.code).toBe('guardRejection');
-    // check field encodes best confidence (0.72) and threshold (0.85)
-    expect(f.evidence.check).toContain('0.72');
-    expect(f.evidence.check).toContain('0.85');
-    // evaluated field encodes candidate count (4)
-    expect(f.evidence.evaluated).toBe(4);
+    // checkFailed field encodes best confidence (0.72) and threshold (0.85)
+    expect(f.evidence.checkFailed).toContain('0.72');
+    expect(f.evidence.checkFailed).toContain('0.85');
+    // candidatesEvaluated field encodes candidate count (4)
+    expect(f.evidence.candidatesEvaluated).toBe(4);
   });
 });
 
