@@ -6,7 +6,7 @@
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
-import { define, check, consumeArtifact, consumeResolvedBy } from '../protocol.ts';
+import { define, consumeArtifact, consumeResolvedBy } from '../protocol.ts';
 import type { Graph } from '../protocol.ts';
 
 // --- FR-REACH-001: BFS reachability with witness ---
@@ -229,7 +229,7 @@ export interface VerifyResult {
   fix: string[];
 }
 
-// Structural validity: define() + check()
+// Structural validity: define() + single-pass BFS reachability (FR-REACH-001)
 function checkStructure(dag: Graph<string>): Violation[] {
   const violations: Violation[] = [];
   try {
@@ -240,24 +240,45 @@ function checkStructure(dag: Graph<string>): Violation[] {
       message: `DAG structural error: ${String(err instanceof Error ? err.message : err)}`,
       fix: ['Fix head.json structure — cycles, missing init/term, or id/key mismatches'],
     });
+    return violations; // can't BFS a structurally invalid graph
   }
 
-  try {
-    const result = check(dag);
-    if (result.orphans.length > 0) {
+  // Single-pass BFS replaces multi-pass reach() calls (FR-REACH-001)
+  const reach = bfsReachability(dag);
+
+  if (reach.unreachable.length > 0) {
+    violations.push({
+      code: 'ORPHAN_NODES',
+      message: `${reach.unreachable.length} node(s) unreachable from init`,
+      nodeIds: reach.unreachable,
+      fix: ['Add dependency edges to connect orphan nodes to the DAG'],
+    });
+  }
+
+  if (reach.deadEnds.length > 0) {
+    violations.push({
+      code: 'DEAD_END_NODES',
+      message: `${reach.deadEnds.length} node(s) reachable from init but cannot reach term`,
+      nodeIds: reach.deadEnds,
+      fix: reach.deadEnds.map(id => {
+        const witness = reach.reachable.get(id) ?? [id];
+        return `"${id}" (path: ${witness.join(' → ')}) — add edge to a node that reaches term`;
+      }),
+    });
+  }
+
+  // loopTarget validation (preserved from check())
+  const nodes = Object.values(dag.nodes) as Array<{ id: string; loopTarget?: string }>;
+  const ids = new Set(nodes.map(n => n.id));
+  for (const n of nodes) {
+    if (n.loopTarget && !ids.has(n.loopTarget)) {
       violations.push({
-        code: 'ORPHAN_NODES',
-        message: `${result.orphans.length} node(s) unreachable from init or cannot reach term`,
-        nodeIds: result.orphans,
-        fix: ['Add dependency edges to connect orphan nodes to the DAG'],
+        code: 'INVALID_LOOP_TARGET',
+        message: `"${n.id}": loopTarget "${n.loopTarget}" does not exist in this graph`,
+        nodeIds: [n.id],
+        fix: [`Fix loopTarget reference in node "${n.id}"`],
       });
     }
-  } catch (err) {
-    violations.push({
-      code: 'CHECK_FAILED',
-      message: `Termination check error: ${String(err instanceof Error ? err.message : err)}`,
-      fix: ['Fix head.json DAG structure'],
-    });
   }
 
   return violations;
