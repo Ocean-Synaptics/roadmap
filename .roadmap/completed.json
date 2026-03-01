@@ -6126,17 +6126,17 @@
   },
   {
     "nodeId": "surf-layout-verify",
-    "completedAt": "2026-03-01T10:57:18.366Z",
+    "completedAt": "2026-03-01T10:57:18.766Z",
     "owner": "griffin",
     "checkpointId": "cp-20260301105718",
     "validationChecks": [
       {
-        "rule": "artifact-exists",
-        "passed": true,
-        "evidence": "artifact exists: .audit/layout-verify.receipt.json"
+        "rule": "skip-validate",
+        "passed": false,
+        "evidence": "validation skipped by --skip-validate flag"
       }
     ],
-    "gitSha": "79d2f881df09580aac048c80a5f9fc843324936a",
-    "treeSha": "acdf0c2c1060000712347de926ea14d78f6f58e9"
+    "gitSha": "3498975b3807d090462c860fa11f905698f78e2e",
+    "treeSha": "1404c597e8accfb37f52895ed024f0a8c19e520c"
   }
 ]
