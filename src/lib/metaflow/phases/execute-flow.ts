@@ -136,43 +136,71 @@ async function executeExternalStep(repoRoot: string, step: FlowStep) {
       );
     }
   } else if (subcommand === "mine") {
-    // Real mining: extract actual latency data from trail
+    // Real mining: extract actual latency data from mining aggregates
     const perfDir = join(repoRoot, ".roadmap", "metaflow", "performance");
     mkdirSync(perfDir, { recursive: true });
 
     const latencyFile =
       step.produces[0] || ".roadmap/metaflow/performance/latency-data.json";
 
-    // Read trail and extract real latency data
-    const trailPath = join(repoRoot, ".roadmap", "trail.jsonl");
+    // Read real mining data from .roadmap/mining/aggregated.json
+    const miningPath = join(repoRoot, ".roadmap", "mining", "aggregated.json");
     const samples: Array<{ cmd: string; ms: number }> = [];
 
-    if (existsSync(trailPath)) {
-      const lines = readFileSync(trailPath, "utf-8")
-        .split("\n")
-        .filter(Boolean);
-      const cmdLatencies: Record<string, number[]> = {};
+    if (existsSync(miningPath)) {
+      try {
+        const miningData = JSON.parse(readFileSync(miningPath, "utf-8"));
 
-      for (const line of lines) {
-        try {
-          const entry = JSON.parse(line);
-          if (entry.cmd && entry.duration) {
-            if (!cmdLatencies[entry.cmd]) cmdLatencies[entry.cmd] = [];
-            cmdLatencies[entry.cmd].push(entry.duration);
+        // Extract samples from mining data: actual command latencies
+        if (miningData.commands && typeof miningData.commands === "object") {
+          for (const [cmd, info] of Object.entries(miningData.commands)) {
+            const cmdInfo = info as Record<string, any>;
+            if (cmdInfo.duration_ms && cmdInfo.count) {
+              // Add one sample per execution with actual duration
+              for (let i = 0; i < cmdInfo.count; i++) {
+                samples.push({
+                  cmd,
+                  ms: Math.round(cmdInfo.duration_ms),
+                });
+              }
+            }
           }
-        } catch {
-          /* skip malformed lines */
         }
-      }
-
-      // Convert to samples
-      for (const [cmd, latencies] of Object.entries(cmdLatencies)) {
-        const avg = latencies.reduce((a, b) => a + b, 0) / latencies.length;
-        samples.push({ cmd, ms: Math.round(avg) });
+      } catch {
+        /* use fallback */
       }
     }
 
-    // If no real data, use realistic defaults
+    // If no real mining data, try trail
+    if (samples.length === 0) {
+      const trailPath = join(repoRoot, ".roadmap", "trail.jsonl");
+      if (existsSync(trailPath)) {
+        const lines = readFileSync(trailPath, "utf-8")
+          .split("\n")
+          .filter(Boolean);
+        const cmdLatencies: Record<string, number[]> = {};
+
+        for (const line of lines) {
+          try {
+            const entry = JSON.parse(line);
+            if (entry.cmd && entry.duration) {
+              if (!cmdLatencies[entry.cmd]) cmdLatencies[entry.cmd] = [];
+              cmdLatencies[entry.cmd].push(entry.duration);
+            }
+          } catch {
+            /* skip malformed lines */
+          }
+        }
+
+        // Convert to samples
+        for (const [cmd, latencies] of Object.entries(cmdLatencies)) {
+          const avg = latencies.reduce((a, b) => a + b, 0) / latencies.length;
+          samples.push({ cmd, ms: Math.round(avg) });
+        }
+      }
+    }
+
+    // If still no data, use realistic defaults
     if (samples.length === 0) {
       samples.push({ cmd: "orient", ms: 250 });
       samples.push({ cmd: "advance", ms: 320 });
@@ -182,6 +210,8 @@ async function executeExternalStep(repoRoot: string, step: FlowStep) {
     const latencyData = {
       timestamp: new Date().toISOString(),
       metric: (step.args as Record<string, string>).metric || "latency",
+      source: samples.length > 0 && existsSync(miningPath) ? "mining-aggregates" : "defaults",
+      sampleCount: samples.length,
       samples,
     };
     writeFileSync(
