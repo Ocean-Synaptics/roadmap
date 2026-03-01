@@ -290,7 +290,7 @@ const graph: Graph<AllNodeIds> = {
 };
 
 // Write the DAG
-const outPath = '.roadmap/head.metaflow-optimizer.json';
+const outPath = '.roadmap/head.json';
 mkdirSync(dirname(outPath), { recursive: true });
 writeFileSync(outPath, JSON.stringify(graph, null, 2));
 console.log(`✓ Created ${outPath} (44 nodes)`);

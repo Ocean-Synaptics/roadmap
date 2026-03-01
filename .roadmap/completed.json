@@ -545,17 +545,17 @@
   },
   {
     "nodeId": "iter-1-implement",
-    "completedAt": "2026-03-01T21:15:20.901Z",
+    "completedAt": "2026-03-01T21:34:12.344Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260301211520",
+    "checkpointId": "cp-20260301213412",
     "validationChecks": [
       {
-        "rule": "skip-validate",
-        "passed": false,
-        "evidence": "validation skipped by --skip-validate flag"
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .roadmap/metaflow-optimizer/iter-1/impl.json"
       }
     ],
-    "gitSha": "a08ada082aea2c4105626e9b3a58b306f680effd",
-    "treeSha": "bad7867e66406a38b7fef8f5d43992e42566f34a"
+    "gitSha": "153cb277723b40a95bad85dc70f3d382fc68b5e9",
+    "treeSha": "f7ed901cbceb73f1bd5030dafcfe0fd0b9bd66ee"
   }
 ]
