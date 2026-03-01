@@ -3,9 +3,8 @@ import { mkdtempSync, rmSync, mkdirSync, readFileSync, existsSync } from 'node:f
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { proposeCandidates, selectStrategy, autoSelect, clearStrategy } from '../../src/lib/strategy/select.js';
-import { readActiveStrategy, isLatched, writeLatch } from '../../src/lib/strategy/active.js';
+import { readActiveStrategy, isLatched, writeLatch, shouldLatch, detectHint } from '../../src/lib/strategy/active.js';
 import { renderCandidates, renderActive, renderReceipt } from '../../src/lib/render/strategy.js';
-import { detectHint, shouldLatch } from '../../src/lib/strategy/hints.js';
 import { STRATEGIES } from '../../src/lib/strategy/registry.js';
 
 describe('strategy CLI functions', () => {

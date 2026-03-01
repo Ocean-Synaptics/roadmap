@@ -1,5 +1,5 @@
 // @module strategy
-// @exports getActiveStrategy, readActiveStrategy, writeActiveStrategy, isLatched, readActiveLatch, writeLatch, clearLatch, shouldLatch
+// @exports getActiveStrategy, readActiveStrategy, writeActiveStrategy, isLatched, readActiveLatch, writeLatch, clearLatch, shouldLatch, detectHint, HINT_TOKENS
 // @types -
 // @entry roadmap
 
@@ -68,11 +68,13 @@ export function writeActiveStrategy(repoRoot: string, strategy: ActiveStrategy):
 
 // -- hint detection (moved from hints.ts) --
 
-function detectHint(text: string): { latched: boolean; matchedTokens: string[] } {
+export function detectHint(text: string): { latched: boolean; matchedTokens: string[] } {
   const lower = text.toLowerCase();
   const matchedTokens = HINT_TOKENS.filter(token => lower.includes(token));
   return { latched: matchedTokens.length > 0, matchedTokens };
 }
+
+export { HINT_TOKENS };
 
 /** Check if note contains strategy hint tokens. */
 export function shouldLatch(note: string): boolean {

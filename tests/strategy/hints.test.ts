@@ -2,8 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
-import { detectHint, shouldLatch, HINT_TOKENS } from '../../src/lib/strategy/hints.js';
-import { writeLatch, readActiveLatch, isLatched, clearLatch, writeActiveStrategy, readActiveStrategy } from '../../src/lib/strategy/active.js';
+import { detectHint, shouldLatch, HINT_TOKENS, writeLatch, readActiveLatch, isLatched, clearLatch, writeActiveStrategy, readActiveStrategy } from '../../src/lib/strategy/active.js';
 
 describe('hint detection', () => {
   it('detects hallucinate token in text', () => {
