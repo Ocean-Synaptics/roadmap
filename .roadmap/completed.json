@@ -7,5 +7,25 @@
     "validationChecks": [],
     "gitSha": "f2ef0870a69651645839a5c1d7aeedb2a372775f",
     "treeSha": "1ad295de66d7265a73928d5aab96e8238533ded5"
+  },
+  {
+    "nodeId": "evidence-schema",
+    "completedAt": "2026-03-01T13:31:26.128Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301133126",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/evidence/schema.ts"
+      },
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: docs/evidence/EVIDENCE_CONTRACT.md"
+      }
+    ],
+    "gitSha": "6d55ee98e238b12b350fe39d489325ecdf097daf",
+    "treeSha": "8823c7e54b8473422b7f25ae232530226421e6c9"
   }
 ]
