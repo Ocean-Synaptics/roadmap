@@ -11,13 +11,11 @@ dagId: receipt-first
 ## Phase 1: Foundation (parallel)
 
 - [P1] rf-cmd-receipt: CmdReceipt writer module. CmdReceipt type + CmdReceiptWriter class. Writer creates receipt at .roadmap/receipts/cmd/<cmd>/<runId>.json with schema_version, type, cmd, runId, repoRoot, headSha, treeSha, startedAt, endedAt, ok, exitCode, dataSha256, evidence (argv, stdout_sha256, stderr_sha256, artifacts_read, artifacts_written). Emits on both success and failure. treeSha from git write-tree, headSha fallback.
-  - depends: init
   - produces: src/lib/receipt-first/cmd-receipt.ts
   - consumes: src/lib/cli-envelope.ts
   - validate: shell:npx tsc --noEmit
 
 - [P1] rf-breakglass: Breakglass open/close commands + receipt schema. BreakglassReceipt type with id, openedAt, closedAt, expiresAt, scope (commands[], invariantsBypassed[]), reason, evidence, requiredFollowups[], status. roadmap breakglass open requires --ttl, --scope-commands, --scope-invariants, --reason, --evidence, --followups. Writes to .roadmap/receipts/breakglass/<bg-id>.json. Close sets closedAt + status=closed. Expiry check: expiresAt vs now. Active lookup: scan breakglass dir for open+unexpired.
-  - depends: init
   - produces: src/lib/receipt-first/breakglass.ts
   - validate: shell:npx tsc --noEmit
 
