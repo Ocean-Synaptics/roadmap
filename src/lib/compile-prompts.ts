@@ -165,7 +165,7 @@ interface NodeSpec {
 function resolveValidateShellCommands(validate: readonly ValidationRule[]): string[] {
   const cmds: string[] = [];
   for (const rule of validate) {
-    if (rule.type === 'shell') cmds.push(Array.isArray(rule.command) ? rule.command.join(' ') : rule.command);
+    if (rule.type === 'shell') cmds.push('argv' in rule ? rule.argv.join(' ') : Array.isArray(rule.command) ? rule.command.join(' ') : rule.command);
     if (rule.type === 'build-produces') cmds.push(rule.command);
     if (rule.type === 'launch-check') cmds.push(rule.command);
   }
@@ -176,7 +176,7 @@ function buildVerificationChecklist(validate: readonly ValidationRule[]): string
   if (validate.length === 0) return '- [ ] No explicit validation rules defined';
   return validate.map(rule => {
     switch (rule.type) {
-      case 'shell': return `- [ ] \`${rule.command}\``;
+      case 'shell': return `- [ ] \`${'argv' in rule ? rule.argv.join(' ') : rule.command}\``;
       case 'build-produces': return `- [ ] \`${rule.command}\` produces ${rule.outputs.join(', ')}`;
       case 'launch-check': return `- [ ] \`${rule.command}\` (launch check${rule.successSignal ? ` — signal: ${rule.successSignal}` : ''})`;
       case 'artifact-exists': return `- [ ] Artifact exists: \`${rule.target ?? rule.path}\``;
@@ -318,8 +318,11 @@ export function validateCompiledPrompts(prompts: CompiledPrompt[], dag: Graph<st
 
     // Every shell validate command must appear in "Verification"
     for (const rule of node.validate ?? []) {
-      if (rule.type === 'shell' && !p.content.includes(rule.command)) {
-        violations.push({ type: 'missing-validate', node: p.node, detail: `validate shell command missing: ${rule.command}` });
+      if (rule.type === 'shell') {
+        const shellLabel = 'argv' in rule ? rule.argv.join(' ') : String(rule.command);
+        if (!p.content.includes(shellLabel)) {
+          violations.push({ type: 'missing-validate', node: p.node, detail: `validate shell command missing: ${shellLabel}` });
+        }
       }
     }
 

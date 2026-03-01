@@ -41,7 +41,11 @@ function hasEquivalent(existing: readonly ValidationRule[], candidate: Validatio
         if ((candidate as any).command === r.command) return true;
         break;
       case 'shell':
-        if ((candidate as any).command === r.command) return true;
+        if ('argv' in r) {
+          if ('argv' in candidate && JSON.stringify((candidate as any).argv) === JSON.stringify(r.argv)) return true;
+        } else {
+          if ((candidate as any).command === r.command) return true;
+        }
         break;
       case 'launch-check':
         if ((candidate as any).command === r.command) return true;
@@ -152,12 +156,13 @@ export function propagateConstraints<T extends string>(
 
         case 'shell': {
           // Shell command may reference artifacts — check if consumed artifacts exist
+          const cmdStr = 'argv' in rule ? rule.argv.join(' ') : String(rule.command);
           for (const c of node.consumes) {
             const artifact = consumeArtifact(c);
             const producer = producerIdx.get(artifact);
             if (!producer) continue;
             // If the shell command string mentions the artifact, derive constraint
-            if (rule.command.includes(artifact)) {
+            if (cmdStr.includes(artifact)) {
               derived.push({
                 target: producer,
                 rule: { type: 'artifact-exists', target: artifact, _propagatedFrom: nodeId },

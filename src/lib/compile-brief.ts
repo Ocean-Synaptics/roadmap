@@ -154,7 +154,7 @@ function formatSuccessCriteria(validate: ValidationRule[]): string[] {
           }
           break;
         case 'shell':
-          const shellCmd = ('cmd' in rule && rule.cmd) || ('command' in rule && (rule as any).command);
+          const shellCmd = ('argv' in rule && rule.argv.join(' ')) || ('cmd' in rule && rule.cmd) || ('command' in rule && (rule as any).command);
           if (shellCmd) {
             const desc = (rule as any).description ? ` — ${(rule as any).description}` : '';
             criteria.push(`Command passes: ${shellCmd}${desc}`);

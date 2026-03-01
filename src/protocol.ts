@@ -15,6 +15,7 @@ export type ValidationRule =
   | { type: 'manual-approval'; target: string; reviewer?: string }
   | { type: 'expanded'; minNodes?: number }
   | { type: 'shell'; command: string | string[]; expectExitCode?: number }
+  | { type: 'shell'; argv: string[]; expectExitCode?: number }
   | { type: 'build-produces'; command: string; outputs: string[] }
   | { type: 'launch-check'; command: string; timeout?: number; successSignal?: string }
   | { type: 'spec-conformance'; spec: string; stories: number[]; criteria?: number[] }
@@ -1300,9 +1301,25 @@ export async function validateNode<T extends string>(
       // Run shell command; check exit code matches expectExitCode (default 0)
       // Primary: opts.validating (call-stack). Fallback: ROADMAP_VALIDATING env (child process recursion guard).
       const shellValidating = opts?.validating ?? !!process.env.ROADMAP_VALIDATING;
+      const cmdLabel = 'argv' in rule ? rule.argv.join(' ') : String(rule.command);
       if (shellValidating) {
         passed = true;
-        evidence = `skipped (already inside validation): ${rule.command}`;
+        evidence = `skipped (already inside validation): ${cmdLabel}`;
+      } else if ('argv' in rule) {
+        // Argv path: spawnSync directly, no shell interpolation
+        const { spawnSync } = await import('node:child_process');
+        const expectedCode = rule.expectExitCode ?? 0;
+        const proc = spawnSync(rule.argv[0], rule.argv.slice(1), {
+          cwd: process.cwd(), env: { ...process.env, ROADMAP_VALIDATING: '1' },
+          encoding: 'utf-8', maxBuffer: 10 * 1024 * 1024, timeout: 120_000,
+        });
+        const actualCode = proc.status ?? 1;
+        passed = actualCode === expectedCode;
+        const stderr = proc.stderr?.trim() ?? '';
+        const codeInfo = `exit ${actualCode}, expected ${expectedCode}`;
+        evidence = passed
+          ? `argv passed (${codeInfo}): ${cmdLabel}`
+          : `argv failed: ${cmdLabel} — ${codeInfo} — ${stderr.slice(0, 150)}`;
       } else {
         try {
           const { execSync } = await import('node:child_process');
