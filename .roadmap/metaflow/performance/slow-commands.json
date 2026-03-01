@@ -1,8 +1,13 @@
 {
-  "timestamp": "2026-03-01T20:24:39.216Z",
+  "timestamp": "2026-03-01T20:27:17.203Z",
   "threshold": 1000,
   "slowCommandCount": 0,
   "uniqueCommands": 0,
   "slow": [],
-  "analysis": []
+  "analysis": [],
+  "tokenSummary": {
+    "totalEstimatedTokens": 0,
+    "highPriorityCacheTargets": 0,
+    "estimatedCacheSavings": 0
+  }
 }

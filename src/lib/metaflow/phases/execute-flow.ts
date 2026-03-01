@@ -753,17 +753,43 @@ function handleAnalyzeSlowCommands(repoRoot: string, step: FlowStep): void {
       return { cmd: s.cmd, ms: s.ms };
     });
 
-  // Compute stats per command
+  // Compute stats per command + estimate token cost
   const analysis = Object.entries(byCmd).map(([cmd, latencies]) => {
     const sorted = latencies.sort((a, b) => a - b);
+    const avgMs = latencies.reduce((a, b) => a + b, 0) / latencies.length;
+
+    // Estimate token cost: slower commands = more tokens
+    // Rule of thumb: 1ms ≈ 10-20 tokens for typical operations
+    // orient/show = 5-10 tokens per ms (DAG reads)
+    // complete = 10-15 tokens per ms (validation)
+    // chart = 2-5 tokens per ms (simple rendering)
+    const tokenEstimates: Record<string, number> = {
+      'orient': 8,
+      'complete': 12,
+      'validate': 10,
+      'show': 6,
+      'chart': 3,
+      'help': 2,
+      'default': 7,
+    };
+
+    const tokensPerMs = tokenEstimates[cmd] || tokenEstimates.default;
+    const estimatedTokens = Math.round(avgMs * tokensPerMs);
+
     return {
       command: cmd,
       slowInstanceCount: latencies.length,
-      avgMs: Math.round((latencies.reduce((a, b) => a + b, 0) / latencies.length) * 10) / 10,
+      avgMs: Math.round(avgMs * 10) / 10,
       maxMs: Math.max(...latencies),
       minMs: Math.min(...latencies),
+      estimatedTokensPerRun: estimatedTokens,
+      cacheOpportunity: estimatedTokens > 100 ? "HIGH" : estimatedTokens > 50 ? "MEDIUM" : "LOW",
+      cachePriority: estimatedTokens > 100 ? 1 : estimatedTokens > 50 ? 2 : 3,
     };
   });
+
+  // Sort by cache priority (high token costs first)
+  const sorted = analysis.sort((a, b) => a.cachePriority - b.cachePriority);
 
   const outputPath =
     step.produces[0] || ".roadmap/metaflow/performance/slow-commands.json";
@@ -776,7 +802,21 @@ function handleAnalyzeSlowCommands(repoRoot: string, step: FlowStep): void {
         slowCommandCount: slow.length,
         uniqueCommands: Object.keys(byCmd).length,
         slow: slow.slice(0, 100), // limit output
-        analysis,
+        analysis: sorted,
+        tokenSummary: {
+          totalEstimatedTokens: sorted.reduce(
+            (sum, a) => sum + a.estimatedTokensPerRun,
+            0
+          ),
+          highPriorityCacheTargets: sorted.filter(
+            (a) => a.cacheOpportunity === "HIGH"
+          ).length,
+          estimatedCacheSavings: Math.round(
+            sorted
+              .filter((a) => a.cacheOpportunity === "HIGH")
+              .reduce((sum, a) => sum + a.estimatedTokensPerRun, 0) * 0.7
+          ), // assume 70% cache hit rate
+        },
       },
       null,
       2
@@ -807,43 +847,61 @@ function handleProposeOptimizations(repoRoot: string, step: FlowStep): void {
     /* use defaults */
   }
 
-  // Generate optimization proposals based on analysis
+  // Generate optimization proposals based on token cost analysis
   const proposals: any[] = [];
   const seen = new Set<string>();
 
-  // From slow commands analysis
+  // From slow commands analysis - focus on caching high-token operations
   for (const analysis of slowCmds.analysis || []) {
     if (seen.has(analysis.command)) continue;
     seen.add(analysis.command);
 
     const priority =
-      analysis.avgMs > 2000
+      (analysis.estimatedTokensPerRun || 0) > 100
         ? "critical"
-        : analysis.avgMs > 1500
+        : (analysis.estimatedTokensPerRun || 0) > 50
           ? "high"
           : "medium";
+
+    const cacheOpportunity = analysis.cacheOpportunity || "MEDIUM";
+    const estimatedTokens = analysis.estimatedTokensPerRun || 0;
+    const estimatedSavings = Math.round(estimatedTokens * 0.7); // 70% cache hit
 
     proposals.push({
       command: analysis.command,
       priority,
-      issue: `${analysis.command} averaging ${analysis.avgMs}ms (max: ${analysis.maxMs}ms)`,
+      latency: `${analysis.avgMs}ms`,
+      estimatedTokensPerRun: estimatedTokens,
+      issue: `${analysis.command} costs ${estimatedTokens} tokens/run (${cacheOpportunity} cache opportunity)`,
       optimizations: [
         {
-          strategy: "profile-with-flamegraph",
-          expectedImprovement: "10-20%",
-          effort: "medium",
-        },
-        {
-          strategy: "cache-repeated-operations",
-          expectedImprovement: "15-30%",
+          strategy: "implement-result-cache",
+          target: `Cache ${analysis.command} results for identical inputs`,
+          expectedImprovement: `${estimatedSavings} tokens/run (70% hit rate)`,
           effort: "low",
+          implementation: `Add in-memory cache keyed by DAG hash + node set`,
         },
         {
-          strategy: "parallelize-independent-work",
-          expectedImprovement: "20-40%",
+          strategy: "batch-operations",
+          target: `Group repeated ${analysis.command} calls`,
+          expectedImprovement: `${Math.round(estimatedTokens * 0.3)} tokens (reduce calls)`,
+          effort: "medium",
+          implementation: `Cache results across batch runs`,
+        },
+        {
+          strategy: "lazy-evaluation",
+          target: `Defer ${analysis.command} until needed`,
+          expectedImprovement: `${Math.round(estimatedTokens * 0.2)} tokens (skip unnecessary runs)`,
           effort: "high",
+          implementation: `Use lazy promises, evaluate only on demand`,
         },
       ],
+      cacheStrategy: {
+        keyBy: analysis.command === "orient" ? "DAG hash + position" : "input hash",
+        ttl: analysis.command === "chart" ? "infinite" : "5 minutes",
+        hitRateTarget: "70%",
+        estimatedTokenSavings: estimatedSavings,
+      },
     });
   }
 
