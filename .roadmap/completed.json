@@ -5709,5 +5709,38 @@
     ],
     "gitSha": "fbf1550b17c035e4607e2cee94480ddfbe702e45",
     "treeSha": "b1f4328f7bea9403a39522c538fca87df1584338"
+  },
+  {
+    "nodeId": "tu-tests",
+    "completedAt": "2026-03-01T09:25:20.748Z",
+    "owner": "w6",
+    "checkpointId": "cp-20260301092520",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/tests/token-unify.test.ts"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx vitest run src/tests/token-unify.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx vitest run src/tests/token-unify.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "5da64316c892dc12b09a5e966e4e9b570f08193c9763b949a9eb6f8d4ae6c6b7",
+        "stderrSha": "2d84faee00662238fdd16a73631a94177fb9fda46b898cb2dcf9212a11bc9f1a",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/tu-tests/mm7jo2qo-cvap2m/stdout.txt",
+          "/home/griffin/src/roadmap/.roadmap/artifacts/tu-tests/mm7jo2qo-cvap2m/stderr.txt"
+        ]
+      }
+    ],
+    "gitSha": "474765a72b43fc3019cbaa27865a85906f75e638",
+    "treeSha": "7f9604754216fd9b16364c1bb691057f2d670e1d"
   }
 ]
