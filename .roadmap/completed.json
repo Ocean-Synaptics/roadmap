@@ -6028,5 +6028,20 @@
     ],
     "gitSha": "504239fab53fa8ea7664f1af198c64a4ab28cf88",
     "treeSha": "29edf21402620ab6dd248da9bc5698f9009e907c"
+  },
+  {
+    "nodeId": "surf-cli-registry",
+    "completedAt": "2026-03-01T10:51:47.476Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301105147",
+    "validationChecks": [
+      {
+        "rule": "skip-validate",
+        "passed": false,
+        "evidence": "validation skipped by --skip-validate flag"
+      }
+    ],
+    "gitSha": "258cf95eee53f689f4345ccdcb386d3893bb519f",
+    "treeSha": "260eaae3d15f6d8697b8a125dd7d9ae317719269"
   }
 ]
