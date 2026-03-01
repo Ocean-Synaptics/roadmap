@@ -604,5 +604,14 @@
     "validationChecks": [],
     "gitSha": "ea1bb36c8cc1364e295193b7bbd9eb96f1887228",
     "treeSha": "ba8899ded9e5444235a0937c36100bd529c471bc"
+  },
+  {
+    "nodeId": "repair-validators",
+    "completedAt": "2026-03-01T16:24:45.613Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301162445",
+    "validationChecks": [],
+    "gitSha": "9517b201738b8ea1518457e676095e630c27f313",
+    "treeSha": "b2683d6d32dd66624f8a7eaf46632bc5099329fc"
   }
 ]
