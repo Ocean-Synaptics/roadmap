@@ -18,7 +18,7 @@ import { fileExists } from '../src/predicates.ts';
 import { RoadmapError } from '../src/errors.ts';
 import { crossOrient } from '../src/lib/cross-orient.ts';
 import { CompletionStore } from '../src/lib/completion/completion-context.ts';
-import { discoverDependencies, resolveSiblingPath } from '../src/lib/dependency-resolver.ts';
+import { discoverDependencies, resolveSiblingPath } from '../src/lib/utils/dependency-resolver.ts';
 import { loadClaims, saveClaims, isExpired, activeClaims, annotateWithClaims, assignBatch } from '../src/lib/claims/claims.ts';
 import { parseTasksMd, tasksToDAG } from '../src/lib/intake/speckit-import.ts';
 import { compileIR, parseIRFile, defaultConfig } from '../src/lib/intake/spec-ir.ts';
