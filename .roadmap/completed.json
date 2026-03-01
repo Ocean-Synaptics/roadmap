@@ -420,5 +420,33 @@
     ],
     "gitSha": "2e2b731a06e677022b3f06bf7a5fe803e467c5b2",
     "treeSha": "1ddb8575f555a26a4ecb16a0068abffe51904d79"
+  },
+  {
+    "nodeId": "reorganize-protocol-layer",
+    "completedAt": "2026-03-01T14:25:12.457Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301142458",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/protocol/index.ts"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npm run test -- tests/ --run 2>&1 | grep -q 'pass'"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npm run test -- tests/ --run 2>&1 | grep -q 'pass'",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "502698ce0eb7dbb3cd85c10d954d5c82c526f972",
+    "treeSha": "3d3063d298907b579baa1ccbdc43e9891866f7a0"
   }
 ]
