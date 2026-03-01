@@ -5916,5 +5916,87 @@
     ],
     "gitSha": "82fbcc67df69a72407ccdad1d76fd3fb9261d669",
     "treeSha": "65fddf86308b7411fef3acce8effd086cd26b05c"
+  },
+  {
+    "nodeId": "integration-terminal",
+    "completedAt": "2026-03-01T10:40:08.865Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301103941",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .roadmap/integration-terminal.receipt.json"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): node -e \"const r=require('./.roadmap/integration-terminal.receipt.json'); if(!r.pass) throw new Error('integration receipt: pass=false')\""
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): bin/roadmap orient --note \"integration-terminal smoke\" 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); assert d['ok'], 'orient not ok'\""
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): bin/roadmap orient --note \"integration-terminal json-clean\" 2>/dev/null | python3 -m json.tool > /dev/null"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx vitest run"
+      },
+      {
+        "rule": "intent",
+        "passed": true,
+        "evidence": "unevaluated"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:node -e \"const r=require('./.roadmap/integration-terminal.receipt.json'); if(!r.pass) throw new Error('integration receipt: pass=false')\"",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:bin/roadmap orient --note \"integration-terminal smoke\" 2>/dev/null | python3 -c \"import sys,json; d=json.load(sys.stdin); assert d['ok'], 'orient not ok'\"",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:bin/roadmap orient --note \"integration-terminal json-clean\" 2>/dev/null | python3 -m json.tool > /dev/null",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:npx vitest run",
+        "passed": false,
+        "exitCode": 1,
+        "stdoutSha": "e3f718def352d8ef8856b323db63178dcb3aec1bb83270d5ba775e90b3319eae",
+        "stderrSha": "ce294d53f9fed064bd3baa71be9549a4f1ba9a7e285f2c46a40b9d85d7a0acde",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/integration-terminal/mm7mc9sn-61jfgd/stdout.txt",
+          "/home/griffin/src/roadmap/.roadmap/artifacts/integration-terminal/mm7mc9sn-61jfgd/stderr.txt"
+        ]
+      }
+    ],
+    "gitSha": "e2876a848fc6a1672f345fae928e2c55c3f4a673",
+    "treeSha": "24bd64a058eedea7657cefc981a1f02efe3623fb"
   }
 ]
