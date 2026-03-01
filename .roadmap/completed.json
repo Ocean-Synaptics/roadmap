@@ -5391,5 +5391,39 @@
     ],
     "gitSha": "8dd2ae490a68839544497569f051c1a161703b56",
     "treeSha": "18a24687cfdec77ce5a7e10cf1df649effb40217"
+  },
+  {
+    "nodeId": "tu-claims-migrate",
+    "completedAt": "2026-03-01T09:18:20.514Z",
+    "owner": "w6",
+    "checkpointId": "cp-20260301091819",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -q 'tokens/claim' src/lib/claims.ts"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:grep -q 'tokens/claim' src/lib/claims.ts",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "1c88edb6d91287fb4c20cd48d264fe9fdb489327",
+    "treeSha": "321f1276ddd7f20cd87f3e68954c58fcff5adf76"
   }
 ]
