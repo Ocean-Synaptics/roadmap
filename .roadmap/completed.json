@@ -6016,18 +6016,18 @@
   },
   {
     "nodeId": "surf-audit-schema",
-    "completedAt": "2026-03-01T10:51:56.417Z",
+    "completedAt": "2026-03-01T10:51:57.075Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260301105156",
+    "checkpointId": "cp-20260301105157",
     "validationChecks": [
       {
-        "rule": "skip-validate",
-        "passed": false,
-        "evidence": "validation skipped by --skip-validate flag"
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/audit/audit-schema.ts"
       }
     ],
-    "gitSha": "c2e15e538681c505fc7a891893a3f8b9138f8e23",
-    "treeSha": "19a194042f912d9f27faad0d08794d7b34728cdd"
+    "gitSha": "feb8eb0088d45dbb9b1e7b9bc9b1fad8ff878696",
+    "treeSha": "ae27b9b6a2c04f46fa596df1764c163cc156b089"
   },
   {
     "nodeId": "surf-cli-registry",
