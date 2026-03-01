@@ -4960,5 +4960,28 @@
     ],
     "gitSha": "3d5a9fe9ae43c3870d8b6dbfbd7b9e28f7e3fe01",
     "treeSha": "03f851c6ab462fd1dbf1375a998fb3e80c267954"
+  },
+  {
+    "nodeId": "rkg3-hook-scoping",
+    "completedAt": "2026-03-01T09:05:20.745Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301090519",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "16fdf3a3b58e3142588aff624fb2f061dd6ef8a5",
+    "treeSha": "55ea0c8e24671bb4697ad529983328d1b13cd150"
   }
 ]
