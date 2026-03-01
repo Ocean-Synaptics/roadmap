@@ -3862,5 +3862,31 @@
     ],
     "gitSha": "b9b90335416b79bb42242e6243f65797c759241a",
     "treeSha": "236a813c89513e9128aaa7510b38dbd3321098d0"
+  },
+  {
+    "nodeId": "rm-audit-detectors-integration",
+    "completedAt": "2026-03-01T01:26:33.937Z",
+    "owner": "w3",
+    "checkpointId": "cp-20260301012632",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit && npx vitest run tests/audit/integration-detectors.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit && npx vitest run tests/audit/integration-detectors.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "f58e7c0d547ab5fdf8009388770522c05f5f2e16be1795cc0d2b5bda11a2b2e7",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/rm-audit-detectors-integration/mm72kczs-d3y7fc/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "4f37dde47d31f7face09715e57c2f36698c857b2",
+    "treeSha": "1d2fdaa6bd776810de1e1612aea22c3ae76412c7"
   }
 ]
