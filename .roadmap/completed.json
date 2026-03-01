@@ -252,5 +252,33 @@
     ],
     "gitSha": "ecef426dab9701366193a6b8cb1b073ec2a5122e",
     "treeSha": "16749d03b0e68141935640965c4bec8dbe47f524"
+  },
+  {
+    "nodeId": "organize-metaloop-domain",
+    "completedAt": "2026-03-01T14:18:37.222Z",
+    "owner": "worker-metaloop",
+    "checkpointId": "cp-20260301141836",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/metaloop/index.ts"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npm run test -- tests/metaloop --run 2>&1 | grep -q 'pass' || true"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npm run test -- tests/metaloop --run 2>&1 | grep -q 'pass' || true",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "dc6a99d2f75914d09f9277821114089d6488266b",
+    "treeSha": "475539cc2a1b9dbbc9c2e4a564fada50937f2c50"
   }
 ]
