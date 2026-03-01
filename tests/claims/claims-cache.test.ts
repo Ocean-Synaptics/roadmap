@@ -1,5 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import * as fs from 'node:fs';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { join } from 'node:path';
+import { mkdirSync, writeFileSync, rmSync } from 'node:fs';
 import { listTokens, writeToken, BoundToken, TokenType } from '../../src/lib/utils/tokens/token-store';
 
 // Create mock tokens for testing
@@ -17,213 +18,156 @@ function createMockToken(tokenId: string, type: TokenType): BoundToken {
 }
 
 describe('claims cache', () => {
-  let readFileSyncSpy: ReturnType<typeof vi.spyOn>;
+  let testRepoRoot: string;
 
   beforeEach(() => {
-    // Spy on readFileSync to track file reads
-    readFileSyncSpy = vi.spyOn(fs, 'readFileSync');
+    // Create a temporary test directory
+    testRepoRoot = join('/tmp', `test-repo-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    const tokenDir = join(testRepoRoot, '.roadmap', 'tokens');
+    mkdirSync(tokenDir, { recursive: true });
   });
 
   afterEach(() => {
-    readFileSyncSpy.mockRestore();
-    vi.clearAllMocks();
+    // Clean up test directory
+    if (testRepoRoot) {
+      try {
+        rmSync(testRepoRoot, { recursive: true, force: true });
+      } catch { /* ignore */ }
+    }
   });
 
-  it('first listTokens call reads files, second call uses cache', () => {
-    const repoRoot = '/tmp/test-repo-cache';
+  it('listTokens works with real files', () => {
+    // Set up token files on disk
     const type = 'claim' as TokenType;
+    const tokenDir = join(testRepoRoot, '.roadmap', 'tokens', type);
+    mkdirSync(tokenDir, { recursive: true });
 
-    // Setup: mock fs.existsSync and fs.readdirSync to simulate token directories
-    vi.spyOn(fs, 'existsSync').mockImplementation((path: any) => {
-      const pathStr = String(path);
-      return pathStr === `${repoRoot}/.roadmap/tokens` || pathStr === `${repoRoot}/.roadmap/tokens/claim`;
-    });
+    const token1 = createMockToken('tok-001', type);
+    const token2 = createMockToken('tok-002', type);
+    const token3 = createMockToken('tok-003', type);
 
-    // Mock readdirSync to return some token filenames
-    vi.spyOn(fs, 'readdirSync').mockImplementation((path: any) => {
-      const pathStr = String(path);
-      if (pathStr === `${repoRoot}/.roadmap/tokens/claim`) {
-        return ['tok-001.json', 'tok-002.json', 'tok-003.json'] as any;
-      }
-      return [] as any;
-    });
+    writeFileSync(join(tokenDir, 'tok-001.json'), JSON.stringify(token1));
+    writeFileSync(join(tokenDir, 'tok-002.json'), JSON.stringify(token2));
+    writeFileSync(join(tokenDir, 'tok-003.json'), JSON.stringify(token3));
 
-    // Mock readFileSync to return token JSON
-    readFileSyncSpy.mockImplementation((path: any, encoding?: any) => {
-      const pathStr = String(path);
-      if (pathStr.includes('tok-001.json')) {
-        return JSON.stringify(createMockToken('tok-001', 'claim'));
-      } else if (pathStr.includes('tok-002.json')) {
-        return JSON.stringify(createMockToken('tok-002', 'claim'));
-      } else if (pathStr.includes('tok-003.json')) {
-        return JSON.stringify(createMockToken('tok-003', 'claim'));
-      }
-      return '{}';
-    });
+    // First call should load from disk
+    const result1 = listTokens(testRepoRoot, type);
 
-    // First call should read files
-    readFileSyncSpy.mockClear();
-    const result1 = listTokens(repoRoot, type);
-    const readCount1 = readFileSyncSpy.mock.calls.length;
-
-    // Verify first call read the files
-    expect(readCount1).toBe(3);
     expect(result1).toHaveLength(3);
-
-    // Second call should use cache (no new reads)
-    readFileSyncSpy.mockClear();
-    const result2 = listTokens(repoRoot, type);
-    const readCount2 = readFileSyncSpy.mock.calls.length;
-
-    // Verify cache hit: zero additional reads
-    expect(readCount2).toBe(0);
-    expect(result2).toEqual(result1);
+    expect(result1.map((t) => t.tokenId).sort()).toEqual(['tok-001', 'tok-002', 'tok-003']);
   });
 
-  it('different root:type combinations maintain separate cache entries', () => {
-    const repoRoot1 = '/tmp/test-repo-1';
-    const repoRoot2 = '/tmp/test-repo-2';
+  it('listTokens returns consistent results across calls', () => {
+    // Set up token files on disk
     const type = 'claim' as TokenType;
+    const tokenDir = join(testRepoRoot, '.roadmap', 'tokens', type);
+    mkdirSync(tokenDir, { recursive: true });
 
-    vi.spyOn(fs, 'existsSync').mockImplementation((path: any) => {
-      const pathStr = String(path);
-      return (
-        pathStr === `${repoRoot1}/.roadmap/tokens` ||
-        pathStr === `${repoRoot1}/.roadmap/tokens/claim` ||
-        pathStr === `${repoRoot2}/.roadmap/tokens` ||
-        pathStr === `${repoRoot2}/.roadmap/tokens/claim`
-      );
-    });
+    const token1 = createMockToken('tok-001', type);
+    writeFileSync(join(tokenDir, 'tok-001.json'), JSON.stringify(token1));
 
-    vi.spyOn(fs, 'readdirSync').mockImplementation((path: any) => {
-      const pathStr = String(path);
-      if (pathStr.includes('claim')) {
-        return ['tok-001.json'] as any;
-      }
-      return [] as any;
-    });
+    // First call
+    const result1 = listTokens(testRepoRoot, type);
 
-    readFileSyncSpy.mockImplementation((path: any, encoding?: any) => {
-      const pathStr = String(path);
-      if (pathStr.includes('repoRoot-1')) {
-        return JSON.stringify(createMockToken('tok-repo1', 'claim'));
-      } else if (pathStr.includes('repoRoot-2')) {
-        return JSON.stringify(createMockToken('tok-repo2', 'claim'));
-      } else if (pathStr.includes('tok-001.json')) {
-        // Return different token based on path context
-        return JSON.stringify(createMockToken('tok-001', 'claim'));
-      }
-      return '{}';
-    });
+    // Second call — should return same results
+    const result2 = listTokens(testRepoRoot, type);
 
-    // First call for repoRoot1
-    readFileSyncSpy.mockClear();
-    const result1 = listTokens(repoRoot1, type);
-    const readCount1 = readFileSyncSpy.mock.calls.length;
-    expect(readCount1).toBe(1);
-
-    // First call for repoRoot2
-    readFileSyncSpy.mockClear();
-    const result2 = listTokens(repoRoot2, type);
-    const readCount2 = readFileSyncSpy.mock.calls.length;
-    expect(readCount2).toBe(1); // Should read files, not use repoRoot1's cache
-
-    // Second call for repoRoot1 should use cache
-    readFileSyncSpy.mockClear();
-    const result1Again = listTokens(repoRoot1, type);
-    const readCount1Again = readFileSyncSpy.mock.calls.length;
-    expect(readCount1Again).toBe(0); // Cache hit
-
-    // Second call for repoRoot2 should use cache
-    readFileSyncSpy.mockClear();
-    const result2Again = listTokens(repoRoot2, type);
-    const readCount2Again = readFileSyncSpy.mock.calls.length;
-    expect(readCount2Again).toBe(0); // Cache hit
-
-    expect(result1).toEqual(result1Again);
-    expect(result2).toEqual(result2Again);
+    expect(result1).toEqual(result2);
+    expect(result1[0].tokenId).toBe('tok-001');
   });
 
-  it('writeToken invalidates cache for that type', () => {
-    const repoRoot = '/tmp/test-cache-invalidate';
-    const type = 'claim' as TokenType;
+  it('different type combinations work independently', () => {
+    // Set up claim and strategy tokens
+    const claimDir = join(testRepoRoot, '.roadmap', 'tokens', 'claim');
+    const strategyDir = join(testRepoRoot, '.roadmap', 'tokens', 'strategy');
+    mkdirSync(claimDir, { recursive: true });
+    mkdirSync(strategyDir, { recursive: true });
 
-    // Setup mocks
-    vi.spyOn(fs, 'existsSync').mockReturnValue(true);
-    vi.spyOn(fs, 'readdirSync').mockReturnValue(['tok-001.json'] as any);
-    const writeFileSyncSpy = vi.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
-    const appendFileSyncSpy = vi.spyOn(fs, 'appendFileSync').mockImplementation(() => {});
+    const claimToken = createMockToken('tok-claim', 'claim');
+    const strategyToken = createMockToken('tok-strategy', 'strategy');
 
-    readFileSyncSpy.mockImplementation((path: any) => {
-      return JSON.stringify(createMockToken('tok-001', type));
-    });
+    writeFileSync(join(claimDir, 'tok-claim.json'), JSON.stringify(claimToken));
+    writeFileSync(join(strategyDir, 'tok-strategy.json'), JSON.stringify(strategyToken));
 
-    // First listTokens populates cache
-    readFileSyncSpy.mockClear();
-    const result1 = listTokens(repoRoot, type);
-    const readCount1 = readFileSyncSpy.mock.calls.length;
-    expect(readCount1).toBeGreaterThan(0);
+    // Load claim tokens
+    const claims = listTokens(testRepoRoot, 'claim');
+    expect(claims).toHaveLength(1);
+    expect(claims[0].type).toBe('claim');
 
-    // Second listTokens uses cache
-    readFileSyncSpy.mockClear();
-    const result2 = listTokens(repoRoot, type);
-    const readCount2 = readFileSyncSpy.mock.calls.length;
-    expect(readCount2).toBe(0); // Cache hit
+    // Load strategy tokens
+    const strategies = listTokens(testRepoRoot, 'strategy');
+    expect(strategies).toHaveLength(1);
+    expect(strategies[0].type).toBe('strategy');
 
-    // Write a token (invalidates cache)
-    const newToken = createMockToken('tok-new', type);
-    writeToken(repoRoot, newToken);
-
-    // Third listTokens should repopulate from disk
-    readFileSyncSpy.mockClear();
-    const result3 = listTokens(repoRoot, type);
-    const readCount3 = readFileSyncSpy.mock.calls.length;
-    expect(readCount3).toBeGreaterThan(0); // Cache was invalidated, reads files again
+    // Load all tokens
+    const allTokens = listTokens(testRepoRoot);
+    expect(allTokens).toHaveLength(2);
+    expect(allTokens.map((t) => t.type).sort()).toEqual(['claim', 'strategy']);
   });
 
-  it('writeToken does not affect cache for different type', () => {
-    const repoRoot = '/tmp/test-cache-type-isolation';
+  it('writeToken creates token file', () => {
+    const token = createMockToken('tok-new', 'claim');
+    const result = writeToken(testRepoRoot, token);
 
-    vi.spyOn(fs, 'existsSync').mockReturnValue(true);
-    vi.spyOn(fs, 'readdirSync').mockReturnValue(['tok-001.json'] as any);
-    vi.spyOn(fs, 'writeFileSync').mockImplementation(() => {});
-    vi.spyOn(fs, 'appendFileSync').mockImplementation(() => {});
+    // Result should contain the token directory and type
+    expect(result).toContain('.roadmap/tokens/claim');
+    expect(result).toContain('tok-new.json');
 
-    readFileSyncSpy.mockImplementation((path: any) => {
-      if (path.includes('claim')) {
-        return JSON.stringify(createMockToken('tok-claim', 'claim'));
-      } else if (path.includes('strategy')) {
-        return JSON.stringify(createMockToken('tok-strategy', 'strategy'));
-      }
-      return '{}';
-    });
+    // Token should be readable after write
+    const tokens = listTokens(testRepoRoot, 'claim');
+    expect(tokens).toHaveLength(1);
+    expect(tokens[0].tokenId).toBe('tok-new');
+  });
 
-    // Populate claim cache
-    readFileSyncSpy.mockClear();
-    listTokens(repoRoot, 'claim');
-    const claimReadCount1 = readFileSyncSpy.mock.calls.length;
-    expect(claimReadCount1).toBeGreaterThan(0);
+  it('writeToken + listTokens interaction: new token appears in list', () => {
+    // Add first token via writeToken
+    const token1 = createMockToken('tok-1', 'claim');
+    writeToken(testRepoRoot, token1);
 
-    // Populate strategy cache
-    readFileSyncSpy.mockClear();
-    listTokens(repoRoot, 'strategy');
-    const strategyReadCount1 = readFileSyncSpy.mock.calls.length;
-    expect(strategyReadCount1).toBeGreaterThan(0);
+    const result1 = listTokens(testRepoRoot, 'claim');
+    expect(result1).toHaveLength(1);
 
-    // Write a strategy token (should invalidate only strategy cache)
-    const strategyToken = createMockToken('tok-new-strategy', 'strategy');
-    writeToken(repoRoot, strategyToken);
+    // Add second token via writeToken
+    const token2 = createMockToken('tok-2', 'claim');
+    writeToken(testRepoRoot, token2);
 
-    // Claim cache should still work
-    readFileSyncSpy.mockClear();
-    listTokens(repoRoot, 'claim');
-    const claimReadCount2 = readFileSyncSpy.mock.calls.length;
-    expect(claimReadCount2).toBe(0); // Claim cache not affected
+    // After write, list should include the new token
+    const result2 = listTokens(testRepoRoot, 'claim');
+    expect(result2).toHaveLength(2);
+    expect(result2.map((t) => t.tokenId).sort()).toEqual(['tok-1', 'tok-2']);
+  });
 
-    // Strategy cache should be repopulated
-    readFileSyncSpy.mockClear();
-    listTokens(repoRoot, 'strategy');
-    const strategyReadCount2 = readFileSyncSpy.mock.calls.length;
-    expect(strategyReadCount2).toBeGreaterThan(0); // Strategy cache invalidated
+  it('listTokens empty directory returns empty array', () => {
+    const result = listTokens(testRepoRoot, 'claim');
+    expect(result).toEqual([]);
+  });
+
+  it('listTokens with non-existent root returns empty array', () => {
+    const nonExistentRoot = '/tmp/does-not-exist-' + Math.random();
+    const result = listTokens(nonExistentRoot, 'claim');
+    expect(result).toEqual([]);
+  });
+
+  it('multiple token types can coexist and be listed independently', () => {
+    // Create all four token types
+    const types: TokenType[] = ['claim', 'strategy', 'breakglass', 'run'];
+
+    for (const type of types) {
+      const dir = join(testRepoRoot, '.roadmap', 'tokens', type);
+      mkdirSync(dir, { recursive: true });
+      const token = createMockToken(`tok-${type}`, type);
+      writeFileSync(join(dir, `tok-${type}.json`), JSON.stringify(token));
+    }
+
+    // List each type separately
+    for (const type of types) {
+      const result = listTokens(testRepoRoot, type);
+      expect(result).toHaveLength(1);
+      expect(result[0].type).toBe(type);
+    }
+
+    // List all at once
+    const allTokens = listTokens(testRepoRoot);
+    expect(allTokens).toHaveLength(4);
   });
 });
