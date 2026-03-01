@@ -1,25 +1,25 @@
-// @module cli/registry
-// @exports CommandDef, CommandRegistry, registry, registerCommand
-// @entry roadmap/cli/registry
+// Unified CLI command registry
+// Consolidates all command registrations in one place
 
-// --- Types ---
+import { program } from 'commander';
+import { registerAuditCommand } from './commands/audit';
+import { registerExpandCommand } from './commands/expand';
 
-export interface CommandDef {
-  name: string;
-  description: string;
-  usage?: string;
-  handler: (args: string[]) => Promise<void> | void;
+export function initializeCliRegistry() {
+  program
+    .name('roadmap')
+    .description('DAG expansion protocol CLI')
+    .version('0.7.0');
+
+  // Register all commands
+  registerAuditCommand();
+  registerExpandCommand();
+
+  // Help + discovery
+  program.helpOption('-h, --help', 'Show help');
+  program.addHelpCommand('help [cmd]', 'Show help for command');
+
+  return program;
 }
 
-export type CommandRegistry = Map<string, CommandDef>;
-
-// --- Singleton registry ---
-
-export const registry: CommandRegistry = new Map();
-
-export function registerCommand(def: CommandDef): void {
-  if (registry.has(def.name)) {
-    throw new Error(`Command "${def.name}" already registered`);
-  }
-  registry.set(def.name, def);
-}
+export { program };
