@@ -22,5 +22,5 @@
 //   - Fast suite for CI feedback
 //   - Coverage baseline tracking
 
-export { define, verify, check, orient } from './src/lib';
-export { ValidatorRule, AuditSchema } from './src/lib/schema';
+export { define, verify, check, orient } from './src/lib/index.js';
+export type { ValidatorRule, AuditSchema } from './src/lib/protocol/schema.js';

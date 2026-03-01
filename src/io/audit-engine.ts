@@ -2,7 +2,7 @@
 // Moved from src/lib to preserve library purity
 
 import * as fs from 'fs';
-import { auditSurface } from '../lib/audit/audit-engine';
+import { scanSurface } from '../lib/audit/audit-engine.js';
 
 export async function loadAuditFromDisk(path: string) {
   const content = fs.readFileSync(path, 'utf-8');
@@ -13,4 +13,4 @@ export async function saveAuditToDisk(path: string, data: any) {
   fs.writeFileSync(path, JSON.stringify(data, null, 2), 'utf-8');
 }
 
-export { auditSurface };
+export { scanSurface };

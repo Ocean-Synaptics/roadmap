@@ -1,7 +1,7 @@
 // Public validation API (simplified)
 // Import helpers from src/lib/internal/validation-helpers for advanced use
 
-import { validateType, validatePath, validateRef } from './internal/validation-helpers';
+import { validateType, validatePath, validateRef } from './internal/validation-helpers.js';
 
 export function validateNode(node: any): boolean {
   return validateType(node) && validatePath(node.id);

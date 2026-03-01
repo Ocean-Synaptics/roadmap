@@ -9,5 +9,5 @@ export function validatePath(path: string): boolean {
 }
 
 export function validateRef(ref: string): boolean {
-  return typeof ref === 'string' && ref.match(/^[a-z0-9-]+$/i);
+  return typeof ref === 'string' && !!ref.match(/^[a-z0-9-]+$/i);
 }
