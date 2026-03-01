@@ -1,5 +1,5 @@
 {
-  "receipt": "plan-select-539ee984ce18.json",
-  "headSha": "ad64082cbbd9259f25591e4ab3d56c82836e46daf455a212ee56af1a6846a2d5",
-  "candidateId": "metaflow-optimizer"
+  "receipt": "plan-select-e3002e135128.json",
+  "headSha": "9a332496b37b6adb858402c68b8c640af1436e374a64ccc72c56be00fe64b711",
+  "candidateId": "metaflow-cli-quality"
 }
