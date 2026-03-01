@@ -6231,17 +6231,30 @@
   },
   {
     "nodeId": "surf-perf-budget-gate",
-    "completedAt": "2026-03-01T11:02:25.080Z",
+    "completedAt": "2026-03-01T11:03:11.743Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260301110225",
+    "checkpointId": "cp-20260301110311",
     "validationChecks": [
       {
-        "rule": "skip-validate",
-        "passed": false,
-        "evidence": "validation skipped by --skip-validate flag"
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .perf/vitest/budget-gate.receipt.json"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): node -e \"const r=JSON.parse(require('fs').readFileSync('.perf/vitest/budget-gate.receipt.json','utf-8')); process.exit(r.budget.passed ? 0 : 1)\""
       }
     ],
-    "gitSha": "4bddb5b057bab58f748ca3f3add1481c52f2b3ea",
-    "treeSha": "d2a92bf1443902ab4a06a9a84626a95afbdcddbc"
+    "validatorResults": [
+      {
+        "id": "shell:node -e \"const r=JSON.parse(require('fs').readFileSync('.perf/vitest/budget-gate.receipt.json','utf-8')); process.exit(r.budget.passed ? 0 : 1)\"",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "ab0d40ec21c6ad15b118e4d9d2fbef63d769621c",
+    "treeSha": "f2335d01608edf6c8739469ef2533ec9f9f9119c"
   }
 ]
