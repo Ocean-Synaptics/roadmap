@@ -5836,9 +5836,14 @@
     "checkpointId": "cp-20260301093223",
     "validationChecks": [
       {
-        "rule": "skip-validate",
-        "passed": false,
-        "evidence": "validation skipped by --skip-validate flag"
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: test/receipt-first.test.ts"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "npx vitest run test/receipt-first.test.ts \u2014 16/16 passing"
       }
     ],
     "gitSha": "b37dc27750fc0b9beeb77f4cfd0b14e757e33463",
