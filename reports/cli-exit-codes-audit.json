@@ -1,0 +1,13 @@
+{
+  "timestamp": "2026-03-01T18:45:00Z",
+  "audit": "exit-codes",
+  "commands": [
+    {"cmd": "orient", "exit_code": "0 (success)", "status": "✅"},
+    {"cmd": "show", "exit_code": "0 (success)", "status": "✅"},
+    {"cmd": "complete", "exit_code": "0/1/3/4", "status": "✅"},
+    {"cmd": "advance", "exit_code": "0/1", "status": "✅"},
+    {"cmd": "chart", "exit_code": "0", "status": "✅"}
+  ],
+  "coverage": "5/5 core commands audited",
+  "gaps": []
+}

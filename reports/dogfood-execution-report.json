@@ -1,0 +1,33 @@
+{
+  "timestamp": "2026-03-01T17:45:14.240Z",
+  "phase": "dogfood",
+  "commands": 3,
+  "success_rate": 1,
+  "total_duration_ms": 2014,
+  "executions": [
+    {
+      "label": "orient",
+      "duration_ms": 653,
+      "success": true,
+      "output_bytes": 1509,
+      "output_format": "json",
+      "timestamp": "2026-03-01T17:45:12.879Z"
+    },
+    {
+      "label": "chart",
+      "duration_ms": 671,
+      "success": true,
+      "output_bytes": 2123,
+      "output_format": "text",
+      "timestamp": "2026-03-01T17:45:13.550Z"
+    },
+    {
+      "label": "show-init",
+      "duration_ms": 690,
+      "success": true,
+      "output_bytes": 651,
+      "output_format": "text",
+      "timestamp": "2026-03-01T17:45:14.240Z"
+    }
+  ]
+}

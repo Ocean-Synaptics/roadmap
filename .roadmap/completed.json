@@ -908,12 +908,84 @@
     "treeSha": "auto-tracked"
   },
   {
-    "nodeId": "term",
-    "completedAt": "2026-03-01T17:42:33.490Z",
+    "nodeId": "audit-exit-codes",
+    "completedAt": "2026-03-01T17:44:47.853Z",
     "owner": "griffin",
-    "checkpointId": "cp-sk-complete",
+    "checkpointId": "cp-cli-hardening-l01",
     "validationChecks": [],
-    "gitSha": "26deb1df78f8e7f0e4f5446cc3332fa69641b453",
-    "treeSha": "auto-tracked"
+    "gitSha": "160f7ed9833fbb4eb912d56b85383eb38fbd854d",
+    "treeSha": "auto"
+  },
+  {
+    "nodeId": "concurrent-claims-handler",
+    "completedAt": "2026-03-01T17:44:47.853Z",
+    "owner": "griffin",
+    "checkpointId": "cp-cli-hardening-l01",
+    "validationChecks": [],
+    "gitSha": "160f7ed9833fbb4eb912d56b85383eb38fbd854d",
+    "treeSha": "auto"
+  },
+  {
+    "nodeId": "state-corruption-detection",
+    "completedAt": "2026-03-01T17:44:47.853Z",
+    "owner": "griffin",
+    "checkpointId": "cp-cli-hardening-l01",
+    "validationChecks": [],
+    "gitSha": "160f7ed9833fbb4eb912d56b85383eb38fbd854d",
+    "treeSha": "auto"
+  },
+  {
+    "nodeId": "validate-json-output",
+    "completedAt": "2026-03-01T17:44:47.853Z",
+    "owner": "griffin",
+    "checkpointId": "cp-cli-hardening-l01",
+    "validationChecks": [],
+    "gitSha": "160f7ed9833fbb4eb912d56b85383eb38fbd854d",
+    "treeSha": "auto"
+  },
+  {
+    "nodeId": "metaflow-instrumentation",
+    "completedAt": "2026-03-01T17:45:04.963Z",
+    "owner": "griffin",
+    "checkpointId": "cp-cli-l2-l3",
+    "validationChecks": [],
+    "gitSha": "160f7ed9833fbb4eb912d56b85383eb38fbd854d",
+    "treeSha": "auto"
+  },
+  {
+    "nodeId": "integration-test-suite",
+    "completedAt": "2026-03-01T17:45:04.964Z",
+    "owner": "griffin",
+    "checkpointId": "cp-cli-l2-l3",
+    "validationChecks": [],
+    "gitSha": "160f7ed9833fbb4eb912d56b85383eb38fbd854d",
+    "treeSha": "auto"
+  },
+  {
+    "nodeId": "dogfood-on-roadmap",
+    "completedAt": "2026-03-01T17:45:31.683Z",
+    "owner": "griffin",
+    "checkpointId": "cp-cli-final",
+    "validationChecks": [],
+    "gitSha": "160f7ed9833fbb4eb912d56b85383eb38fbd854d",
+    "treeSha": "auto"
+  },
+  {
+    "nodeId": "hardening-report",
+    "completedAt": "2026-03-01T17:45:31.683Z",
+    "owner": "griffin",
+    "checkpointId": "cp-cli-final",
+    "validationChecks": [],
+    "gitSha": "160f7ed9833fbb4eb912d56b85383eb38fbd854d",
+    "treeSha": "auto"
+  },
+  {
+    "nodeId": "term",
+    "completedAt": "2026-03-01T17:45:31.683Z",
+    "owner": "griffin",
+    "checkpointId": "cp-cli-final",
+    "validationChecks": [],
+    "gitSha": "160f7ed9833fbb4eb912d56b85383eb38fbd854d",
+    "treeSha": "auto"
   }
 ]
