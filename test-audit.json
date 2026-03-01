@@ -1,0 +1,34 @@
+{
+  "timestamp": "2026-03-01T15:28:00.000Z",
+  "test_status": "fail",
+  "test_count": 2113,
+  "pass_count": 2056,
+  "fail_count": 48,
+  "skip_count": 9,
+  "test_files_total": 195,
+  "test_files_pass": 176,
+  "test_files_fail": 19,
+  "tsc_status": "errors",
+  "tsc_error_count": 22,
+  "tsc_error_categories": {
+    "missing_js_extension": 14,
+    "missing_module_commander": 3,
+    "implicit_any": 3,
+    "type_mismatch": 2
+  },
+  "tsc_affected_files": [
+    "roadmap.ts",
+    "src/cli/commands/audit.ts",
+    "src/cli/commands/expand.ts",
+    "src/cli/registry.ts",
+    "src/io/audit-engine.ts",
+    "src/lib/agent/index.ts",
+    "src/lib/index.ts",
+    "src/lib/internal/index.ts",
+    "src/lib/internal/validation-helpers.ts",
+    "src/lib/orient-cached.ts",
+    "src/lib/recovery/index.ts",
+    "src/lib/validation.ts"
+  ],
+  "summary": "2056/2113 tests passing (97.3%), 48 failures across 19 files. TypeScript has 22 errors — 14 missing .js extensions, 3 missing commander types, 3 implicit any, 2 type mismatches. Import fixes from verify-imports node should resolve most tsc errors."
+}
