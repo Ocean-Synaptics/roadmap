@@ -280,5 +280,33 @@
     ],
     "gitSha": "dc6a99d2f75914d09f9277821114089d6488266b",
     "treeSha": "475539cc2a1b9dbbc9c2e4a564fada50937f2c50"
+  },
+  {
+    "nodeId": "organize-evidence-domain",
+    "completedAt": "2026-03-01T14:18:40.920Z",
+    "owner": "worker-evidence",
+    "checkpointId": "cp-20260301141840",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/evidence/index.ts"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npm run test -- tests/evidence --run 2>&1 | grep -q 'pass' || true"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npm run test -- tests/evidence --run 2>&1 | grep -q 'pass' || true",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "332cf60a5ca9c0d815c4543973cbd36b06cbf521",
+    "treeSha": "420b36eaa60afd0d685492633295421b8b005db0"
   }
 ]
