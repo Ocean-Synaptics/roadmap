@@ -1,35 +1,1042 @@
 {
-  "version": 1,
-  "timestamp": "2026-03-01T11:01:00Z",
-  "runner": "vitest",
-  "config": {
-    "command": "npx vitest run",
-    "environment": "node",
-    "sampleFile": "tests/protocol.test.ts"
-  },
-  "results": {
-    "totalFiles": 75,
-    "totalTests": 1020,
-    "passed": 1020,
-    "failed": 0,
-    "skipped": 0
-  },
-  "timing": {
-    "total_ms": 12500,
-    "p50_ms": 8500,
-    "transform_ms": 2100,
-    "setup_ms": 0,
-    "import_ms": 3200,
-    "tests_ms": 4800,
-    "environment_ms": 0
-  },
-  "hotspots": [
-    { "file": "tests/protocol.test.ts", "duration_ms": 1490, "tests": 37 },
-    { "file": "tests/batch.test.ts", "duration_ms": 980, "tests": 28 }
+  "wallClock": 62338,
+  "testCount": 2189,
+  "passCount": 2179,
+  "failCount": 1,
+  "slowest": [
+    {
+      "file": "tests/cli-cross-project.test.ts",
+      "name": "CLI Cross-Repo Commands Trail Recording records commands in trail",
+      "duration": 15601.634118000002
+    },
+    {
+      "file": "tests/rkg-integration.test.ts",
+      "name": "rkg-all integration tsc --noEmit is clean",
+      "duration": 8062.516559000003
+    },
+    {
+      "file": "tests/ui-snapshot.test.ts",
+      "name": "ui-snapshot: determinism orient render.body is deterministic across two runs",
+      "duration": 7483.379881000001
+    },
+    {
+      "file": "tests/git-ops.test.ts",
+      "name": "git-ops skill commit supports session squash",
+      "duration": 6878.219211000003
+    },
+    {
+      "file": "tests/cli-cross-project.test.ts",
+      "name": "CLI Cross-Repo Commands sync [--format] returns JSON with roadmaps, count, timestamp",
+      "duration": 6825.366672
+    },
+    {
+      "file": "tests/git-ops.test.ts",
+      "name": "git-ops skill read reads file from repo HEAD",
+      "duration": 6706.600769
+    },
+    {
+      "file": "tests/cli-cross-project.test.ts",
+      "name": "CLI Cross-Repo Commands parallel --cross-repo --graph combines both",
+      "duration": 6641.142726999995
+    },
+    {
+      "file": "tests/cli-cross-project.test.ts",
+      "name": "CLI Cross-Repo Commands Error Handling handles missing DAG and missing skill gracefully",
+      "duration": 6146.429712999998
+    },
+    {
+      "file": "tests/cli-cross-project.test.ts",
+      "name": "CLI Cross-Repo Commands locate --all returns roadmaps array with timestamp",
+      "duration": 6084.135281999999
+    },
+    {
+      "file": "tests/git-ops.test.ts",
+      "name": "git-ops skill exists returns false for missing file",
+      "duration": 6031.072792000003
+    },
+    {
+      "file": "tests/git-ops.test.ts",
+      "name": "git-ops skill exists returns true for existing file",
+      "duration": 5694.457395000001
+    },
+    {
+      "file": "tests/cli-cross-project.test.ts",
+      "name": "CLI Cross-Repo Commands parallel --cross-repo includes siblings",
+      "duration": 5366.614033000002
+    },
+    {
+      "file": "tests/git-ops.test.ts",
+      "name": "git-ops skill read reads file from specific ref",
+      "duration": 5261.19989
+    },
+    {
+      "file": "tests/cli-cross-project.test.ts",
+      "name": "CLI Cross-Repo Commands sync [--format] accepts --format tree",
+      "duration": 4858.801622999999
+    },
+    {
+      "file": "tests/git-ops.test.ts",
+      "name": "git-ops skill commit commits files atomically",
+      "duration": 4811.603306999998
+    },
+    {
+      "file": "tests/plan-status.test.ts",
+      "name": "plan status — valid pointer exits 0 with valid status, headShaMatch true, receipt field",
+      "duration": 4805.465320000003
+    },
+    {
+      "file": "tests/show.test.ts",
+      "name": "roadmap show returns full node spec by ID",
+      "duration": 4742.390619
+    },
+    {
+      "file": "tests/git-ops.test.ts",
+      "name": "git-ops skill list lists files in repo",
+      "duration": 4677.476901000002
+    },
+    {
+      "file": "tests/certify-cmd.test.ts",
+      "name": "roadmap certify node with failing validators exits 1 and certified: false",
+      "duration": 4645.744049000001
+    },
+    {
+      "file": "tests/show.test.ts",
+      "name": "roadmap show includes mode for plan nodes",
+      "duration": 4547.681109
+    }
   ],
-  "receipt": {
-    "ok": true,
-    "budget": { "p50_target_ms": 15000, "p50_actual_ms": 8500, "within_budget": true },
-    "errors": []
+  "hotspots": [
+    {
+      "module": "tests/cli-cross-project.test.ts",
+      "totalDuration": 59163.8232421875,
+      "testCount": 12
+    },
+    {
+      "module": "tests/git-ops.test.ts",
+      "totalDuration": 58280.749755859375,
+      "testCount": 12
+    },
+    {
+      "module": "tests/roadmap-locate.test.ts",
+      "totalDuration": 27959.276611328125,
+      "testCount": 9
+    },
+    {
+      "module": "tests/show.test.ts",
+      "totalDuration": 24772.968994140625,
+      "testCount": 7
+    },
+    {
+      "module": "tests/spec-origin-gate.test.ts",
+      "totalDuration": 18855.206298828125,
+      "testCount": 6
+    },
+    {
+      "module": "tests/plan-gate.test.ts",
+      "totalDuration": 18238.345458984375,
+      "testCount": 6
+    },
+    {
+      "module": "tests/ui-snapshot.test.ts",
+      "totalDuration": 17612.3798828125,
+      "testCount": 14
+    },
+    {
+      "module": "tests/plan-status.test.ts",
+      "totalDuration": 16219.771728515625,
+      "testCount": 4
+    },
+    {
+      "module": "tests/certify-cmd.test.ts",
+      "totalDuration": 15794.72705078125,
+      "testCount": 5
+    },
+    {
+      "module": "tests/dag-diff.test.ts",
+      "totalDuration": 15392.369140625,
+      "testCount": 4
+    },
+    {
+      "module": "tests/commit-cmd.test.ts",
+      "totalDuration": 14443.540771484375,
+      "testCount": 4
+    },
+    {
+      "module": "tests/plan-exec-gate.test.ts",
+      "totalDuration": 14089.76611328125,
+      "testCount": 7
+    },
+    {
+      "module": "tests/cli-contract.test.ts",
+      "totalDuration": 13458.512939453125,
+      "testCount": 16
+    },
+    {
+      "module": "tests/checkpoint-cmd.test.ts",
+      "totalDuration": 10354.39306640625,
+      "testCount": 3
+    },
+    {
+      "module": "tests/rkg-integration.test.ts",
+      "totalDuration": 8066.971435546875,
+      "testCount": 4
+    },
+    {
+      "module": "tests/completion-gitsha.test.ts",
+      "totalDuration": 7729.52490234375,
+      "testCount": 6
+    },
+    {
+      "module": "tests/state-introspection.test.ts",
+      "totalDuration": 6943.151611328125,
+      "testCount": 10
+    },
+    {
+      "module": "tests/consumer-integration.test.ts",
+      "totalDuration": 4884.2705078125,
+      "testCount": 7
+    },
+    {
+      "module": "tests/orient-json.test.ts",
+      "totalDuration": 4035.118896484375,
+      "testCount": 15
+    },
+    {
+      "module": "tests/cli-cross-repo.test.ts",
+      "totalDuration": 3989.539794921875,
+      "testCount": 5
+    },
+    {
+      "module": "tests/cli.test.ts",
+      "totalDuration": 3736.1767578125,
+      "testCount": 14
+    },
+    {
+      "module": "tests/test-enforcement.test.ts",
+      "totalDuration": 3071.33740234375,
+      "testCount": 13
+    },
+    {
+      "module": "tests/runtime-explore.test.ts",
+      "totalDuration": 2880.25732421875,
+      "testCount": 17
+    },
+    {
+      "module": "tests/env-audit.test.ts",
+      "totalDuration": 2795.45947265625,
+      "testCount": 16
+    },
+    {
+      "module": "tests/silent-orient.test.ts",
+      "totalDuration": 2510.933837890625,
+      "testCount": 8
+    },
+    {
+      "module": "tests/fr-consumer-e2e.test.ts",
+      "totalDuration": 2269.878173828125,
+      "testCount": 8
+    },
+    {
+      "module": "tests/cli-init-gate.test.ts",
+      "totalDuration": 2186.992431640625,
+      "testCount": 9
+    },
+    {
+      "module": "tests/orient-assign.test.ts",
+      "totalDuration": 1680.580322265625,
+      "testCount": 22
+    },
+    {
+      "module": "tests/expansion-writer.test.ts",
+      "totalDuration": 1210.818115234375,
+      "testCount": 12
+    },
+    {
+      "module": "tests/metaflow/cli.test.ts",
+      "totalDuration": 1016.048583984375,
+      "testCount": 13
+    },
+    {
+      "module": "tests/audit/integration-detectors.test.ts",
+      "totalDuration": 813.062255859375,
+      "testCount": 8
+    },
+    {
+      "module": "tests/migrate-memory.test.ts",
+      "totalDuration": 778.419677734375,
+      "testCount": 16
+    },
+    {
+      "module": "tests/intake.test.ts",
+      "totalDuration": 620.3935546875,
+      "testCount": 8
+    },
+    {
+      "module": "tests/completion/auto-commit.test.ts",
+      "totalDuration": 572.782958984375,
+      "testCount": 6
+    },
+    {
+      "module": "tests/metaflow/verify.e2e.test.ts",
+      "totalDuration": 569.0029296875,
+      "testCount": 6
+    },
+    {
+      "module": "tests/ts-sandbox.test.ts",
+      "totalDuration": 511.316162109375,
+      "testCount": 20
+    },
+    {
+      "module": "tests/metaflow/authority.test.ts",
+      "totalDuration": 480.95458984375,
+      "testCount": 6
+    },
+    {
+      "module": "tests/adv-atomic-modify.test.ts",
+      "totalDuration": 321.472900390625,
+      "testCount": 5
+    },
+    {
+      "module": "tests/git-state-caching.test.ts",
+      "totalDuration": 254.342041015625,
+      "testCount": 6
+    },
+    {
+      "module": "tests/metaflow/kernel-bridge.test.ts",
+      "totalDuration": 253.01123046875,
+      "testCount": 4
+    },
+    {
+      "module": "tests/federation.test.ts",
+      "totalDuration": 214.385986328125,
+      "testCount": 9
+    },
+    {
+      "module": "tests/env-bypass-removal.test.ts",
+      "totalDuration": 210.181884765625,
+      "testCount": 11
+    },
+    {
+      "module": "tests/cluster.test.ts",
+      "totalDuration": 209.223388671875,
+      "testCount": 49
+    },
+    {
+      "module": "tests/audit/cli.e2e.test.ts",
+      "totalDuration": 189.631103515625,
+      "testCount": 8
+    },
+    {
+      "module": "tests/brief-handoff.test.ts",
+      "totalDuration": 147.3408203125,
+      "testCount": 12
+    },
+    {
+      "module": "tests/validator-runner.test.ts",
+      "totalDuration": 110.193603515625,
+      "testCount": 10
+    },
+    {
+      "module": "src/tests/token-unify.test.ts",
+      "totalDuration": 108.302001953125,
+      "testCount": 14
+    },
+    {
+      "module": "tests/git-library.test.ts",
+      "totalDuration": 105.121826171875,
+      "testCount": 6
+    },
+    {
+      "module": "tests/ux-explain.test.ts",
+      "totalDuration": 102.235595703125,
+      "testCount": 7
+    },
+    {
+      "module": "tests/shell-validate.test.ts",
+      "totalDuration": 87.823486328125,
+      "testCount": 7
+    },
+    {
+      "module": "tests/validate-enforcement.test.ts",
+      "totalDuration": 85.291259765625,
+      "testCount": 15
+    },
+    {
+      "module": "test/receipt-first.test.ts",
+      "totalDuration": 82.359130859375,
+      "testCount": 16
+    },
+    {
+      "module": "tests/trail-metrics.test.ts",
+      "totalDuration": 81.9638671875,
+      "testCount": 13
+    },
+    {
+      "module": "tests/rkg5.test.ts",
+      "totalDuration": 80.576416015625,
+      "testCount": 16
+    },
+    {
+      "module": "tests/rkg4.test.ts",
+      "totalDuration": 75.375732421875,
+      "testCount": 30
+    },
+    {
+      "module": "tests/install-skills.test.ts",
+      "totalDuration": 75.2939453125,
+      "testCount": 43
+    },
+    {
+      "module": "tests/auto-integrate-full.test.ts",
+      "totalDuration": 71.188720703125,
+      "testCount": 13
+    },
+    {
+      "module": "tests/claim.test.ts",
+      "totalDuration": 71.106201171875,
+      "testCount": 20
+    },
+    {
+      "module": "tests/gallery.test.ts",
+      "totalDuration": 70.41455078125,
+      "testCount": 24
+    },
+    {
+      "module": "tests/rkg8-fixtures.test.ts",
+      "totalDuration": 66.283203125,
+      "testCount": 27
+    },
+    {
+      "module": "tests/skip-validate-quarantine.test.ts",
+      "totalDuration": 65.25244140625,
+      "testCount": 4
+    },
+    {
+      "module": "tests/predicates.test.ts",
+      "totalDuration": 63.41796875,
+      "testCount": 10
+    },
+    {
+      "module": "tests/rkg3.test.ts",
+      "totalDuration": 55.428955078125,
+      "testCount": 23
+    },
+    {
+      "module": "tests/sgk/contract.test.ts",
+      "totalDuration": 54.550537109375,
+      "testCount": 22
+    },
+    {
+      "module": "tests/cli/audit.e2e.test.ts",
+      "totalDuration": 53.830322265625,
+      "testCount": 6
+    },
+    {
+      "module": "tests/dag-compiler.test.ts",
+      "totalDuration": 53.43408203125,
+      "testCount": 19
+    },
+    {
+      "module": "tests/intent-evaluator.test.ts",
+      "totalDuration": 50.425048828125,
+      "testCount": 24
+    },
+    {
+      "module": "tests/audit.test.ts",
+      "totalDuration": 46.498291015625,
+      "testCount": 20
+    },
+    {
+      "module": "tests/audit/strategy-detectors.test.ts",
+      "totalDuration": 45.523681640625,
+      "testCount": 9
+    },
+    {
+      "module": "tests/cross-orient.test.ts",
+      "totalDuration": 44.279052734375,
+      "testCount": 12
+    },
+    {
+      "module": "tests/metaflow/render.test.ts",
+      "totalDuration": 43.540771484375,
+      "testCount": 8
+    },
+    {
+      "module": "tests/verify/cli-compliance.test.ts",
+      "totalDuration": 41.749755859375,
+      "testCount": 6
+    },
+    {
+      "module": "tests/compile-prompts.test.ts",
+      "totalDuration": 41.37255859375,
+      "testCount": 39
+    },
+    {
+      "module": "tests/predicates-cross-repo.test.ts",
+      "totalDuration": 40.546875,
+      "testCount": 12
+    },
+    {
+      "module": "tests/cli-human.test.ts",
+      "totalDuration": 40.16650390625,
+      "testCount": 58
+    },
+    {
+      "module": "tests/metaflow.test.ts",
+      "totalDuration": 38.350830078125,
+      "testCount": 17
+    },
+    {
+      "module": "tests/completion-evidence.test.ts",
+      "totalDuration": 37.152587890625,
+      "testCount": 9
+    },
+    {
+      "module": "tests/plan-select.test.ts",
+      "totalDuration": 34.569091796875,
+      "testCount": 10
+    },
+    {
+      "module": "tests/sgk/e2e-run-flow.test.ts",
+      "totalDuration": 33.9931640625,
+      "testCount": 1
+    },
+    {
+      "module": "tests/speckit-import.test.ts",
+      "totalDuration": 32.748779296875,
+      "testCount": 17
+    },
+    {
+      "module": "tests/verify-kernel.test.ts",
+      "totalDuration": 32.57861328125,
+      "testCount": 14
+    },
+    {
+      "module": "tests/compile-prompts-intent.test.ts",
+      "totalDuration": 32.453369140625,
+      "testCount": 17
+    },
+    {
+      "module": "tests/rkg6.test.ts",
+      "totalDuration": 32.127685546875,
+      "testCount": 35
+    },
+    {
+      "module": "tests/metaflow-receipt-writer.test.ts",
+      "totalDuration": 32.0771484375,
+      "testCount": 10
+    },
+    {
+      "module": "tests/emit-gallery.test.ts",
+      "totalDuration": 31.783447265625,
+      "testCount": 15
+    },
+    {
+      "module": "src/tests/rkg3.test.ts",
+      "totalDuration": 31.314453125,
+      "testCount": 27
+    },
+    {
+      "module": "tests/adv-property.test.ts",
+      "totalDuration": 30.200439453125,
+      "testCount": 17
+    },
+    {
+      "module": "tests/consumer-adoption.test.ts",
+      "totalDuration": 27.52392578125,
+      "testCount": 4
+    },
+    {
+      "module": "tests/init-gate-e2e.test.ts",
+      "totalDuration": 27.48583984375,
+      "testCount": 13
+    },
+    {
+      "module": "tests/validate-plan-clarity.test.ts",
+      "totalDuration": 27.2763671875,
+      "testCount": 24
+    },
+    {
+      "module": "tests/rkg7-fixtures.test.ts",
+      "totalDuration": 27.119873046875,
+      "testCount": 35
+    },
+    {
+      "module": "tests/cli/strategy.test.ts",
+      "totalDuration": 25.538330078125,
+      "testCount": 10
+    },
+    {
+      "module": "tests/intent-expansion.test.ts",
+      "totalDuration": 25.300048828125,
+      "testCount": 33
+    },
+    {
+      "module": "tests/cost-tracking.test.ts",
+      "totalDuration": 25.151611328125,
+      "testCount": 26
+    },
+    {
+      "module": "tests/intent-expansion-clarity.test.ts",
+      "totalDuration": 23.521484375,
+      "testCount": 34
+    },
+    {
+      "module": "src/tests/rkg4.test.ts",
+      "totalDuration": 22.40869140625,
+      "testCount": 13
+    },
+    {
+      "module": "tests/spec-contract.test.ts",
+      "totalDuration": 22.197509765625,
+      "testCount": 19
+    },
+    {
+      "module": "tests/plan-selection.test.ts",
+      "totalDuration": 21.44677734375,
+      "testCount": 34
+    },
+    {
+      "module": "src/tests/rkg5.test.ts",
+      "totalDuration": 21.287353515625,
+      "testCount": 21
+    },
+    {
+      "module": "tests/cli/strategy-gate.test.ts",
+      "totalDuration": 20.472412109375,
+      "testCount": 6
+    },
+    {
+      "module": "tests/metaflow-mine-run.test.ts",
+      "totalDuration": 19.773681640625,
+      "testCount": 6
+    },
+    {
+      "module": "tests/metaflow/flows.test.ts",
+      "totalDuration": 19.34716796875,
+      "testCount": 11
+    },
+    {
+      "module": "tests/protocol.test.ts",
+      "totalDuration": 19.31640625,
+      "testCount": 37
+    },
+    {
+      "module": "tests/spec-threading-e2e.test.ts",
+      "totalDuration": 19.2919921875,
+      "testCount": 13
+    },
+    {
+      "module": "tests/dag-candidate.test.ts",
+      "totalDuration": 18.298095703125,
+      "testCount": 15
+    },
+    {
+      "module": "src/tests/rkg6.test.ts",
+      "totalDuration": 18.26806640625,
+      "testCount": 22
+    },
+    {
+      "module": "tests/audit/metaflow-detectors.test.ts",
+      "totalDuration": 17.51513671875,
+      "testCount": 9
+    },
+    {
+      "module": "tests/version-validation.test.ts",
+      "totalDuration": 17.218017578125,
+      "testCount": 3
+    },
+    {
+      "module": "tests/ready-nodes.test.ts",
+      "totalDuration": 16.47607421875,
+      "testCount": 13
+    },
+    {
+      "module": "tests/plan-mode.test.ts",
+      "totalDuration": 16.4169921875,
+      "testCount": 17
+    },
+    {
+      "module": "tests/attestation.test.ts",
+      "totalDuration": 16.13525390625,
+      "testCount": 5
+    },
+    {
+      "module": "tests/propagate.test.ts",
+      "totalDuration": 15.94140625,
+      "testCount": 11
+    },
+    {
+      "module": "tests/dependency-resolver.test.ts",
+      "totalDuration": 15.657470703125,
+      "testCount": 1
+    },
+    {
+      "module": "tests/validate-dag-bookend.test.ts",
+      "totalDuration": 15.445556640625,
+      "testCount": 19
+    },
+    {
+      "module": "tests/bootstrap-gen.test.ts",
+      "totalDuration": 14.58447265625,
+      "testCount": 13
+    },
+    {
+      "module": "tests/intent-expansion-e2e.test.ts",
+      "totalDuration": 14.406005859375,
+      "testCount": 12
+    },
+    {
+      "module": "tests/multi-repo.test.ts",
+      "totalDuration": 14.1552734375,
+      "testCount": 6
+    },
+    {
+      "module": "tests/spec-origin.test.ts",
+      "totalDuration": 13.818359375,
+      "testCount": 12
+    },
+    {
+      "module": "tests/intent-visual.test.ts",
+      "totalDuration": 13.62548828125,
+      "testCount": 12
+    },
+    {
+      "module": "tests/pending-contracts.test.ts",
+      "totalDuration": 13.258544921875,
+      "testCount": 6
+    },
+    {
+      "module": "tests/verify.test.ts",
+      "totalDuration": 12.4365234375,
+      "testCount": 13
+    },
+    {
+      "module": "tests/plan-selected-pointer.test.ts",
+      "totalDuration": 12.425537109375,
+      "testCount": 7
+    },
+    {
+      "module": "tests/audit/opt-map.test.ts",
+      "totalDuration": 11.746337890625,
+      "testCount": 6
+    },
+    {
+      "module": "tests/audit/display-detectors.test.ts",
+      "totalDuration": 11.5439453125,
+      "testCount": 8
+    },
+    {
+      "module": "tests/completion-tracker.test.ts",
+      "totalDuration": 11.4306640625,
+      "testCount": 9
+    },
+    {
+      "module": "tests/project-detector.test.ts",
+      "totalDuration": 10.745361328125,
+      "testCount": 2
+    },
+    {
+      "module": "tests/strategy/registry.test.ts",
+      "totalDuration": 10.714111328125,
+      "testCount": 6
+    },
+    {
+      "module": "tests/cli-envelope.test.ts",
+      "totalDuration": 10.22216796875,
+      "testCount": 13
+    },
+    {
+      "module": "tests/spec-ir.test.ts",
+      "totalDuration": 10.21435546875,
+      "testCount": 5
+    },
+    {
+      "module": "tests/build-discoverer.test.ts",
+      "totalDuration": 9.41357421875,
+      "testCount": 2
+    },
+    {
+      "module": "tests/head-spec-meta.test.ts",
+      "totalDuration": 8.677490234375,
+      "testCount": 13
+    },
+    {
+      "module": "tests/plan-overlay.test.ts",
+      "totalDuration": 8.5029296875,
+      "testCount": 6
+    },
+    {
+      "module": "tests/completion-context.test.ts",
+      "totalDuration": 8.238525390625,
+      "testCount": 7
+    },
+    {
+      "module": "tests/env-audit-runtime.test.ts",
+      "totalDuration": 7.5693359375,
+      "testCount": 10
+    },
+    {
+      "module": "tests/cli/inventory.test.ts",
+      "totalDuration": 7.5400390625,
+      "testCount": 6
+    },
+    {
+      "module": "tests/spec-verifier.test.ts",
+      "totalDuration": 7.334716796875,
+      "testCount": 12
+    },
+    {
+      "module": "tests/batch-position.test.ts",
+      "totalDuration": 7.317138671875,
+      "testCount": 9
+    },
+    {
+      "module": "tests/metaflow/bypass.test.ts",
+      "totalDuration": 7.309814453125,
+      "testCount": 8
+    },
+    {
+      "module": "tests/intent-expansion-validate.test.ts",
+      "totalDuration": 7.17724609375,
+      "testCount": 9
+    },
+    {
+      "module": "tests/gantt.test.ts",
+      "totalDuration": 6.756591796875,
+      "testCount": 8
+    },
+    {
+      "module": "tests/batch-state-exhaustive.test.ts",
+      "totalDuration": 6.360107421875,
+      "testCount": 24
+    },
+    {
+      "module": "tests/agent-executor.test.ts",
+      "totalDuration": 6.27783203125,
+      "testCount": 6
+    },
+    {
+      "module": "tests/metaflow/self-insert.test.ts",
+      "totalDuration": 6.22802734375,
+      "testCount": 6
+    },
+    {
+      "module": "tests/receipt-chain.test.ts",
+      "totalDuration": 6.1318359375,
+      "testCount": 8
+    },
+    {
+      "module": "tests/cli/exemptions.test.ts",
+      "totalDuration": 5.828857421875,
+      "testCount": 6
+    },
+    {
+      "module": "tests/regent-integration.test.ts",
+      "totalDuration": 5.382568359375,
+      "testCount": 7
+    },
+    {
+      "module": "tests/remaining-cmd.test.ts",
+      "totalDuration": 5.232421875,
+      "testCount": 7
+    },
+    {
+      "module": "tests/gov-004-batch-conflicts.test.ts",
+      "totalDuration": 4.37939453125,
+      "testCount": 3
+    },
+    {
+      "module": "tests/validate-dag.test.ts",
+      "totalDuration": 4.243896484375,
+      "testCount": 9
+    },
+    {
+      "module": "tests/parallel-order.test.ts",
+      "totalDuration": 3.767578125,
+      "testCount": 6
+    },
+    {
+      "module": "tests/adv-merge.test.ts",
+      "totalDuration": 3.522216796875,
+      "testCount": 6
+    },
+    {
+      "module": "tests/spawn-plan.test.ts",
+      "totalDuration": 3.416748046875,
+      "testCount": 8
+    },
+    {
+      "module": "tests/adv-branch.test.ts",
+      "totalDuration": 3.382080078125,
+      "testCount": 5
+    },
+    {
+      "module": "tests/audit/audit-engine.test.ts",
+      "totalDuration": 3.358642578125,
+      "testCount": 6
+    },
+    {
+      "module": "tests/cli/metaflow-audit.test.ts",
+      "totalDuration": 3.33544921875,
+      "testCount": 6
+    },
+    {
+      "module": "tests/orient-receipt-semantics.test.ts",
+      "totalDuration": 3.303466796875,
+      "testCount": 8
+    },
+    {
+      "module": "tests/doctor-cmd.test.ts",
+      "totalDuration": 3.185546875,
+      "testCount": 8
+    },
+    {
+      "module": "tests/cli-registry.test.ts",
+      "totalDuration": 3.134521484375,
+      "testCount": 3
+    },
+    {
+      "module": "tests/completion-store-api.test.ts",
+      "totalDuration": 3.03173828125,
+      "testCount": 17
+    },
+    {
+      "module": "tests/batch-validation.test.ts",
+      "totalDuration": 2.532470703125,
+      "testCount": 5
+    },
+    {
+      "module": "tests/metaflow/active-run.test.ts",
+      "totalDuration": 2.366455078125,
+      "testCount": 6
+    },
+    {
+      "module": "tests/dispatch.test.ts",
+      "totalDuration": 2.329345703125,
+      "testCount": 8
+    },
+    {
+      "module": "tests/next-batch.test.ts",
+      "totalDuration": 2.297607421875,
+      "testCount": 6
+    },
+    {
+      "module": "tests/adv-orient.test.ts",
+      "totalDuration": 2.29296875,
+      "testCount": 8
+    },
+    {
+      "module": "tests/adv-modify.test.ts",
+      "totalDuration": 2.281982421875,
+      "testCount": 5
+    },
+    {
+      "module": "tests/critical-path.test.ts",
+      "totalDuration": 2.238525390625,
+      "testCount": 6
+    },
+    {
+      "module": "tests/spec-origin-lib.test.ts",
+      "totalDuration": 2.22705078125,
+      "testCount": 7
+    },
+    {
+      "module": "tests/completion-regression.test.ts",
+      "totalDuration": 2.19482421875,
+      "testCount": 8
+    },
+    {
+      "module": "tests/api-tree-shaking.test.ts",
+      "totalDuration": 2.18896484375,
+      "testCount": 28
+    },
+    {
+      "module": "tests/chart-states.test.ts",
+      "totalDuration": 2.18017578125,
+      "testCount": 8
+    },
+    {
+      "module": "tests/node-type-ext.test.ts",
+      "totalDuration": 2.177734375,
+      "testCount": 8
+    },
+    {
+      "module": "tests/errors.test.ts",
+      "totalDuration": 2.136962890625,
+      "testCount": 7
+    },
+    {
+      "module": "tests/cli/compliance.e2e.test.ts",
+      "totalDuration": 2.0732421875,
+      "testCount": 6
+    },
+    {
+      "module": "tests/loop-target.test.ts",
+      "totalDuration": 1.4091796875,
+      "testCount": 5
+    },
+    {
+      "module": "tests/cli/doctor-cli.test.ts",
+      "totalDuration": 1.38134765625,
+      "testCount": 6
+    },
+    {
+      "module": "tests/completion-store-ext.test.ts",
+      "totalDuration": 1.275146484375,
+      "testCount": 5
+    },
+    {
+      "module": "tests/strategy/hints.test.ts",
+      "totalDuration": 1.27197265625,
+      "testCount": 8
+    },
+    {
+      "module": "tests/batch-conflicts.test.ts",
+      "totalDuration": 1.2392578125,
+      "testCount": 5
+    },
+    {
+      "module": "tests/migrations.test.ts",
+      "totalDuration": 1.2041015625,
+      "testCount": 5
+    },
+    {
+      "module": "tests/import/audit-tail-gate.test.ts",
+      "totalDuration": 1.19482421875,
+      "testCount": 6
+    },
+    {
+      "module": "tests/adv-reconcile.test.ts",
+      "totalDuration": 1.170654296875,
+      "testCount": 8
+    },
+    {
+      "module": "tests/consumer-categories.test.ts",
+      "totalDuration": 1.154541015625,
+      "testCount": 4
+    },
+    {
+      "module": "tests/orient-receipt-hardening.test.ts",
+      "totalDuration": 1.10986328125,
+      "testCount": 7
+    },
+    {
+      "module": "tests/auto-integrate.test.ts",
+      "totalDuration": 0.703369140625,
+      "testCount": 1
+    },
+    {
+      "module": "tests/render/metaflow-header.test.ts",
+      "totalDuration": 0.1904296875,
+      "testCount": 6
+    }
+  ],
+  "env": {
+    "node": "25.2.1",
+    "os": "linux-x64",
+    "ci": false,
+    "cpuModel": "Intel(R) Core(TM) Ultra 7 258V",
+    "timestamp": "2026-03-01T11:01:23.498Z"
   }
 }
