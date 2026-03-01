@@ -4278,9 +4278,14 @@ function cmdImport(note: string) {
     process.exit(1);
   }
 
-  // --- Write head.json ---
-  const outPath = join(outDir, 'head.json');
-  writeFileSync(outPath, dagJson);
+  // --- Write candidate (non-destructive) ---
+  if (candidateExists(repoRoot)) {
+    json({ error: 'Candidate already exists at head.candidate.json', fix: 'roadmap dag accept or roadmap dag reject first' });
+    process.exit(1);
+    return;
+  }
+  const outPath = join(repoRoot, '.roadmap', 'head.candidate.json');
+  writeCandidateDAG(repoRoot, dag, 'import', filePath);
 
   // --- FR-GOV-001: write receipt ---
   let gitSha = 'unknown';
@@ -4336,6 +4341,7 @@ function cmdImport(note: string) {
 
   const result: Record<string, unknown> = {
     imported: true,
+    candidate: true,
     dagId,
     source: filePath,
     tasks: tasks.length,
@@ -4347,6 +4353,7 @@ function cmdImport(note: string) {
     dag_hash: dagHash.slice(0, 12),
     input_hash: inputHash.slice(0, 12),
     spawnPlan,
+    fix: 'Review with: roadmap dag diff, then: roadmap dag accept --note "..."',
   };
 
   if (terminalError) {
@@ -4433,9 +4440,14 @@ function cmdImportCompiled(note: string, irPath: string | undefined) {
     process.exit(1);
   }
 
-  // Write head.json
-  const outPath = join(outDir, 'head.json');
-  writeFileSync(outPath, dagJson);
+  // Write candidate (non-destructive)
+  if (candidateExists(repoRoot)) {
+    json({ error: 'Candidate already exists at head.candidate.json', fix: 'roadmap dag accept or roadmap dag reject first' });
+    process.exit(1);
+    return;
+  }
+  const outPath = join(repoRoot, '.roadmap', 'head.candidate.json');
+  writeCandidateDAG(repoRoot, dag, 'import', irPath);
 
   // Write spec-origin.json — provenance for this spec-compiled import
   const specOrigin: SpecOrigin = {
@@ -4513,6 +4525,7 @@ function cmdImportCompiled(note: string, irPath: string | undefined) {
 
   json({
     imported: true,
+    candidate: true,
     type: 'spec-compiled',
     dagId: ir.dag_id,
     engine: ir.engine,
