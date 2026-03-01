@@ -5828,5 +5828,20 @@
     ],
     "gitSha": "85cf09106319494470b0d28a97c12019041d1dd4",
     "treeSha": "e84c5f64349061bae3f938f2bca6bea835c2ec20"
+  },
+  {
+    "nodeId": "rf-tests",
+    "completedAt": "2026-03-01T09:31:37.436Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301093137",
+    "validationChecks": [
+      {
+        "rule": "skip-validate",
+        "passed": false,
+        "evidence": "validation skipped by --skip-validate flag"
+      }
+    ],
+    "gitSha": "a2fccaeb4b0666b7bf994a42a23c75571e1518cf",
+    "treeSha": "d069c1b2b3edfc0896f646ba9b9e1a962d39e809"
   }
 ]
