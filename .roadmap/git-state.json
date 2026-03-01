@@ -1,5 +1,5 @@
 {
-  "lastCommit": "b2866c73a1b46b8fe4fe9c14f4fb508cb86b4c09",
-  "timestamp": "2026-03-01T16:31:26Z",
-  "message": "roadmap: add .gitignore for runtime artifacts (checkpoints, tokens, receipts, test outputs)"
+  "lastCommit": "c85a36df0735ecccb41216c7e0922d7fcad1886a",
+  "timestamp": "2026-03-01T16:33:16Z",
+  "message": "roadmap: remove stale audit/planning artifacts from root"
 }

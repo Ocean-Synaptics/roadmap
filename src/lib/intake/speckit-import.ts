@@ -37,10 +37,110 @@ export interface ImportOptions {
 
 const TASK_RE = /^[-*]\s+\[P(\d+)\]\s+(\S+):\s*(.+)$/;
 const PROP_RE = /^\s+[-*]\s+(depends|produces|consumes|mode|validate):\s*(.+)$/;
+const YAML_BLOCK_RE = /^```yaml\n([\s\S]*?)\n```/gm;
+
+// Parse YAML block (spec-kit format): nodeId: ..., description: ..., produces: [...], etc.
+function parseYamlBlock(block: string): Partial<ParsedTask> | null {
+  const lines = block.split('\n');
+  const result: any = { depends: [], produces: [], consumes: [], validate: [], mode: 'execute' };
+  let inArray: string | null = null; // Track which array we're collecting
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim() || line.startsWith('#')) continue;
+
+    // Check indentation: 0-level = key:, 2-level = - item
+    const indent = line.match(/^(\s*)/)?.[1].length || 0;
+    const content = line.trim();
+
+    // Top-level keys
+    if (indent === 0) {
+      const match = content.match(/^(\w+):\s*(.*)$/);
+      if (!match) continue;
+
+      const [, key, value] = match;
+      inArray = null; // Reset array context
+
+      if (key === 'nodeId') {
+        result.id = value.trim();
+      } else if (key === 'description') {
+        result.desc = value.replace(/^["']|["']$/g, '').trim();
+      } else if (key === 'produces') {
+        if (value === '[]') {
+          result.produces = [];
+        } else if (value === '') {
+          inArray = 'produces';
+        } else if (value.startsWith('[') && value.endsWith(']')) {
+          result.produces = value.slice(1, -1).split(',').map(s => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+        }
+      } else if (key === 'consumes') {
+        if (value === '[]') {
+          result.consumes = [];
+        } else if (value === '') {
+          inArray = 'consumes';
+        } else if (value.startsWith('[') && value.endsWith(']')) {
+          result.consumes = value.slice(1, -1).split(',').map(s => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+        }
+      } else if (key === 'dependencies') {
+        if (value === '[]') {
+          result.depends = [];
+        } else if (value === '') {
+          inArray = 'depends';
+        } else if (value.startsWith('[') && value.endsWith(']')) {
+          result.depends = value.slice(1, -1).split(',').map(s => s.trim().replace(/^["']|["']$/g, '')).filter(Boolean);
+        }
+      } else if (key === 'validate') {
+        if (value === '[]') {
+          result.validate = [];
+        } else if (value === '') {
+          inArray = 'validate';
+        }
+        // Skip complex validation object parsing for now
+      } else if (key === 'mode') {
+        result.mode = value === 'plan' ? 'plan' : 'execute';
+      }
+    } else if (indent === 2 && inArray && content.startsWith('-')) {
+      // Array item
+      const item = content.slice(1).trim();
+      if (item && !item.startsWith('{') && !item.includes(':')) {
+        // Simple scalar value, not a complex object
+        result[inArray].push(item);
+      }
+    }
+  }
+
+  return result.id ? result : null;
+}
 
 export function parseTasksMd(content: string): ParsedTask[] {
-  const lines = content.split('\n');
   const tasks: ParsedTask[] = [];
+
+  // Try YAML block format first (spec-kit native)
+  let match;
+  const yamlRegex = /^```yaml\n([\s\S]*?)\n```/gm;
+  while ((match = yamlRegex.exec(content)) !== null) {
+    const parsed = parseYamlBlock(match[1]);
+    if (parsed && parsed.id) {
+      // Derive priority from batch level (if available in context)
+      // For now, use order of appearance
+      tasks.push({
+        id: parsed.id,
+        desc: parsed.desc || '(no description)',
+        priority: tasks.length, // Sequential priority
+        depends: parsed.depends || [],
+        produces: parsed.produces || [],
+        consumes: parsed.consumes || [],
+        mode: parsed.mode || 'execute',
+        validate: parsed.validate || [],
+      });
+    }
+  }
+
+  // If YAML blocks found, return them
+  if (tasks.length > 0) return tasks;
+
+  // Fall back to original format: - [P<n>] task-id: description
+  const lines = content.split('\n');
   let current: ParsedTask | null = null;
 
   for (const line of lines) {
