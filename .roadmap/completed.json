@@ -6126,9 +6126,9 @@
   },
   {
     "nodeId": "surf-layout-verify",
-    "completedAt": "2026-03-01T10:57:14.574Z",
+    "completedAt": "2026-03-01T10:57:18.366Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260301105714",
+    "checkpointId": "cp-20260301105718",
     "validationChecks": [
       {
         "rule": "artifact-exists",
@@ -6136,7 +6136,7 @@
         "evidence": "artifact exists: .audit/layout-verify.receipt.json"
       }
     ],
-    "gitSha": "3e5770ef48286e801a6b792f4fea3d64b6aa61c5",
-    "treeSha": "5a0b67285f0ffd1ee6ac9883d5f0bec1b8988b0f"
+    "gitSha": "79d2f881df09580aac048c80a5f9fc843324936a",
+    "treeSha": "acdf0c2c1060000712347de926ea14d78f6f58e9"
   }
 ]
