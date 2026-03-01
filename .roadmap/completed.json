@@ -5531,5 +5531,50 @@
     ],
     "gitSha": "d40e20cab3ade773fc6eef105452a8b0b3909f67",
     "treeSha": "949104e3b742f00293cec955224a75d1235c05d4"
+  },
+  {
+    "nodeId": "tu-strategy-migrate",
+    "completedAt": "2026-03-01T09:20:29.376Z",
+    "owner": "w7",
+    "checkpointId": "cp-20260301092028",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! test -f src/lib/strategy/hints.ts"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -q 'BoundToken' src/lib/strategy/select.ts"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:! test -f src/lib/strategy/hints.ts",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:grep -q 'BoundToken' src/lib/strategy/select.ts",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "3d8da75c50c059e252b3ede149e624b0eed67768",
+    "treeSha": "7ef150e5e200473cb1b13cf5ccf053608afb1e2d"
   }
 ]
