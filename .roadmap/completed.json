@@ -1097,5 +1097,35 @@
     ],
     "gitSha": "b9d5bd2885fa6c024a228152fcc21c0a698084cb",
     "treeSha": "00e310f58bcaf90aca19ca2a2cc00a42c303e187"
+  },
+  {
+    "nodeId": "optimizer-gate",
+    "completedAt": "2026-03-01T21:35:07.720Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301213507",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .roadmap/metaflow-optimizer/optimizer-gate.json"
+      }
+    ],
+    "gitSha": "41e9aca17b223b10abd13e7253c66ce4f0224c0a",
+    "treeSha": "bbde2a268c8d890ed90501fe5a5e55c4a439e97e"
+  },
+  {
+    "nodeId": "optimizer-report",
+    "completedAt": "2026-03-01T21:35:10.401Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301213510",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .roadmap/metaflow-optimizer/optimizer-report.json"
+      }
+    ],
+    "gitSha": "41e9aca17b223b10abd13e7253c66ce4f0224c0a",
+    "treeSha": "bbde2a268c8d890ed90501fe5a5e55c4a439e97e"
   }
 ]
