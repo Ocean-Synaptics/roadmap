@@ -6073,5 +6073,20 @@
     ],
     "gitSha": "88c4a54be96dc966d618b91c6af8ace7ab17ce11",
     "treeSha": "dfe2e4199a69ee0335be1bd7093d83d84abf32ff"
+  },
+  {
+    "nodeId": "surf-ts-input",
+    "completedAt": "2026-03-01T10:52:10.477Z",
+    "owner": "w-ts-input",
+    "checkpointId": "cp-20260301105210",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/cli/commands/ts.ts"
+      }
+    ],
+    "gitSha": "006bdac9979f78ca1b35d5441bae93b84d3d1533",
+    "treeSha": "7d5f0b7c720ba8f874604ca63a15426065691c82"
   }
 ]
