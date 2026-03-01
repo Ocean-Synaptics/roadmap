@@ -3966,5 +3966,31 @@
     ],
     "gitSha": "c1c3f5514891f1abb5029042e636d73b487405fa",
     "treeSha": "6ad4345f8113910f2fab5a11c6061229772a6da6"
+  },
+  {
+    "nodeId": "rm-cli-mf-audit",
+    "completedAt": "2026-03-01T01:33:20.426Z",
+    "owner": "w1",
+    "checkpointId": "cp-20260301013318",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit && npx vitest run tests/audit/cli.e2e.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit && npx vitest run tests/audit/cli.e2e.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "22f76cd8022d30e8b262f4d4b79da6679069915fc8a7a0d8d5c9463f105cf307",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/rm-cli-mf-audit/mm72t2n2-d28wf1/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "85573c77303b034dde18092fe09ce345d03096e5",
+    "treeSha": "878e26512ce47b9000d8012b319827fc91c5e9b8"
   }
 ]
