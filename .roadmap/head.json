@@ -1,175 +1,133 @@
 {
-  "id": "lib-refactor-001",
-  "desc": "src/lib refactoring: consolidate modules, reduce exports, organize by concern",
-  "init": "init",
-  "term": "intent-lib-refactor-complete",
+  "id": "fr-meta-evid-001",
+  "desc": "Evidence-Required Output + Anti-Hallucination Gates (kernel-level governance)",
+  "init": "init-governance",
+  "term": "intent-evidence-kernel-active",
   "nodes": {
-    "init": {
-      "id": "init",
-      "desc": "Current src/lib state (213 files, unrefactored)",
+    "init-governance": {
+      "id": "init-governance",
+      "desc": "Current state: metaspec/metaloop produce claims without evidence backing (blocker fixed)",
       "produces": [],
       "consumes": [],
       "deps": [],
       "validate": [],
       "mode": "execute"
     },
-    "audit-lib-structure": {
-      "id": "audit-lib-structure",
-      "desc": "Deep audit of src/lib: identify consolidation targets, dead code, export surface",
+    "evidence-schema": {
+      "id": "evidence-schema",
+      "desc": "Define EVIDENCE.json contract: schema_version, headSha, diffstat, reads, checks, git provenance",
       "produces": [
-        ".audit/lib-refactor/structure-audit.json",
-        ".audit/lib-refactor/consolidation-targets.md"
+        "src/lib/evidence/schema.ts",
+        "docs/evidence/EVIDENCE_CONTRACT.md"
       ],
       "consumes": [],
-      "deps": ["init"],
+      "deps": ["init-governance"],
       "validate": [
-        {"type": "artifact-exists", "path": ".audit/lib-refactor/structure-audit.json"},
-        {"type": "artifact-exists", "path": ".audit/lib-refactor/consolidation-targets.md"}
+        {"type": "artifact-exists", "path": "src/lib/evidence/schema.ts"},
+        {"type": "artifact-exists", "path": "docs/evidence/EVIDENCE_CONTRACT.md"}
       ],
       "mode": "execute"
     },
-    "consolidate-core-modules": {
-      "id": "consolidate-core-modules",
-      "desc": "Consolidate related modules: recovery.ts + checkpoint.ts → unified audit module",
+    "evidence-collector": {
+      "id": "evidence-collector",
+      "desc": "Implement collectEvidence(repoRoot, before, after, readPaths): git diff + file reads + test results",
       "produces": [
-        "src/lib/audit.ts",
-        ".audit/lib-refactor/consolidation-1.receipt.json"
+        "src/lib/evidence/collect.ts",
+        "tests/evidence/collect.test.ts"
       ],
       "consumes": [
-        "src/lib/recovery.ts",
-        "src/lib/checkpoint.ts",
-        "src/lib/audit-trail.ts"
+        "src/lib/evidence/schema.ts"
       ],
-      "deps": ["audit-lib-structure"],
+      "deps": ["evidence-schema"],
       "validate": [
-        {"type": "artifact-exists", "path": "src/lib/audit.ts"},
-        {"type": "shell", "command": "npm run tsc -- --noEmit 2>&1 | grep -q 'error' && exit 1 || exit 0"}
+        {"type": "artifact-exists", "path": "src/lib/evidence/collect.ts"},
+        {"type": "shell", "command": "npm run test -- tests/evidence/collect.test.ts --run 2>&1 | grep -q 'pass'"}
       ],
       "mode": "execute"
     },
-    "reduce-export-surface": {
-      "id": "reduce-export-surface",
-      "desc": "Hide internal helpers: validation.ts exports only validateNode/validateGraph",
+    "claim-renderer": {
+      "id": "claim-renderer",
+      "desc": "Implement ClaimRenderer: refuses to emit summaries without evidence. Enforces EVIDENCE_REQUIRED, INSUFFICIENT_READ_PROOFS, STUB_ONLY_CHANGESET",
       "produces": [
-        "src/lib/validation.ts",
-        "src/lib/internal/validation-helpers.ts",
-        ".audit/lib-refactor/export-reduction.receipt.json"
+        "src/lib/claims/render.ts",
+        "src/lib/claims/detectors.ts",
+        "tests/claims/render.test.ts"
       ],
       "consumes": [
-        "src/lib/validation.ts"
+        "src/lib/evidence/schema.ts"
       ],
-      "deps": ["audit-lib-structure"],
+      "deps": ["evidence-schema"],
       "validate": [
-        {"type": "artifact-exists", "path": "src/lib/validation.ts"},
-        {"type": "shell", "command": "grep -c 'export.*function' src/lib/validation.ts | grep -E '^[0-2]$'"}
+        {"type": "artifact-exists", "path": "src/lib/claims/render.ts"},
+        {"type": "artifact-exists", "path": "src/lib/claims/detectors.ts"},
+        {"type": "shell", "command": "npm run test -- tests/claims/ --run 2>&1 | grep -q 'pass'"}
       ],
       "mode": "execute"
     },
-    "remove-dead-code": {
-      "id": "remove-dead-code",
-      "desc": "Remove unused types/functions: LegacyValidatorSpec, deprecatedOrderFunction, oldParallelOrder",
+    "metaloop-evidence-wiring": {
+      "id": "metaloop-evidence-wiring",
+      "desc": "Wire metaloop runner: collect evidence at end of each iteration, call claim renderer, emit only renderer output",
       "produces": [
-        ".archive/lib-deprecated/removed-code.md",
-        ".audit/lib-refactor/dead-code.receipt.json"
+        "src/lib/metaloop/evidence-integration.ts"
       ],
       "consumes": [
-        "src/lib/protocol.ts"
+        "src/lib/evidence/collect.ts",
+        "src/lib/claims/render.ts"
       ],
-      "deps": ["audit-lib-structure"],
+      "deps": ["evidence-collector", "claim-renderer"],
       "validate": [
-        {"type": "artifact-exists", "path": ".archive/lib-deprecated/removed-code.md"},
-        {"type": "shell", "command": "grep -r 'LegacyValidatorSpec\\|deprecatedOrderFunction\\|oldParallelOrder' src/ || exit 0"}
+        {"type": "artifact-exists", "path": "src/lib/metaloop/evidence-integration.ts"}
       ],
       "mode": "execute"
     },
-    "consolidate-types": {
-      "id": "consolidate-types",
-      "desc": "All interfaces → src/lib/types.ts (single source of truth)",
+    "roadmap-verify-invariant": {
+      "id": "roadmap-verify-invariant",
+      "desc": "Add kernel invariant: metaloop_evidence_required. For each .roadmap/metaloop/runs/*/ITERATIONS/it-*/DECISION.json, require sibling evidence/EVIDENCE.json + receipts/CLAIM.json",
       "produces": [
-        "src/lib/types.ts",
-        ".audit/lib-refactor/types-consolidation.receipt.json"
-      ],
-      "consumes": [
-        "src/lib/protocol.ts",
-        "src/lib/validation.ts",
-        "src/lib/errors.ts"
-      ],
-      "deps": ["audit-lib-structure"],
-      "validate": [
-        {"type": "artifact-exists", "path": "src/lib/types.ts"},
-        {"type": "shell", "command": "grep -c 'export.*interface\\|export.*type' src/lib/types.ts"}
-      ],
-      "mode": "execute"
-    },
-    "reorganize-by-concern": {
-      "id": "reorganize-by-concern",
-      "desc": "High-value: reorganize src/lib/{core,agent,recovery,internal} by responsibility",
-      "produces": [
-        "src/lib/core/index.ts",
-        "src/lib/agent/index.ts",
-        "src/lib/recovery/index.ts",
-        ".audit/lib-refactor/reorganization.receipt.json"
-      ],
-      "consumes": [
-        "src/lib/"
-      ],
-      "deps": ["consolidate-core-modules", "reduce-export-surface", "consolidate-types"],
-      "validate": [
-        {"type": "artifact-exists", "path": "src/lib/core/index.ts"},
-        {"type": "artifact-exists", "path": "src/lib/agent/index.ts"},
-        {"type": "artifact-exists", "path": "src/lib/recovery/index.ts"},
-        {"type": "shell", "command": "test -d src/lib/internal"}
-      ],
-      "mode": "execute"
-    },
-    "update-public-api": {
-      "id": "update-public-api",
-      "desc": "Update src/lib/index.ts: expose only high-level API (define, verify, check, orient)",
-      "produces": [
-        "src/lib/index.ts",
-        ".audit/lib-refactor/api-cleanup.receipt.json"
-      ],
-      "consumes": [
-        "src/lib/core/index.ts"
-      ],
-      "deps": ["reorganize-by-concern"],
-      "validate": [
-        {"type": "artifact-exists", "path": "src/lib/index.ts"},
-        {"type": "shell", "command": "grep -c 'export' src/lib/index.ts"}
-      ],
-      "mode": "execute"
-    },
-    "verify-no-regressions": {
-      "id": "verify-no-regressions",
-      "desc": "TypeScript compilation + unit tests pass",
-      "produces": [
-        ".audit/lib-refactor/test-results.json"
+        "src/lib/validation/invariants/metaloop-evidence.ts"
       ],
       "consumes": [],
-      "deps": ["update-public-api"],
+      "deps": ["evidence-collector"],
       "validate": [
-        {"type": "shell", "command": "npm run tsc -- --noEmit"}
+        {"type": "artifact-exists", "path": "src/lib/validation/invariants/metaloop-evidence.ts"},
+        {"type": "shell", "command": "npm run test -- tests/validation/invariants/ --run 2>&1 | grep -q 'pass'"}
       ],
       "mode": "execute"
     },
-    "intent-lib-refactor-complete": {
-      "id": "intent-lib-refactor-complete",
-      "desc": "Terminal: src/lib refactoring complete, no regressions, exports reduced, modules organized",
+    "terminal-intent-evidence-binding": {
+      "id": "terminal-intent-evidence-binding",
+      "desc": "Terminal intent gates must cite evidence bundle path, headSha before/after, diffstat. Unevaluated without evidence.",
       "produces": [
-        ".audit/lib-refactor/RECEIPT.json"
+        "src/lib/intent/evidence-context.ts",
+        "docs/INTENT_EVIDENCE_BINDING.md"
       ],
       "consumes": [
-        ".audit/lib-refactor/structure-audit.json",
-        ".audit/lib-refactor/consolidation-1.receipt.json",
-        ".audit/lib-refactor/export-reduction.receipt.json",
-        ".audit/lib-refactor/types-consolidation.receipt.json",
-        ".audit/lib-refactor/reorganization.receipt.json",
-        ".audit/lib-refactor/api-cleanup.receipt.json",
-        ".audit/lib-refactor/test-results.json"
+        "src/lib/evidence/schema.ts"
       ],
-      "deps": ["verify-no-regressions"],
+      "deps": ["evidence-schema"],
       "validate": [
-        {"type": "artifact-exists", "path": ".audit/lib-refactor/RECEIPT.json"}
+        {"type": "artifact-exists", "path": "src/lib/intent/evidence-context.ts"},
+        {"type": "artifact-exists", "path": "docs/INTENT_EVIDENCE_BINDING.md"}
+      ],
+      "mode": "execute"
+    },
+    "intent-evidence-kernel-active": {
+      "id": "intent-evidence-kernel-active",
+      "desc": "Terminal: Evidence-required enforcement active. Any claim without evidence backing → BLOCKED. Metaspec/metaloop cannot produce hallucinated summaries.",
+      "produces": [
+        ".roadmap/evidence-kernel-ACTIVE.receipt.json"
+      ],
+      "consumes": [
+        "src/lib/evidence/collect.ts",
+        "src/lib/claims/render.ts",
+        "src/lib/metaloop/evidence-integration.ts",
+        "src/lib/validation/invariants/metaloop-evidence.ts",
+        "src/lib/intent/evidence-context.ts"
+      ],
+      "deps": ["metaloop-evidence-wiring", "roadmap-verify-invariant", "terminal-intent-evidence-binding"],
+      "validate": [
+        {"type": "artifact-exists", "path": ".roadmap/evidence-kernel-ACTIVE.receipt.json"},
+        {"type": "shell", "command": "npm run test -- tests/evidence tests/claims tests/validation/invariants --run 2>&1 | grep -q 'pass'"}
       ],
       "mode": "plan"
     }
