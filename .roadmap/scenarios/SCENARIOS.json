@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "scenarios": [
+    {
+      "id": "free-run-guard",
+      "desc": "Require orient receipt before dispatch can proceed",
+      "requiredReceipts": [
+        { "type": "cmd", "cmd": "orient", "matchHeadSha": true }
+      ],
+      "allowBreakglass": true
+    }
+  ]
+}
