@@ -4572,5 +4572,20 @@
     ],
     "gitSha": "b84006d0755a531d126ff839fb74cbe3b6bfaca9",
     "treeSha": "6691d7c4f88d6ebc97f07764731ace6f77861872"
+  },
+  {
+    "nodeId": "rf-cmd-receipt",
+    "completedAt": "2026-03-01T09:04:16.229Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301090416",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/receipt-first/cmd-receipt.ts"
+      }
+    ],
+    "gitSha": "46b66b33f0401bea234f67ca0ca0773fc4073898",
+    "treeSha": "8c11ae722ba3c034eb8d7d3397b539d70f3975f1"
   }
 ]
