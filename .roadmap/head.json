@@ -682,7 +682,8 @@
         "rkg4-env-bypass",
         "rkg4-algo-report",
         "rkg3-dispatch-enforcement",
-        "rkg6-rate-card"
+        "rkg6-rate-card",
+        "cli-output-plan"
       ],
       "validate": [
         {
@@ -708,10 +709,56 @@
           "type": "shell",
           "command": "npm run build 2>&1 | grep -q \"built\"",
           "expectExitCode": 0
+        },
+        {
+          "type": "intent",
+          "statement": "All RKG-3/4/5/6 governance hardening complete and CLI output audit executed: stdout is clean JSON, render.body populated for all stateful commands, test suite green, TypeScript clean",
+          "confidence": 0.95,
+          "evaluator": "self",
+          "expandOnFail": true
         }
       ],
       "idempotent": true,
       "ambient": []
+    },
+    "cli-output-plan": {
+      "id": "cli-output-plan",
+      "desc": "Spec-kit the CLI stdout/stderr audit + receipt system redesign. Produce pre-spec.md, spec.md, tasks.md. Execute via massively parallel persisted background agents.",
+      "mode": "plan",
+      "produces": [
+        ".specify/pre-spec/cli-output.md",
+        ".specify/specs/cli-output/spec.md",
+        ".specify/specs/cli-output/tasks.md"
+      ],
+      "consumes": [],
+      "ambient": [
+        "src/lib/cli-envelope.ts",
+        "bin/roadmap.ts",
+        "src/lib/metaflow/receipt-writer.ts",
+        "src/lib/metaflow/wrap.ts"
+      ],
+      "deps": [
+        "init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "path": ".specify/pre-spec/cli-output.md"
+        },
+        {
+          "type": "artifact-exists",
+          "path": ".specify/specs/cli-output/spec.md"
+        },
+        {
+          "type": "artifact-exists",
+          "path": ".specify/specs/cli-output/tasks.md"
+        },
+        {
+          "type": "expanded",
+          "minNodes": 3
+        }
+      ],
+      "idempotent": false
     }
   }
 }
