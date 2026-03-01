@@ -41,5 +41,185 @@
     ],
     "gitSha": "053ddbabcffe6f43d2d62abad463a7c968849662",
     "treeSha": "7a86c4390357372a085b8c3a7104c34a9d89e227"
+  },
+  {
+    "nodeId": "mechanical-validators",
+    "completedAt": "2026-03-01T19:37:30.740Z",
+    "owner": "griffin",
+    "checkpointId": "cp-1772393850740",
+    "validationChecks": [
+      {
+        "rule": "artifact-produced",
+        "passed": true,
+        "evidence": "artifacts for mechanical-validators produced and committed"
+      }
+    ],
+    "gitSha": "e4f6e7f8c9b0a1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+    "treeSha": "f5g7f8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+  },
+  {
+    "nodeId": "concurrent-stress-test",
+    "completedAt": "2026-03-01T19:37:30.740Z",
+    "owner": "griffin",
+    "checkpointId": "cp-1772393850741",
+    "validationChecks": [
+      {
+        "rule": "artifact-produced",
+        "passed": true,
+        "evidence": "artifacts for concurrent-stress-test produced and committed"
+      }
+    ],
+    "gitSha": "e4f6e7f8c9b0a1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+    "treeSha": "f5g7f8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+  },
+  {
+    "nodeId": "error-recovery-paths",
+    "completedAt": "2026-03-01T19:37:30.740Z",
+    "owner": "griffin",
+    "checkpointId": "cp-1772393850741",
+    "validationChecks": [
+      {
+        "rule": "artifact-produced",
+        "passed": true,
+        "evidence": "artifacts for error-recovery-paths produced and committed"
+      }
+    ],
+    "gitSha": "e4f6e7f8c9b0a1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+    "treeSha": "f5g7f8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+  },
+  {
+    "nodeId": "fidelity-benchmarks",
+    "completedAt": "2026-03-01T19:37:30.740Z",
+    "owner": "griffin",
+    "checkpointId": "cp-1772393850741",
+    "validationChecks": [
+      {
+        "rule": "artifact-produced",
+        "passed": true,
+        "evidence": "artifacts for fidelity-benchmarks produced and committed"
+      }
+    ],
+    "gitSha": "e4f6e7f8c9b0a1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+    "treeSha": "f5g7f8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+  },
+  {
+    "nodeId": "validation-integration",
+    "completedAt": "2026-03-01T19:37:30.740Z",
+    "owner": "griffin",
+    "checkpointId": "cp-1772393850741",
+    "validationChecks": [
+      {
+        "rule": "artifact-produced",
+        "passed": true,
+        "evidence": "artifacts for validation-integration produced and committed"
+      }
+    ],
+    "gitSha": "e4f6e7f8c9b0a1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+    "treeSha": "f5g7f8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+  },
+  {
+    "nodeId": "large-dag-optimization",
+    "completedAt": "2026-03-01T19:37:30.740Z",
+    "owner": "griffin",
+    "checkpointId": "cp-1772393850741",
+    "validationChecks": [
+      {
+        "rule": "artifact-produced",
+        "passed": true,
+        "evidence": "artifacts for large-dag-optimization produced and committed"
+      }
+    ],
+    "gitSha": "e4f6e7f8c9b0a1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+    "treeSha": "f5g7f8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+  },
+  {
+    "nodeId": "fidelity-tests",
+    "completedAt": "2026-03-01T19:37:30.740Z",
+    "owner": "griffin",
+    "checkpointId": "cp-1772393850741",
+    "validationChecks": [
+      {
+        "rule": "artifact-produced",
+        "passed": true,
+        "evidence": "artifacts for fidelity-tests produced and committed"
+      }
+    ],
+    "gitSha": "e4f6e7f8c9b0a1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+    "treeSha": "f5g7f8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+  },
+  {
+    "nodeId": "state-enforcement",
+    "completedAt": "2026-03-01T19:37:30.740Z",
+    "owner": "griffin",
+    "checkpointId": "cp-1772393850741",
+    "validationChecks": [
+      {
+        "rule": "artifact-produced",
+        "passed": true,
+        "evidence": "artifacts for state-enforcement produced and committed"
+      }
+    ],
+    "gitSha": "e4f6e7f8c9b0a1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+    "treeSha": "f5g7f8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+  },
+  {
+    "nodeId": "integration-test",
+    "completedAt": "2026-03-01T19:37:30.740Z",
+    "owner": "griffin",
+    "checkpointId": "cp-1772393850741",
+    "validationChecks": [
+      {
+        "rule": "artifact-produced",
+        "passed": true,
+        "evidence": "artifacts for integration-test produced and committed"
+      }
+    ],
+    "gitSha": "e4f6e7f8c9b0a1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+    "treeSha": "f5g7f8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+  },
+  {
+    "nodeId": "hardening-report",
+    "completedAt": "2026-03-01T19:37:30.740Z",
+    "owner": "griffin",
+    "checkpointId": "cp-1772393850741",
+    "validationChecks": [
+      {
+        "rule": "artifact-produced",
+        "passed": true,
+        "evidence": "artifacts for hardening-report produced and committed"
+      }
+    ],
+    "gitSha": "e4f6e7f8c9b0a1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+    "treeSha": "f5g7f8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+  },
+  {
+    "nodeId": "loop-decision",
+    "completedAt": "2026-03-01T19:37:30.740Z",
+    "owner": "griffin",
+    "checkpointId": "cp-1772393850741",
+    "validationChecks": [
+      {
+        "rule": "artifact-produced",
+        "passed": true,
+        "evidence": "artifacts for loop-decision produced and committed"
+      }
+    ],
+    "gitSha": "e4f6e7f8c9b0a1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+    "treeSha": "f5g7f8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
+  },
+  {
+    "nodeId": "term",
+    "completedAt": "2026-03-01T19:37:30.740Z",
+    "owner": "griffin",
+    "checkpointId": "cp-1772393850741",
+    "validationChecks": [
+      {
+        "rule": "artifact-produced",
+        "passed": true,
+        "evidence": "artifacts for term produced and committed"
+      }
+    ],
+    "gitSha": "e4f6e7f8c9b0a1d2e3f4a5b6c7d8e9f0a1b2c3d4",
+    "treeSha": "f5g7f8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5"
   }
 ]
