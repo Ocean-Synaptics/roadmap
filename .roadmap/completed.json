@@ -4713,9 +4713,9 @@
   },
   {
     "nodeId": "rkg4-contract-closure",
-    "completedAt": "2026-03-01T09:04:40.075Z",
+    "completedAt": "2026-03-01T09:04:50.279Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260301090438",
+    "checkpointId": "cp-20260301090448",
     "validationChecks": [
       {
         "rule": "shell",
@@ -4731,8 +4731,8 @@
         "artifactPaths": []
       }
     ],
-    "gitSha": "23694ddb8cb33502eff19c6e07ba5ca2063ac862",
-    "treeSha": "4872fa3f81d95f07fabbd99128fa28c22c73938d"
+    "gitSha": "8bddc74a10737a266e43551a6a09121aa6256fc7",
+    "treeSha": "6ee0ce4e338207c04eacafd4e0978a7cc06999e1"
   },
   {
     "nodeId": "rkg5-candidate-receipts",
