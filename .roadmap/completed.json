@@ -1682,5 +1682,31 @@
     ],
     "gitSha": "7532d99656c358c0cc3293d0c3f25c821743f063",
     "treeSha": "c98beac6d3c517d7ae34d57533f54236e5a35721"
+  },
+  {
+    "nodeId": "discoverability-audit",
+    "completedAt": "2026-03-01T23:29:36.071Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301232936",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): node -e \"const d=JSON.parse(require('fs').readFileSync('.roadmap/cli-quality/discoverability-score.json','utf-8')); if(typeof d.score==='number' && d.score>=0 && d.score<=100) { console.log('Discoverability score: ' + d.score); process.exit(0); } else { process.exit(1); }\""
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:node -e \"const d=JSON.parse(require('fs').readFileSync('.roadmap/cli-quality/discoverability-score.json','utf-8')); if(typeof d.score==='number' && d.score>=0 && d.score<=100) { console.log('Discoverability score: ' + d.score); process.exit(0); } else { process.exit(1); }\"",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "7b1bf460c4f2e174f4f66f659c969eb271d09cdbcf9d7c13d5fe85ab66a88cd4",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/discoverability-audit/mm8dtsmv-bzmdfs/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "d5f6020c8a90c102572de024f041d4b8033464d8",
+    "treeSha": "61ccb24045b29a0f25ffdcdc2ebebd4aba1cc6ab"
   }
 ]

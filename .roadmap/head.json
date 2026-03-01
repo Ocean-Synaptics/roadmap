@@ -287,7 +287,7 @@
       "validate": [
         {
           "type": "shell",
-          "command": "node -e \"const m=JSON.parse(require('fs').readFileSync('.roadmap/cli-quality/dogfood-metrics.json','utf-8')); if(m.orientP50Ms<300 && m.envelopeComplianceRate===1.0) { console.log('Dogfood metrics OK'); process.exit(0); } else { process.exit(1); }\""
+          "command": "node -e \"const m=JSON.parse(require('fs').readFileSync('.roadmap/cli-quality/dogfood-metrics.json','utf-8')); const p50=(m.targets?.orientP50Ms?.actual ?? m.orientP50Ms); const compliance=(m.systemMetrics?.envelopeComplianceRate ?? m.envelopeComplianceRate); if(p50<300 && compliance===1.0) { console.log('Dogfood metrics OK: P50=' + p50 + 'ms, compliance=' + compliance); process.exit(0); } else { process.exit(1); }\""
         }
       ],
       "idempotent": true
@@ -310,7 +310,7 @@
       "validate": [
         {
           "type": "shell",
-          "command": "node -e \"const s=JSON.parse(require('fs').readFileSync('.roadmap/cli-quality/synthesis-report.json','utf-8')); if(s.orientP50Ms<300 && s.envelopeComplianceRate===1.0) { console.log('Synthesis complete'); process.exit(0); } else { process.exit(1); }\""
+          "command": "node -e \"const s=JSON.parse(require('fs').readFileSync('.roadmap/cli-quality/synthesis-report.json','utf-8')); const p50=(s.targets?.orientP50Ms?.actual ?? s.orientP50Ms); const compliance=(s.systemMetrics?.envelopeComplianceRate ?? s.envelopeComplianceRate); if(p50<300 && compliance===1.0) { console.log('Synthesis complete: P50=' + p50 + 'ms, compliance=' + compliance); process.exit(0); } else { process.exit(1); }\""
         }
       ],
       "idempotent": true
