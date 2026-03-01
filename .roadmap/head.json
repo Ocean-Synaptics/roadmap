@@ -1,364 +1,133 @@
 {
-  "id": "fr-surf-001",
-  "desc": "Surface consolidation: audit/archive/CLI/perf + terminal gate",
-  "init": "init",
-  "term": "intent-surf-001",
+  "id": "fr-meta-refac-001",
+  "desc": "Refactor Survey Swarm → Fan-in Analysis → Next Spec-kit Run",
+  "init": "refac-run-bootstrap",
+  "term": "intent-refac-pipeline",
   "nodes": {
-    "init": {
-      "id": "init",
-      "desc": "Existing roadmap codebase",
-      "produces": [],
+    "refac-run-bootstrap": {
+      "id": "refac-run-bootstrap",
+      "desc": "Initialize refactor survey run directory, record baseline metadata (repo HEAD, tool versions, agent roster)",
+      "produces": [
+        ".audit/refactor-runs/<runId>/RUN.json",
+        ".audit/refactor-runs/<runId>/agents/AGENTS.json"
+      ],
       "consumes": [],
       "deps": [],
-      "validate": [],
-      "idempotent": true
-    },
-    "surf-audit-schema": {
-      "id": "surf-audit-schema",
-      "desc": "Schemas for SURFACE/PLAN/RESULT JSON + validators",
-      "produces": [
-        "src/lib/audit/audit-schema.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "init"
-      ],
       "validate": [
-        {
-          "type": "artifact-exists",
-          "path": "src/lib/audit/audit-schema.ts"
-        }
+        { "type": "artifact-exists", "path": ".audit/refactor-runs/<runId>/RUN.json" },
+        { "type": "artifact-exists", "path": ".audit/refactor-runs/<runId>/agents/AGENTS.json" },
+        { "type": "artifact-schema", "path": ".audit/refactor-runs/<runId>/RUN.json", "schema": "repo.headSha, rankingWeights" }
       ],
-      "idempotent": true
+      "mode": "execute"
     },
-    "surf-cli-registry": {
-      "id": "surf-cli-registry",
-      "desc": "Single CLI entrypoint + command registry",
-      "produces": [
-        "bin/cli.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "init"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": "bin/cli.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "surf-perf-schema": {
-      "id": "surf-perf-schema",
-      "desc": "Perf receipt schemas + baseline types",
-      "produces": [
-        "src/lib/perf/perf-schema.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "init"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "target": "src/lib/perf/perf-schema.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "surf-audit-engine": {
-      "id": "surf-audit-engine",
-      "desc": "Surface inventory engine (build graph, score archival)",
-      "produces": [
-        "src/lib/audit/audit-engine.ts"
-      ],
-      "consumes": [
-        "src/lib/audit/audit-schema.ts"
-      ],
-      "deps": [
-        "surf-audit-schema"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": "src/lib/audit/audit-engine.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "surf-layout-plan": {
-      "id": "surf-layout-plan",
-      "desc": "Target layout derivation + move plan",
-      "produces": [
-        "src/lib/audit/layout-plan.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "init"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": "src/lib/audit/layout-plan.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "surf-cli-wrap-core": {
-      "id": "surf-cli-wrap-core",
-      "desc": "Wrap 5–10 core ops behind CLI",
-      "produces": [
-        "src/cli/commands/verify.ts",
-        "src/cli/commands/receipts.ts",
-        "src/cli/commands/dag.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "init"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": "src/cli/commands/verify.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "surf-ts-input": {
-      "id": "surf-ts-input",
-      "desc": "TS-input CLI with allowlist sandbox",
-      "produces": [
-        "src/cli/commands/ts.ts",
-        "src/lib/ts-sandbox.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "init"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": "src/cli/commands/ts.ts"
-        },
-        {
-          "type": "artifact-exists",
-          "path": "src/lib/ts-sandbox.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "surf-audit-cli": {
-      "id": "surf-audit-cli",
-      "desc": "CLI commands: audit surface/archive/report",
-      "produces": [
-        "src/cli/commands/audit.ts",
-        "src/cli/render/audit.ts"
-      ],
-      "consumes": [
-        "src/lib/audit/audit-schema.ts",
-        "src/lib/audit/audit-engine.ts"
-      ],
-      "deps": [
-        "surf-audit-schema",
-        "surf-audit-engine"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": "src/cli/commands/audit.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "surf-audit-tests": {
-      "id": "surf-audit-tests",
-      "desc": "Fixture suite for audit + CLI invocation",
-      "produces": [
-        "tests/audit.test.ts"
-      ],
-      "consumes": [
-        "src/lib/audit/audit-schema.ts",
-        "src/lib/audit/audit-engine.ts",
-        "src/cli/commands/audit.ts"
-      ],
-      "deps": [
-        "surf-audit-cli"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": "tests/audit.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "surf-archive-plan": {
-      "id": "surf-archive-plan",
-      "desc": "Generate PLAN.json from audit output",
-      "produces": [
-        ".audit/archive/PLAN.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "surf-audit-cli"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": ".audit/archive/PLAN.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "surf-layout-apply": {
-      "id": "surf-layout-apply",
-      "desc": "Execute folder reorg, rewrite imports",
-      "produces": [
-        "src/lib/layout-apply.receipt.json"
-      ],
-      "consumes": [
-        "src/lib/audit/layout-plan.ts"
-      ],
-      "deps": [
-        "surf-layout-plan"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": "src/lib/layout-apply.receipt.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "surf-archive-apply": {
-      "id": "surf-archive-apply",
-      "desc": "Execute archive moves, generate CLI wrappers",
-      "produces": [
-        ".audit/archive/RESULT.json"
-      ],
-      "consumes": [
-        ".audit/archive/PLAN.json"
-      ],
-      "deps": [
-        "surf-archive-plan",
-        "surf-layout-apply"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": ".audit/archive/RESULT.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "surf-layout-verify": {
-      "id": "surf-layout-verify",
-      "desc": "Verify lib/ modules are import-pure",
-      "produces": [
-        ".audit/layout-verify.receipt.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "surf-layout-apply"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": ".audit/layout-verify.receipt.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "surf-archive-verify": {
-      "id": "surf-archive-verify",
-      "desc": "Verify no dangling imports, CLI covers moved ops",
-      "produces": [
-        ".audit/archive-verify.receipt.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "surf-archive-apply"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": ".audit/archive-verify.receipt.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "surf-perf-vitest-cmd": {
-      "id": "surf-perf-vitest-cmd",
-      "desc": "Run vitest, record LATEST.json with timing + hotspots",
-      "produces": [
-        ".perf/vitest/LATEST.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "surf-perf-schema",
-        "surf-layout-apply",
-        "surf-archive-apply"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": ".perf/vitest/LATEST.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "surf-perf-budget-gate": {
-      "id": "surf-perf-budget-gate",
-      "desc": "Enforce vitest ≤15s (p50), emit REGRESSION.json if exceeded",
-      "produces": [
-        ".perf/vitest/budget-gate.receipt.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "surf-perf-vitest-cmd"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": ".perf/vitest/budget-gate.receipt.json"
-        },
-        {
-          "type": "shell",
-          "command": "node -e \"const r=JSON.parse(require('fs').readFileSync('.perf/vitest/budget-gate.receipt.json','utf-8')); process.exit(r.budget.passed ? 0 : 1)\""
-        }
-      ],
-      "idempotent": true
-    },
-    "intent-surf-001": {
-      "id": "intent-surf-001",
-      "desc": "Terminal: surface reduced, CLI canonical, vitest < 15s, all gates pass",
-      "produces": [
-        ".roadmap/intent-surf-001.receipt.json"
-      ],
-      "consumes": [
-        ".audit/archive-verify.receipt.json",
-        ".audit/layout-verify.receipt.json",
-        ".perf/vitest/budget-gate.receipt.json"
-      ],
-      "deps": [
-        "surf-archive-verify",
-        "surf-layout-verify",
-        "surf-perf-budget-gate"
-      ],
-      "validate": [
-        {
-          "type": "intent",
-          "statement": "Surface consolidated: CLI canonical, audit/archive complete, vitest <15s",
-          "expandOnFail": true
-        },
-        {
-          "type": "shell",
-          "command": "node -e \"const fs=require('fs'); ['archive-verify','layout-verify'].forEach(f => { if(!fs.existsSync('.audit/'+f+'.receipt.json')) process.exit(1) }); const b=JSON.parse(fs.readFileSync('.perf/vitest/budget-gate.receipt.json','utf-8')); process.exit(b.budget.passed ? 0 : 1)\""
-        }
-      ],
-      "idempotent": true,
+    "refac-survey-plan": {
+      "id": "refac-survey-plan",
+      "desc": "Plan node for parallel survey agents. Expands into refac-survey-agent-01..N.",
+      "produces": [],
+      "consumes": [".audit/refactor-runs/<runId>/RUN.json", ".audit/refactor-runs/<runId>/agents/AGENTS.json"],
+      "deps": ["refac-run-bootstrap"],
+      "validate": [{ "type": "expanded", "minNodes": 3 }],
       "mode": "plan"
+    },
+    "refac-survey-agent-01": {
+      "id": "refac-survey-agent-01",
+      "desc": "Scan scope: src/lib, src/protocol, src/agent. Produce structured receipt with evidence.",
+      "produces": [".audit/refactor-runs/<runId>/agents/survey-01.receipt.json"],
+      "consumes": [".audit/refactor-runs/<runId>/agents/AGENTS.json"],
+      "deps": ["refac-survey-plan"],
+      "validate": [
+        { "type": "artifact-exists", "path": ".audit/refactor-runs/<runId>/agents/survey-01.receipt.json" },
+        { "type": "artifact-schema", "path": ".audit/refactor-runs/<runId>/agents/survey-01.receipt.json", "schema": "agentId, findings[]" },
+        { "type": "shell", "command": "jq '.findings | length > 0' .audit/refactor-runs/<runId>/agents/survey-01.receipt.json" }
+      ],
+      "mode": "execute",
+      "expandedFrom": "refac-survey-plan"
+    },
+    "refac-survey-agent-02": {
+      "id": "refac-survey-agent-02",
+      "desc": "Scan scope: bin/, tests/. Produce structured receipt with evidence.",
+      "produces": [".audit/refactor-runs/<runId>/agents/survey-02.receipt.json"],
+      "consumes": [".audit/refactor-runs/<runId>/agents/AGENTS.json"],
+      "deps": ["refac-survey-plan"],
+      "validate": [
+        { "type": "artifact-exists", "path": ".audit/refactor-runs/<runId>/agents/survey-02.receipt.json" },
+        { "type": "artifact-schema", "path": ".audit/refactor-runs/<runId>/agents/survey-02.receipt.json", "schema": "agentId, findings[]" },
+        { "type": "shell", "command": "jq '.findings | length > 0' .audit/refactor-runs/<runId>/agents/survey-02.receipt.json" }
+      ],
+      "mode": "execute",
+      "expandedFrom": "refac-survey-plan"
+    },
+    "refac-survey-agent-03": {
+      "id": "refac-survey-agent-03",
+      "desc": "Scan scope: docs/, scripts/. Produce structured receipt with evidence.",
+      "produces": [".audit/refactor-runs/<runId>/agents/survey-03.receipt.json"],
+      "consumes": [".audit/refactor-runs/<runId>/agents/AGENTS.json"],
+      "deps": ["refac-survey-plan"],
+      "validate": [
+        { "type": "artifact-exists", "path": ".audit/refactor-runs/<runId>/agents/survey-03.receipt.json" },
+        { "type": "artifact-schema", "path": ".audit/refactor-runs/<runId>/agents/survey-03.receipt.json", "schema": "agentId, findings[]" },
+        { "type": "shell", "command": "jq '.findings | length > 0' .audit/refactor-runs/<runId>/agents/survey-03.receipt.json" }
+      ],
+      "mode": "execute",
+      "expandedFrom": "refac-survey-plan"
+    },
+    "refac-fan-in-synthesis": {
+      "id": "refac-fan-in-synthesis",
+      "desc": "Deterministically merge receipts. Cluster, rank, detect conflicts. Produce SYNTHESIS.json.",
+      "produces": [".audit/refactor-runs/<runId>/fan-in/SYNTHESIS.json", ".audit/refactor-runs/<runId>/fan-in/SYNTHESIS.md"],
+      "consumes": [
+        ".audit/refactor-runs/<runId>/agents/survey-01.receipt.json",
+        ".audit/refactor-runs/<runId>/agents/survey-02.receipt.json",
+        ".audit/refactor-runs/<runId>/agents/survey-03.receipt.json"
+      ],
+      "deps": ["refac-survey-agent-01", "refac-survey-agent-02", "refac-survey-agent-03"],
+      "validate": [
+        { "type": "artifact-exists", "path": ".audit/refactor-runs/<runId>/fan-in/SYNTHESIS.json" },
+        { "type": "shell", "command": "jq '.clusters | length > 0' .audit/refactor-runs/<runId>/fan-in/SYNTHESIS.json" }
+      ],
+      "mode": "execute"
+    },
+    "refac-specgen": {
+      "id": "refac-specgen",
+      "desc": "Generate next spec-kit from synthesis. Produce SPEC.md, TASKS.md, PLAN.md, GALLERY.json, SELECTED.json.",
+      "produces": [
+        ".specify/<specId>/SPEC.md",
+        ".specify/<specId>/TASKS.md",
+        ".specify/<specId>/PLAN.md",
+        ".specify/<specId>/GALLERY.json",
+        ".specify/<specId>/SELECTED.json"
+      ],
+      "consumes": [
+        ".audit/refactor-runs/<runId>/fan-in/SYNTHESIS.json",
+        ".audit/refactor-runs/<runId>/fan-in/SYNTHESIS.md"
+      ],
+      "deps": ["refac-fan-in-synthesis"],
+      "validate": [
+        { "type": "artifact-exists", "path": ".specify/<specId>/SPEC.md" },
+        { "type": "artifact-exists", "path": ".specify/<specId>/TASKS.md" },
+        { "type": "artifact-exists", "path": ".specify/<specId>/GALLERY.json" },
+        { "type": "shell", "command": "grep -q 'intent-init\\|intent-term\\|mine-run\\|audit-surface\\|perf-budget' .specify/<specId>/TASKS.md" },
+        { "type": "shell", "command": "jq '.strategies | length >= 2' .specify/<specId>/GALLERY.json" }
+      ],
+      "mode": "execute"
+    },
+    "intent-refac-pipeline": {
+      "id": "intent-refac-pipeline",
+      "desc": "Terminal intent gate. Verify governance-complete: spec coherence, DAG acyclic, all validators, gates present.",
+      "produces": [".audit/refactor-runs/<runId>/RECEIPT.json"],
+      "consumes": [
+        ".specify/<specId>/SPEC.md",
+        ".specify/<specId>/TASKS.md",
+        ".specify/<specId>/PLAN.md",
+        ".specify/<specId>/GALLERY.json",
+        ".specify/<specId>/SELECTED.json"
+      ],
+      "deps": ["refac-specgen"],
+      "validate": [
+        { "type": "artifact-exists", "path": ".audit/refactor-runs/<runId>/RECEIPT.json" },
+        { "type": "artifact-schema", "path": ".audit/refactor-runs/<runId>/RECEIPT.json", "schema": "verdict, gatePasses" }
+      ],
+      "mode": "execute"
     }
   }
 }
