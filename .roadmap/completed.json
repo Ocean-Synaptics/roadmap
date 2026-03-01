@@ -4641,5 +4641,28 @@
     ],
     "gitSha": "848bb0b2d43e058818b934bada2ca3ebfb488d0b",
     "treeSha": "ac433a2718b6939a9bac23feeda4cb03cd862e44"
+  },
+  {
+    "nodeId": "rkg5-cli-explain",
+    "completedAt": "2026-03-01T09:04:29.811Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301090428",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "1d7433b305349be8f735cd1af17e042e65cda546",
+    "treeSha": "0d2c9fac16c81d414b1753a1f7e0dc27c8ff2ddf"
   }
 ]
