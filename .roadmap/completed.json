@@ -6076,17 +6076,22 @@
   },
   {
     "nodeId": "surf-ts-input",
-    "completedAt": "2026-03-01T10:52:10.477Z",
-    "owner": "w-ts-input",
-    "checkpointId": "cp-20260301105210",
+    "completedAt": "2026-03-01T10:52:54.425Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301105254",
     "validationChecks": [
       {
         "rule": "artifact-exists",
         "passed": true,
         "evidence": "artifact exists: src/cli/commands/ts.ts"
+      },
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/ts-sandbox.ts"
       }
     ],
-    "gitSha": "006bdac9979f78ca1b35d5441bae93b84d3d1533",
-    "treeSha": "7d5f0b7c720ba8f874604ca63a15426065691c82"
+    "gitSha": "33b01eda33a9e572cedda3b2e9e826167b3a86b3",
+    "treeSha": "279130861f19c5d30b21e757007497ad2e33f1cb"
   }
 ]
