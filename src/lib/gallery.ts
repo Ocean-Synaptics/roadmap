@@ -1,6 +1,6 @@
 // @module gallery
-// @exports computeRisk, paretoFilter, generateCandidates, computeParetoFront
-// @types TemplateParams, GalleryCandidate, CandidateMetrics, ParetoReport
+// @exports computeRisk, paretoFilter, generateCandidates, computeParetoFront, DEFAULT_QUANTIZATION
+// @types TemplateParams, GalleryCandidate, CandidateMetrics, ParetoReport, QuantizationConfig
 // @entry roadmap
 
 import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
@@ -19,6 +19,13 @@ export interface ParetoReport {
   dominated: CandidateMetrics[];
   generatedAt: string;
   sha: string;
+  quantization?: QuantizationConfig;
+}
+
+export interface QuantizationConfig {
+  coverageBinSize: number;  // e.g. 0.01 = 2 decimal places
+  costBinSize: number;      // e.g. 0.01
+  latencyBinSize: number;   // e.g. 1.0 = round to nearest ms
 }
 
 export interface TemplateParams {
@@ -273,22 +280,42 @@ export function generateCandidates(specSource: string, _historyDir?: string): Ga
   return paretoFilter(candidates);
 }
 
-// Quantize to 2 decimal places to prevent noise from affecting dominance.
+export const DEFAULT_QUANTIZATION: QuantizationConfig = {
+  coverageBinSize: 0.01,
+  costBinSize: 0.01,
+  latencyBinSize: 1.0,
+};
+
+// Quantize value to nearest bin boundary.
+function quantize(n: number, binSize: number): number {
+  return Math.round(n / binSize) * binSize;
+}
+
+// Backward-compatible: 2 decimal places
 function q(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
 // A dominates B if A is at least as good on all three metrics and strictly better on at least one.
 // Higher coverage = better. Lower cost + latency = better.
-function dominates(a: CandidateMetrics, b: CandidateMetrics): boolean {
-  const aq = { coverage: q(a.coverage), cost: q(a.cost), latency: q(a.latency) };
-  const bq = { coverage: q(b.coverage), cost: q(b.cost), latency: q(b.latency) };
+function dominates(a: CandidateMetrics, b: CandidateMetrics, qcfg?: QuantizationConfig): boolean {
+  const cfg = qcfg ?? DEFAULT_QUANTIZATION;
+  const aq = {
+    coverage: quantize(a.coverage, cfg.coverageBinSize),
+    cost: quantize(a.cost, cfg.costBinSize),
+    latency: quantize(a.latency, cfg.latencyBinSize),
+  };
+  const bq = {
+    coverage: quantize(b.coverage, cfg.coverageBinSize),
+    cost: quantize(b.cost, cfg.costBinSize),
+    latency: quantize(b.latency, cfg.latencyBinSize),
+  };
   const aLeAll = aq.coverage >= bq.coverage && aq.cost <= bq.cost && aq.latency <= bq.latency;
   const aLtOne = aq.coverage > bq.coverage || aq.cost < bq.cost || aq.latency < bq.latency;
   return aLeAll && aLtOne;
 }
 
-export function computeParetoFront(metrics: CandidateMetrics[], repoRoot?: string): ParetoReport {
+export function computeParetoFront(metrics: CandidateMetrics[], repoRoot?: string, quantization?: QuantizationConfig): ParetoReport {
   const sha = createHash('sha256').update(JSON.stringify(metrics)).digest('hex');
   const dominated = new Set<string>();
 
@@ -297,7 +324,7 @@ export function computeParetoFront(metrics: CandidateMetrics[], repoRoot?: strin
       if (a.candidateId === b.candidateId) continue;
       if (dominated.has(b.candidateId)) continue;
       // a dominates b?
-      if (dominates(a, b)) dominated.add(b.candidateId);
+      if (dominates(a, b, quantization)) dominated.add(b.candidateId);
     }
   }
 
@@ -309,6 +336,7 @@ export function computeParetoFront(metrics: CandidateMetrics[], repoRoot?: strin
     dominated: dominatedList,
     generatedAt: new Date().toISOString(),
     sha,
+    quantization: quantization ?? DEFAULT_QUANTIZATION,
   };
 
   if (repoRoot) {
