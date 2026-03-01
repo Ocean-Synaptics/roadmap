@@ -25,7 +25,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": "src/lib/audit/audit-schema.ts"
         }
       ],
       "idempotent": true
@@ -42,7 +43,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": "bin/cli.ts"
         }
       ],
       "idempotent": true
@@ -79,7 +81,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": "src/lib/audit/audit-engine.ts"
         }
       ],
       "idempotent": true
@@ -116,7 +119,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": "src/cli/commands/verify.ts"
         }
       ],
       "idempotent": true
@@ -161,7 +165,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": "src/cli/commands/audit.ts"
         }
       ],
       "idempotent": true
@@ -182,7 +187,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": "tests/audit.test.ts"
         }
       ],
       "idempotent": true
@@ -199,7 +205,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": ".audit/archive/PLAN.json"
         }
       ],
       "idempotent": true
@@ -218,7 +225,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": "src/lib/layout-apply.receipt.json"
         }
       ],
       "idempotent": true
@@ -238,7 +246,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": ".audit/archive/RESULT.json"
         }
       ],
       "idempotent": true
@@ -255,7 +264,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": ".audit/layout-verify.receipt.json"
         }
       ],
       "idempotent": true
@@ -272,7 +282,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": ".audit/archive-verify.receipt.json"
         }
       ],
       "idempotent": true
@@ -291,7 +302,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": ".perf/vitest/LATEST.json"
         }
       ],
       "idempotent": true
@@ -308,7 +320,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": ".perf/vitest/budget-gate.receipt.json"
         },
         {
           "type": "launch-check"
