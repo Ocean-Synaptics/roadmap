@@ -5164,5 +5164,28 @@
     ],
     "gitSha": "113aab38330c10c09b9b967724d480ba344bfc7e",
     "treeSha": "16fb457c031bd1ec1ac3e2fffe8e2d260b184f6a"
+  },
+  {
+    "nodeId": "rkg5-guard-policy",
+    "completedAt": "2026-03-01T09:10:07.265Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301091006",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "9808d57460dac84bfde4f74a64ba1a90eec6cd4b",
+    "treeSha": "e01e8051f8a461eeafc55d21e23390dceb618e5c"
   }
 ]
