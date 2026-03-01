@@ -324,7 +324,8 @@
           "path": ".perf/vitest/budget-gate.receipt.json"
         },
         {
-          "type": "launch-check"
+          "type": "shell",
+          "command": "node -e \"const r=JSON.parse(require('fs').readFileSync('.perf/vitest/budget-gate.receipt.json','utf-8')); process.exit(r.budget.passed ? 0 : 1)\""
         }
       ],
       "idempotent": true
@@ -352,7 +353,8 @@
           "expandOnFail": true
         },
         {
-          "type": "launch-check"
+          "type": "shell",
+          "command": "node -e \"const fs=require('fs'); ['archive-verify','layout-verify'].forEach(f => { if(!fs.existsSync('.audit/'+f+'.receipt.json')) process.exit(1) }); const b=JSON.parse(fs.readFileSync('.perf/vitest/budget-gate.receipt.json','utf-8')); process.exit(b.budget.passed ? 0 : 1)\""
         }
       ],
       "idempotent": true,
