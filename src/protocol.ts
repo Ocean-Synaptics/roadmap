@@ -390,14 +390,18 @@ export function reconcile<T extends string>(
 
 // --- order: topological sort ---
 
-export function order<T extends string>(g: Graph<T>): string[] {
+// Default comparator: lexicographic by node id (FR-DET-001)
+const lexCmp = (a: string, b: string) => a.localeCompare(b);
+
+export function order<T extends string>(g: Graph<T>, cmp: (a: string, b: string) => number = lexCmp): string[] {
   const nodes = flat(g);
   const valid = new Set(nodes.map(n => n.id));
   const a = fwd(nodes);
   const deg = new Map(nodes.map(n => [n.id, n.deps.filter(d => valid.has(d)).length]));
-  const q = [...deg].filter(([, d]) => d === 0).map(([id]) => id);
+  const q = [...deg].filter(([, d]) => d === 0).map(([id]) => id).sort(cmp);
   const out: string[] = [];
   while (q.length) {
+    q.sort(cmp);
     const n = q.shift()!;
     out.push(n);
     for (const s of a.get(n) ?? []) {
@@ -414,7 +418,7 @@ export function order<T extends string>(g: Graph<T>): string[] {
 // Groups mutually independent nodes into concurrent execution batches.
 // Each batch can run in parallel; batches execute sequentially.
 
-export function parallelOrder<T extends string>(g: Graph<T>): string[][] {
+export function parallelOrder<T extends string>(g: Graph<T>, cmp: (a: string, b: string) => number = lexCmp): string[][] {
   const nodes = flat(g);
   const valid = new Set(nodes.map(n => n.id));
   const a = fwd(nodes);
@@ -423,8 +427,8 @@ export function parallelOrder<T extends string>(g: Graph<T>): string[][] {
 
   let ready = [...deg].filter(([, d]) => d === 0).map(([id]) => id);
   while (ready.length) {
-    // Lexicographic sort within batch — stable by policy (FR-DET-001)
-    batches.push(ready.sort((a, b) => a.localeCompare(b)));
+    // Sort within batch by comparator policy (FR-DET-001)
+    batches.push(ready.sort(cmp));
     const next: string[] = [];
     for (const n of ready) {
       for (const s of a.get(n) ?? []) {
@@ -932,11 +936,12 @@ export function merge<T1 extends string, T2 extends string>(
   // Validate inputs
   if (!g1 || !g2) throw new Error('Both g1 and g2 required for merge');
 
-  // Check for node ID conflicts (caller must pre-qualify)
-  const ids1 = new Set(Object.keys(g1.nodes));
-  const ids2 = new Set(Object.keys(g2.nodes));
-  const conflicts = [...ids1].filter(id => ids2.has(id));
-  if (conflicts.length) throw new Error(`Node ID conflicts: ${conflicts.join(', ')}. Pre-qualify node IDs before merge.`);
+  // Detect namespace collisions via mergeCheck (FR-MERGE-001)
+  const conflicts = mergeCheck(g1, g2);
+  if (conflicts.length) {
+    const ids = conflicts.map(c => c.nodeId).join(', ');
+    throw new Error(`Node ID conflicts: ${ids}. Pre-qualify node IDs before merge.`);
+  }
 
   // Merge node maps
   const mergedNodes: Record<string, Flat> = {};
@@ -973,55 +978,14 @@ export function merge<T1 extends string, T2 extends string>(
   return validated;
 }
 
-// --- branch: extract subgraph from a node to term ---
-// Branches g from fromNode to g.term, creating a variant DAG.
-// Returns branched graph, validated by define() and verify().
+// --- branch: extract subgraph from a node to term (FR-BRANCH-001) ---
+// Delegates to branchWithWitness, returns graph only for backward compatibility.
 
 export function branch<T extends string>(
   g: Graph<T>,
   fromNode: T,
 ): Graph<T> {
-  if (!g || !fromNode) throw new Error('Graph and fromNode required for branch');
-  if (!(fromNode in g.nodes)) throw new Error(`fromNode "${fromNode}" not in graph`);
-
-  // Forward pass: find all nodes reachable FROM fromNode
-  const nodes = flat(g);
-  const forward = new Set<string>();
-  const q: string[] = [fromNode];
-  while (q.length) {
-    const n = q.shift()!;
-    if (forward.has(n)) continue;
-    forward.add(n);
-    const nm = new Map(nodes.map(nd => [nd.id, nd]));
-    const successors = nodes.filter(nd => nd.deps.includes(n)).map(nd => nd.id);
-    for (const s of successors) {
-      if (!forward.has(s)) q.push(s);
-    }
-  }
-
-  // Extract nodes in forward set
-  const branchedNodes: Record<string, Flat> = {};
-  for (const node of nodes) {
-    if (forward.has(node.id)) {
-      branchedNodes[node.id] = node;
-    }
-  }
-
-  // Create branched graph
-  const branched: Graph<T> = {
-    id: `${g.id}:${fromNode}`,
-    desc: `Branch of ${g.desc} from ${fromNode}`,
-    init: fromNode,
-    term: g.term,
-    nodes: branchedNodes as any,
-  };
-
-  // Validate
-  const validated = define(branched);
-  const errors = verify(validated);
-  if (errors.length) throw new Error(`Branch validation failed: ${errors.join(', ')}`);
-
-  return validated;
+  return branchWithWitness(g, fromNode).graph;
 }
 
 // --- modify: delete/skip goals during execution (replanning support) ---
