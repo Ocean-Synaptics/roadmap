@@ -54,16 +54,19 @@ export interface CandidateReceipt {
 export type GalleryFailureCode = 'insufficientCandidates' | 'guardRejection' | 'paretoEmpty';
 
 export interface GalleryFailure {
+  ok: false;
   code: GalleryFailureCode;
+  reason: string;
   evidence: {
-    guard?: string;        // for guardRejection
-    check?: string;        // for guardRejection
-    evaluated?: number;    // count of candidates evaluated
-    reason: string;        // human-readable
+    candidatesEvaluated: number;
+    guardName?: string;
+    guardParams?: Record<string, unknown>;
+    checkFailed?: string;
+    candidateIds?: string[];
   };
 }
 
-export type GalleryResult<T> = { ok: true; value: T } | { ok: false; failure: GalleryFailure };
+export type GalleryResult<T> = { ok: true; data: T } | GalleryFailure;
 
 export interface GalleryRunResult {
   candidates: CandidateResult[];
@@ -128,7 +131,7 @@ export async function runGallery(opts: {
   convergence?: ConvergenceConfig;
   _candidates?: CandidateResult[];  // test injection — bypasses stub generation
   repoRoot?: string;                // for writing candidate receipts
-}): Promise<GalleryRunResult> {
+}): Promise<GalleryResult<GalleryRunResult>> {
   const limit = opts.nodeSpec.candidates;
   const selected = opts.strategies.slice(0, limit);
 
@@ -152,6 +155,19 @@ export async function runGallery(opts: {
     },
   }));
 
+  // FR-GB-007: insufficientCandidates — no candidates to evaluate
+  if (candidates.length === 0) {
+    return {
+      ok: false,
+      code: 'insufficientCandidates',
+      reason: `no candidates generated — ${opts.strategies.length} strategies available, limit ${limit}`,
+      evidence: {
+        candidatesEvaluated: 0,
+        candidateIds: [],
+      },
+    };
+  }
+
   // Write CandidateReceipt for each candidate when repoRoot is provided
   if (opts.repoRoot) {
     for (const candidate of candidates) {
@@ -165,11 +181,25 @@ export async function runGallery(opts: {
     }
   }
 
+  const candidateIds = candidates.map(c => c.id);
   const survivors = candidates.filter(c => c.summary.deterministicPass);
+
+  // FR-GB-007: paretoEmpty — all candidates failed deterministic gates
+  if (survivors.length === 0) {
+    return {
+      ok: false,
+      code: 'paretoEmpty',
+      reason: `all ${candidates.length} candidates failed deterministic gates — pareto front empty`,
+      evidence: {
+        candidatesEvaluated: candidates.length,
+        candidateIds,
+      },
+    };
+  }
+
   const intentSurvivors = survivors.filter(c => c.intent.every(i => i.pass));
 
   // Detect intent statements that failed across ALL candidates.
-  // Build map of statement → threshold from nodeSpec.validate intent rules.
   const statementThresholds = new Map<string, number>();
   for (const rule of opts.nodeSpec.validate) {
     if (rule.type === 'intent') {
@@ -196,22 +226,23 @@ export async function runGallery(opts: {
 
     const bestConfidence = Math.max(...entries.map(e => e.confidence));
     const threshold = statementThresholds.get(stmt) ?? 0.9;
-    const reason = entries[0]?.reasoning
-      ? `all ${candidates.length} candidates: ${entries[0].reasoning}`
-      : `all ${candidates.length} candidates failed intent check`;
 
     failures.push({
+      ok: false,
       code: 'guardRejection',
+      reason: entries[0]?.reasoning
+        ? `all ${candidates.length} candidates: ${entries[0].reasoning}`
+        : `all ${candidates.length} candidates failed intent check`,
       evidence: {
-        guard: stmt,
-        check: `confidence ${bestConfidence.toFixed(2)} < threshold ${threshold}`,
-        evaluated: candidates.length,
-        reason,
+        candidatesEvaluated: candidates.length,
+        guardName: stmt,
+        checkFailed: `confidence ${bestConfidence.toFixed(2)} < threshold ${threshold}`,
+        candidateIds,
       },
     });
   }
 
   const scorecard = buildScorecard(candidates);
 
-  return { candidates, survivors, intentSurvivors, failures, scorecard };
+  return { ok: true, data: { candidates, survivors, intentSurvivors, failures, scorecard } };
 }
