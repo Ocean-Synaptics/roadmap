@@ -4360,5 +4360,28 @@
     ],
     "gitSha": "f5c3c1cef06181f0d7d5ae337aeb3b2f34669e69",
     "treeSha": "1624ef52fa74a671f5844120cd50e2e1a6fdbed8"
+  },
+  {
+    "nodeId": "rkg5-blend-receipt",
+    "completedAt": "2026-03-01T08:52:13.164Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301085211",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "c2456d212ff1379d6b6bee1146086349b2b09662",
+    "treeSha": "f6ae8ea34262eea05d004e3108e1b430931c4bf0"
   }
 ]
