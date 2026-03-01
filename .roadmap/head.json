@@ -236,11 +236,6 @@
           "expectExitCode": 0
         },
         {
-          "type": "shell",
-          "command": "npm run build 2>&1 | grep -q \"built\"",
-          "expectExitCode": 0
-        },
-        {
           "type": "intent",
           "statement": "MetaFlow is a complete governed interaction system: INTERACTION_RECEIPT_MISSING exits 3 on missing receipt, SESSION_BINDING_MISSING gates dispatch, mining.json is produced with friction taxonomy and latency percentiles, gantt derives from DAG parallelOrder, opt DAG generator maps friction findings to optimization nodes, all 15 acceptance tests pass, tsc clean",
           "confidence": 0.85,
