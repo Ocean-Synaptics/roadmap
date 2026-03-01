@@ -6141,17 +6141,17 @@
   },
   {
     "nodeId": "surf-audit-cli",
-    "completedAt": "2026-03-01T10:57:23.169Z",
+    "completedAt": "2026-03-01T10:57:24.191Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260301105723",
+    "checkpointId": "cp-20260301105724",
     "validationChecks": [
       {
-        "rule": "skip-validate",
-        "passed": false,
-        "evidence": "validation skipped by --skip-validate flag"
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/cli/commands/audit.ts"
       }
     ],
-    "gitSha": "0a8d0e3a4e7d52aa602c39d410d427ce7d80a72c",
-    "treeSha": "2ea9c5466f5351240adb1bd600227c1266241356"
+    "gitSha": "2b88798a46452681b5e9bf174959d0ccccc27452",
+    "treeSha": "936bd2bff9f691eb4eac167cb78cec3efaacd5c9"
   }
 ]
