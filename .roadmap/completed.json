@@ -6256,5 +6256,33 @@
     ],
     "gitSha": "ab0d40ec21c6ad15b118e4d9d2fbef63d769621c",
     "treeSha": "f2335d01608edf6c8739469ef2533ec9f9f9119c"
+  },
+  {
+    "nodeId": "intent-surf-001",
+    "completedAt": "2026-03-01T11:03:46.983Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301110346",
+    "validationChecks": [
+      {
+        "rule": "intent",
+        "passed": true,
+        "evidence": "unevaluated"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): node -e \"const fs=require('fs'); ['archive-verify','layout-verify'].forEach(f => { if(!fs.existsSync('.audit/'+f+'.receipt.json')) process.exit(1) }); const b=JSON.parse(fs.readFileSync('.perf/vitest/budget-gate.receipt.json','utf-8')); process.exit(b.budget.passed ? 0 : 1)\""
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:node -e \"const fs=require('fs'); ['archive-verify','layout-verify'].forEach(f => { if(!fs.existsSync('.audit/'+f+'.receipt.json')) process.exit(1) }); const b=JSON.parse(fs.readFileSync('.perf/vitest/budget-gate.receipt.json','utf-8')); process.exit(b.budget.passed ? 0 : 1)\"",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "b014a094227e689ccf254b586a907749d6b2bc53",
+    "treeSha": "06c3d89271cd485fd6a88176d5ddc6f905e57914"
   }
 ]
