@@ -88,5 +88,25 @@
     ],
     "gitSha": "74c0d804768bb76c777bb0792e81610f96e8e6c9",
     "treeSha": "5bd7b841cc58e048a3df52986292a7361d52c9f8"
+  },
+  {
+    "nodeId": "terminal-intent-evidence-binding",
+    "completedAt": "2026-03-01T13:33:42.375Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301133342",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/intent/evidence-context.ts"
+      },
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: docs/INTENT_EVIDENCE_BINDING.md"
+      }
+    ],
+    "gitSha": "55a983e30c08871a0c957a317f85fb97726354a4",
+    "treeSha": "9a63a75b83d7e2872bacd94844ff65927586c661"
   }
 ]
