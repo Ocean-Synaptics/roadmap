@@ -40,13 +40,11 @@
       "validate": [
         {
           "type": "artifact-exists",
-          "paths": [
-            "src/spec-kit/validation.ts"
-          ]
+          "target": "src/spec-kit/validation.ts"
         },
         {
           "type": "shell",
-          "command": "tsc --noEmit"
+          "command": "npx tsc --noEmit"
         }
       ],
       "idempotent": true
@@ -67,7 +65,7 @@
       "validate": [
         {
           "type": "artifact-exists",
-          "paths": [
+          "target": [
             "src/spec-kit/agent-brief.ts",
             "src/spec-kit/types-brief.ts"
           ]
@@ -96,7 +94,7 @@
       "validate": [
         {
           "type": "artifact-exists",
-          "paths": [
+          "target": [
             "docs/AGENT-SPEC-KIT-BRIEF.md",
             "templates/agent-brief-spec-driven.md"
           ]
@@ -126,7 +124,7 @@
       "validate": [
         {
           "type": "artifact-exists",
-          "paths": [
+          "target": [
             "docs/SPEC-KIT-WORKFLOW.md"
           ]
         },
@@ -154,7 +152,7 @@
       "validate": [
         {
           "type": "artifact-exists",
-          "paths": [
+          "target": [
             "docs/SPEC-KIT-ROADMAP-WORKFLOW.md"
           ]
         },
@@ -181,7 +179,7 @@
       "validate": [
         {
           "type": "artifact-exists",
-          "paths": [
+          "target": [
             "src/commands/compile-brief.ts"
           ]
         },
@@ -212,7 +210,7 @@
       "validate": [
         {
           "type": "artifact-exists",
-          "paths": [
+          "target": [
             "src/spec-kit/import-validator.ts"
           ]
         },
@@ -243,7 +241,7 @@
       "validate": [
         {
           "type": "artifact-exists",
-          "paths": [
+          "target": [
             "src/spec-kit/directory-migration.ts",
             "scripts/migrate-specify-to-roadmap.ts"
           ]
@@ -273,7 +271,7 @@
       "validate": [
         {
           "type": "artifact-exists",
-          "paths": [
+          "target": [
             "src/commands/spec-init.ts"
           ]
         },
@@ -303,7 +301,7 @@
       "validate": [
         {
           "type": "artifact-exists",
-          "paths": [
+          "target": [
             "tests/spec-kit/validation.test.ts"
           ]
         },
@@ -329,7 +327,7 @@
       "validate": [
         {
           "type": "artifact-exists",
-          "paths": [
+          "target": [
             "tests/spec-kit/agent-brief.test.ts"
           ]
         },
@@ -359,7 +357,7 @@
       "validate": [
         {
           "type": "artifact-exists",
-          "paths": [
+          "target": [
             "tests/spec-kit/e2e.test.ts"
           ]
         },
