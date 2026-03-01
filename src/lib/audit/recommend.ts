@@ -6,8 +6,8 @@
 import { readFileSync, writeFileSync, existsSync, readdirSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
-import type { TranscriptSession } from '../transcript-schema.ts';
-import { AUDIT_DIR, isTranscriptSession } from '../transcript-schema.ts';
+import type { TranscriptSession } from '../metaloop/transcript-schema.ts';
+import { AUDIT_DIR, isTranscriptSession } from '../metaloop/transcript-schema.ts';
 import { computeFriction } from '../friction-engine.ts';
 
 export interface AuditRecommendation {
