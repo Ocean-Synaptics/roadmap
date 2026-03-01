@@ -5448,5 +5448,31 @@
     ],
     "gitSha": "14885bdceef87007bb379f764affd300fbf3a42c",
     "treeSha": "f4b14b3541e75f10011111ccf6e82e2b741d880a"
+  },
+  {
+    "nodeId": "rkg6-fixtures",
+    "completedAt": "2026-03-01T09:18:53.372Z",
+    "owner": "w3",
+    "checkpointId": "cp-20260301091852",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx vitest run src/tests/rkg6.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx vitest run src/tests/rkg6.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "ce70a0867dc564cd403d28a76aba319ef3b7216a30d973cf9f7fd965444a6e26",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/rkg6-fixtures/mm7jfru6-qb50nz/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "a2b2d0f6e3e62dc2a00a67bdc3f08a39adc796fd",
+    "treeSha": "b60341d3bb71dea2f7c51c58d99336180a6e6246"
   }
 ]
