@@ -1,13 +1,14 @@
 // @module metaflow/audit/cli
 // @exports cmdMfAudit, cmdAuditTailEmit
 
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { AuditContract, AuditReport, DetectorResult } from './required-schema.ts';
 import { loadRequired } from './audit.ts';
-import { renderReport } from './report.ts';
+import { buildReport, renderReport } from './report.ts';
 import { detectDisplayRegression } from './detectors/display.ts';
 import { detectIntegrationRoughPoints } from './detectors/integration.ts';
+import { readMining } from '../opt-dag.ts';
 import type { InteractionReceipt, MiningResult } from '../types.ts';
 
 // Run all detectors directly and collect results
@@ -23,7 +24,6 @@ function loadReceipts(base: string): InteractionReceipt[] {
   const dir = join(base, '.roadmap', 'metaflow', 'runs');
   if (!existsSync(dir)) return [];
   // Scan for receipt files
-  const { readdirSync } = require('node:fs');
   const receipts: InteractionReceipt[] = [];
   try {
     for (const f of readdirSync(dir)) {
@@ -40,8 +40,7 @@ function loadReceipts(base: string): InteractionReceipt[] {
 
 function loadMiningResult(runId: string, base: string): MiningResult {
   try {
-    const { readMining } = require('../opt-dag.ts');
-    return readMining(runId, base);
+    return readMining(runId as any, base);
   } catch {
     // Return minimal mining result if not available
     return {
@@ -92,7 +91,6 @@ export function cmdMfAudit(runId: string, opts: MfAuditOpts = {}): { data: any; 
 
   // Run full audit
   const results = runAllDetectors(runId, contract, base);
-  const { buildReport } = require('./report.ts');
   const report: AuditReport = buildReport(runId, 'unknown', [], results, contract);
   const rendered = renderReport(report);
 

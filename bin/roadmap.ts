@@ -305,7 +305,7 @@ async function main() {
       case 'import':    return cmdImport(note!);
       case 'intake':    return cmdIntake(note!);
       case 'federation': return cmdFederation(note!);
-      case 'dispatch':  return cmdDispatch(note!);
+      case 'dispatch':  return await cmdDispatch(note!);
       case 'spec':      return cmdSpec(note!);
       case 'init':      return cmdInit(note!);
       case 'report':    return await cmdReport(note!);
@@ -349,7 +349,7 @@ async function main() {
         process.exit(1);
         return;
       case 'strategy':  return await cmdStrategy(note!);
-      case 'mf':        return cmdMf(note!);
+      case 'mf':        return await cmdMf(note!);
       case 'help':
       case '--help':
       case '-h':        return cmdHelp();
@@ -3696,9 +3696,9 @@ function cmdClaim() {
 }
 
 // --- dispatch: plan, apply, status for cluster-based work distribution ---
-function cmdDispatch(note: string) {
+async function cmdDispatch(note: string) {
   // Strategy gate: block dispatch when latched without active strategy
-  const { checkStrategyGate } = require('../src/lib/strategy/exec-gate.ts');
+  const { checkStrategyGate } = await import('../src/lib/strategy/exec-gate.ts');
   const gate = checkStrategyGate(repoRoot);
   if (gate.blocked) {
     process.stderr.write(JSON.stringify({ error: 'Strategy required', code: gate.code, fix: gate.fix }) + '\n');
@@ -4977,7 +4977,7 @@ function cmdSync(note: string) {
   }
 }
 
-function cmdMf(note: string) {
+async function cmdMf(note: string) {
   const sub = args[1];
   switch (sub) {
     case 'init': {
@@ -5256,7 +5256,7 @@ function cmdMf(note: string) {
       const aRunIdx = args.indexOf('--run');
       const aRunId = aRunIdx !== -1 ? args[aRunIdx + 1] ?? 'audit-run' : 'audit-run';
       const aRequired = args.includes('--required');
-      const { cmdMfAudit } = require('../src/lib/metaflow/audit/cli.ts');
+      const { cmdMfAudit } = await import('../src/lib/metaflow/audit/cli.ts');
       const auditResult = cmdMfAudit(aRunId, { required: aRequired, base: repoRoot });
       process.stderr.write(auditResult.render + '\n');
       json(auditResult.data);
@@ -5270,7 +5270,7 @@ function cmdMf(note: string) {
         process.exit(1);
       }
       const dagId = loadDAG?.()?.id ?? 'unknown';
-      const { cmdAuditTailEmit } = require('../src/lib/metaflow/audit/cli.ts');
+      const { cmdAuditTailEmit } = await import('../src/lib/metaflow/audit/cli.ts');
       const tailResult = cmdAuditTailEmit(dagId, repoRoot);
       process.stderr.write(tailResult.render + '\n');
       json(tailResult.data);

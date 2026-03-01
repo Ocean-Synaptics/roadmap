@@ -3,8 +3,7 @@
 // @types StrategyGateResult
 // @entry roadmap
 
-import { isLatched } from './active.js';
-import { readActiveStrategy } from './active.js';
+import { isLatched, readActiveStrategy } from './active.ts';
 
 export interface StrategyGateResult {
   blocked: boolean;
