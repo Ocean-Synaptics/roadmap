@@ -10,7 +10,7 @@ import { orient } from '../protocol.ts';
 import type { Orientation, Graph } from '../protocol.ts';
 import { CompletionStore } from './completion/completion-context.ts';
 import { fileExists } from '../predicates.ts';
-import { discoverDependencies, resolveSiblingPath } from './dependency-resolver.ts';
+import { discoverDependencies, resolveSiblingPath } from './utils/dependency-resolver.ts';
 import type { DependencySpec } from './project-metadata.schema.ts';
 
 export interface SiblingStatus {

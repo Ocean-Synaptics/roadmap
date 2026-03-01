@@ -14,7 +14,7 @@ import { join, resolve } from 'node:path';
 import { mkdirSync, writeFileSync, rmSync, readFileSync, existsSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import { crossOrient } from '../src/lib/cross-orient.ts';
-import { orderByDependencies } from '../src/lib/dependency-resolver.ts';
+import { orderByDependencies } from '../src/lib/utils/dependency-resolver.ts';
 import { siblingArtifactExists, fileExists, any } from '../src/predicates.ts';
 import { orient, CompletionStore } from '../src/protocol.ts';
 

@@ -14,4 +14,4 @@ export {
   discoverDependencies,
   buildDepGraph,
   orderByDependencies,
-} from './lib/dependency-resolver.ts';
+} from './lib/utils/dependency-resolver.ts';

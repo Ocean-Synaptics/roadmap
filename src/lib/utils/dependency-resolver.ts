@@ -5,7 +5,7 @@
 import { readFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { existsSync } from 'node:fs';
-import type { DependencySpec } from './project-metadata.schema.ts';
+import type { DependencySpec } from '../project-metadata.schema.ts';
 
 /**
  * Resolve the filesystem path for a dependency spec.

@@ -8,3 +8,5 @@ export { buildClustersSolver } from './cluster/cluster-solver.ts';
 export { addPeer, removePeer, loadPeers, buildFederationView, loadFederationView, federationStatus } from './federation/federation.ts';
 export { writeToken, readToken, listTokens, isTokenExpired, tokenId, TOKEN_DIR } from './tokens/token-store.ts';
 export { appendToIndex, readIndex, gcTokens } from './tokens/token-index.ts';
+export { resolveSiblingPath, discoverDependencies, buildDepGraph, orderByDependencies } from './dependency-resolver.ts';
+export type { RepoDepGraph } from './dependency-resolver.ts';
