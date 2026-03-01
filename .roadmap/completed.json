@@ -3836,5 +3836,31 @@
     ],
     "gitSha": "88ad589257fb62f0b23aa6e323afc43325c2c0d0",
     "treeSha": "25124a02e26ffe8791ef3a8510a312d9c225342b"
+  },
+  {
+    "nodeId": "rm-audit-detectors-display",
+    "completedAt": "2026-03-01T01:25:17.367Z",
+    "owner": "w3",
+    "checkpointId": "cp-20260301012515",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit && npx vitest run tests/audit/display-detectors.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit && npx vitest run tests/audit/display-detectors.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "a727fe388b7a313845a94c74ded33040dc4f5228abb6eca0bed4cca8d8b586ea",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/rm-audit-detectors-display/mm72ipwu-4hx4xp/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "b9b90335416b79bb42242e6243f65797c759241a",
+    "treeSha": "236a813c89513e9128aaa7510b38dbd3321098d0"
   }
 ]
