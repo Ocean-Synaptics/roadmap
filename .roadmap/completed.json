@@ -1389,5 +1389,20 @@
     ],
     "gitSha": "7e1e49792adf1e490b66e4919e6597c759691c34",
     "treeSha": "d76c45949de10654b49b464caca438ec38ca1078"
+  },
+  {
+    "nodeId": "iter-9-validate-envelope",
+    "completedAt": "2026-03-01T22:03:34.500Z",
+    "owner": "validator",
+    "checkpointId": "cp-20260301220334",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .roadmap/metaflow-optimizer/iter-9/envelope-validation.json"
+      }
+    ],
+    "gitSha": "88fbe8527bc421096d6a763be301352dac6c5c79",
+    "treeSha": "77084fea0c70f24e01a748b32894a49ba96e3df3"
   }
 ]
