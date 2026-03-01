@@ -70,6 +70,9 @@ import { InteractionReceiptWriter } from '../src/lib/metaflow/receipt-writer.ts'
 import { wrapSubcommand } from '../src/lib/metaflow/wrap.ts';
 import { mineRun, miningExists } from '../src/lib/metaflow/mine-run.ts';
 import { buildOptimizationNodes, readMining, emitOptExpansion } from '../src/lib/metaflow/opt-dag.ts';
+import { validateAuditTail } from '../src/lib/import/audit-tail-gate.ts';
+import { loadRequired } from '../src/lib/metaflow/audit/audit.ts';
+import { writeAuditReceipt } from '../src/lib/metaflow/audit/receipt.ts';
 
 const rawArgs = process.argv.slice(2);
 const repoRoot = process.cwd();
@@ -345,6 +348,7 @@ async function main() {
         json({ error: 'Unknown plan subcommand', fix: 'roadmap plan --gallery | plan select <id> --note "..." | plan status | plan overlay --select <id> --note "..." | plan schedule --note "..."' });
         process.exit(1);
         return;
+      case 'strategy':  return await cmdStrategy(note!);
       case 'mf':        return cmdMf(note!);
       case 'help':
       case '--help':
@@ -606,6 +610,22 @@ async function cmdOrient(note: string | undefined) {
       }
     }
     result.briefs = briefs;
+  }
+
+  // Strategy hint latch: if note contains strategy tokens and no active strategy, surface it
+  if (note) {
+    const { shouldLatch } = await import('../src/lib/strategy/hints.ts');
+    const { isLatched, writeLatch, readActiveStrategy } = await import('../src/lib/strategy/active.ts');
+    if (shouldLatch(note) && !isLatched(repoRoot)) {
+      const { detectHint } = await import('../src/lib/strategy/hints.ts');
+      const hint = detectHint(note);
+      writeLatch(repoRoot, hint.matchedTokens);
+    }
+    if (isLatched(repoRoot) && !readActiveStrategy(repoRoot)) {
+      const { proposeCandidates } = await import('../src/lib/strategy/select.ts');
+      result.strategyRequired = true;
+      result.candidates = proposeCandidates().map(c => ({ id: c.id, name: c.name, gateMode: c.gateMode, risk: c.estimatedRisk }));
+    }
   }
 
   // Trail entry with batch context (skip if --check)
@@ -2102,6 +2122,79 @@ function cmdProfile(note: string) {
 
   recordTrail({ command: "profile", note, position: [], level: -1 });
   json(report);
+}
+
+
+async function cmdStrategy(note: string) {
+  const sub = args[1];
+  switch (sub) {
+    case 'propose': {
+      const { proposeCandidates } = await import('../src/lib/strategy/select.ts');
+      const { renderCandidates } = await import('../src/lib/render/strategy.ts');
+      const candidates = proposeCandidates();
+      const rendered = renderCandidates(candidates);
+      recordTrail({ ts: new Date().toISOString(), cmd: 'strategy propose', note, repo: basename(repoRoot) });
+      process.stdout.write(rendered + '\n');
+      json({ candidates: candidates.map(c => ({ id: c.id, name: c.name, rounds: c.rounds, gateMode: c.gateMode, risk: c.estimatedRisk })) });
+      return;
+    }
+    case 'select': {
+      const strategyId = args[2];
+      if (!strategyId) {
+        json({ error: 'Missing strategy ID', fix: 'roadmap strategy select <id> --note "reason"' });
+        process.exit(1);
+      }
+      const runId = args.includes('--run') ? args[args.indexOf('--run') + 1] : `run-${Date.now()}`;
+      const headSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf8' }).trim();
+      const treeSha = execSync('git rev-parse HEAD^{tree}', { cwd: repoRoot, encoding: 'utf8' }).trim();
+      const { selectStrategy } = await import('../src/lib/strategy/select.ts');
+      const { renderReceipt } = await import('../src/lib/render/strategy.ts');
+      const result = selectStrategy(repoRoot, strategyId, { runId, headSha, treeSha, selectionMethod: 'manual' });
+      const rendered = renderReceipt(result.receipt);
+      recordTrail({ ts: new Date().toISOString(), cmd: 'strategy select', note, repo: basename(repoRoot), detail: { strategyId, runId } });
+      process.stdout.write(rendered + '\n');
+      json({ selected: result.receipt, receiptPath: result.receiptPath });
+      return;
+    }
+    case 'auto': {
+      const maxPar = args.includes('--max-parallelism') ? parseInt(args[args.indexOf('--max-parallelism') + 1] ?? '1', 10) : 1;
+      const runId = args.includes('--run') ? args[args.indexOf('--run') + 1] : `run-${Date.now()}`;
+      const headSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf8' }).trim();
+      const treeSha = execSync('git rev-parse HEAD^{tree}', { cwd: repoRoot, encoding: 'utf8' }).trim();
+      const { autoSelect } = await import('../src/lib/strategy/select.ts');
+      const { renderReceipt } = await import('../src/lib/render/strategy.ts');
+      const result = autoSelect(repoRoot, { runId, headSha, treeSha, maxParallelism: maxPar });
+      const rendered = renderReceipt(result.receipt);
+      recordTrail({ ts: new Date().toISOString(), cmd: 'strategy auto', note, repo: basename(repoRoot), detail: { strategyId: result.receipt.strategyId, maxPar, runId } });
+      process.stdout.write(rendered + '\n');
+      json({ selected: result.receipt, receiptPath: result.receiptPath });
+      return;
+    }
+    case 'status': {
+      const { readActiveStrategy, isLatched, readActiveLatch } = await import('../src/lib/strategy/active.ts');
+      const { renderActive } = await import('../src/lib/render/strategy.ts');
+      const active = readActiveStrategy(repoRoot);
+      const latched = isLatched(repoRoot);
+      const latch = readActiveLatch(repoRoot);
+      if (active) {
+        process.stdout.write(renderActive(active) + '\n');
+      }
+      json({ latched, latch, active: active ?? null });
+      return;
+    }
+    case 'clear': {
+      const { clearStrategy } = await import('../src/lib/strategy/select.ts');
+      const { clearLatch } = await import('../src/lib/strategy/active.ts');
+      clearStrategy(repoRoot);
+      clearLatch(repoRoot);
+      recordTrail({ ts: new Date().toISOString(), cmd: 'strategy clear', note, repo: basename(repoRoot) });
+      json({ cleared: true });
+      return;
+    }
+    default:
+      json({ error: `Unknown strategy subcommand: ${sub}`, fix: 'roadmap strategy propose|select|auto|status|clear --note "reason"' });
+      process.exit(1);
+  }
 }
 
 
@@ -3865,6 +3958,27 @@ function cmdImport(note: string) {
   const initError = validateInitIntentGate(dag);
   if (terminalError) warnings.push(`terminal-intent: ${terminalError.message}`);
   if (initError) warnings.push(`init-intent: ${initError.message}`);
+
+  // Audit tail gate — hard gate unless --skip-audit-tail
+  const skipAuditTail = args.includes('--skip-audit-tail');
+  try {
+    const auditContract = loadRequired(repoRoot);
+    const auditTailResult = validateAuditTail(dag, auditContract);
+    if (!auditTailResult.passed) {
+      if (skipAuditTail) {
+        warnings.push(`audit-tail: ${auditTailResult.code} (skipped)`);
+        writeAuditReceipt(`import-skip-audit-tail-${Date.now()}`, 'unknown', [], {
+          schema_version: 1, runId: '', treeSha: '', sessionIds: [], computedAt: new Date().toISOString(),
+          passed: false, detectorResults: [{ code: auditTailResult.code, passed: false, evidence: auditTailResult.evidence, fix: auditTailResult.fix }],
+        }, repoRoot);
+      } else {
+        process.stderr.write(JSON.stringify({ error: auditTailResult.code, evidence: auditTailResult.evidence, fix: auditTailResult.fix }) + '\n');
+        process.exit(3);
+      }
+    }
+  } catch {
+    // REQUIRED.json may not exist yet — non-blocking
+  }
 
   // FR-SPEC-003: Embed spec provenance in head.json before writing
   dag = {
