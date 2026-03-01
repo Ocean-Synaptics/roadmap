@@ -4308,5 +4308,31 @@
     ],
     "gitSha": "f4810b5a639440d3dc833085135e994d3d381ff8",
     "treeSha": "99afdc0491d9b724dcd1ceb6c7abc62626ab7f6c"
+  },
+  {
+    "nodeId": "rm-metaflow-surface-header",
+    "completedAt": "2026-03-01T01:49:00.007Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301014858",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit && npx vitest run tests/render/metaflow-header.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit && npx vitest run tests/render/metaflow-header.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "770135979dc3ceb3b9233437d8578f30bb08bac02d530e3c90aaedd1aef126b5",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/rm-metaflow-surface-header/mm73d7me-o9x8wh/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "e32104444bb539fff3a18a1a3e6081201d142850",
+    "treeSha": "215049a70580d87266a7694f07a860386cd6860d"
   }
 ]
