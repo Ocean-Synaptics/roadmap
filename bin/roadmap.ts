@@ -92,6 +92,15 @@ function extractNote(argv: string[]): { note: string | undefined; positional: st
   return { note, positional };
 }
 
+// Flag alias resolver: maps short flags to long flags for consistent checking
+// Aliases: -j → --json, -q → --quiet, -g → --global, -d → --depth, --dryrun → --dry-run
+function hasFlag(flags: string[], haystack: string[]): boolean {
+  for (const flag of flags) {
+    if (haystack.includes(flag)) return true;
+  }
+  return false;
+}
+
 const { note: _note, positional: args } = extractNote(rawArgs);
 const cmd = args[0] || 'help';
 
@@ -416,7 +425,7 @@ async function cmdOrient(note: string | undefined) {
         position: 'untracked',
       });
     }
-    if (args.includes('--json')) {
+    if (hasFlag(['--json', '-j'], args)) {
       json({
         schema_version: 1,
         tool: { name: 'roadmap', version: readPackageVersion() },
@@ -1371,7 +1380,7 @@ function cmdParallel(note: string) {
 }
 
 function cmdTrail() {
-  const useGlobal = args.includes('--global');
+  const useGlobal = hasFlag(['--global', '-g'], args);
   const dir = useGlobal ? globalTrailDir : (hasLocalDAG ? localTrailDir : globalTrailDir);
   const trailPath = join(dir, 'trail.jsonl');
   const source = useGlobal ? 'global' : (hasLocalDAG ? 'local' : 'global');
@@ -2049,7 +2058,7 @@ function cmdCompletionCompact() {
     process.exit(1);
   }
 
-  const dryRun = args.includes('--dry-run');
+  const dryRun = hasFlag(['--dry-run', '--dryrun'], args);
   const result = completionCompact(repoRoot, { dryRun });
   json(result);
 }
@@ -3643,7 +3652,7 @@ function cmdRetire(note: string) {
   const allNodes = Object.keys(dag.nodes);
 
   if (!allNodes.includes(nodeId)) {
-    json({ error: `Node "${nodeId}" not found in DAG`, available: allNodes.slice(0, 10) });
+    json({ error: `Node "${nodeId}" not found in DAG. Try "roadmap show" to list available nodes.`, available: allNodes.slice(0, 10) });
     process.exit(1);
   }
 
@@ -3723,7 +3732,7 @@ function cmdClaim() {
   const dag = loadDAG();
   const allNodes = Object.keys(dag.nodes);
   if (!allNodes.includes(nodeId)) {
-    json({ error: `Node "${nodeId}" not found in DAG`, available: allNodes.slice(0, 10) });
+    json({ error: `Node "${nodeId}" not found in DAG. Try "roadmap show" to list available nodes.`, available: allNodes.slice(0, 10) });
     process.exit(1);
   }
 
@@ -5294,7 +5303,7 @@ async function cmdScaffold(note: string) {
   }
   const dag = loadDAG();
   const buildCheck = args.includes('--build-check');
-  const dryRun = args.includes('--dry-run');
+  const dryRun = hasFlag(['--dry-run', '--dryrun'], args);
   const result = await buildScaffold(dag, repoRoot, { buildCheck, dryRun });
 
   recordTrail({
@@ -6115,8 +6124,11 @@ Commands:
 
 Global flags (FR-CLI-001):
   --human             Human-readable formatted output instead of JSON
-  --json              Force JSON output (overrides --human)
-  --quiet             Suppress non-fatal output
+  --json, -j          Force JSON output (overrides --human)
+  --quiet, -q         Suppress non-fatal output
+  --global, -g        Access global trail (~/.roadmap/trail.jsonl)
+  --dry-run, --dryrun Show what would happen without executing
+  --depth, -d         Dependency traversal depth
 
 All commands (except help/trail/chart/install/dig/claim/diff/show/orient/explore) require --note "reason".
   orient --check is note-exempt for swarm agents that reorient without trail pollution.
@@ -6185,17 +6197,31 @@ Notes:
   Bad:  --note "session start"
   Good: --note "auth module — adding JWT refresh token rotation"
 
-Examples:
+Example workflows:
+
+  # Example 1: Start a new phase
   roadmap orient --note "auth module — investigating token expiry bug"
-  roadmap orient --assign --owners w1,w2,w3 --ttl 900 --note "dispatch L12 — api,db,cache workers"
+  roadmap show init
+  roadmap advance --note "ready to start auth phase"
+
+  # Example 2: Execute a parallel batch
+  roadmap orient --note "batch execution"
   roadmap claim auth-impl --owner worker-1 --ttl 600
-  roadmap claim auth-impl --renew --ttl 600
-  roadmap claim --list
-  roadmap advance --note "L12 complete — auth, db-migration, cache-layer artifacts verified"
+  roadmap claim db-migration --owner worker-2 --ttl 600
+  roadmap complete auth-impl --note "tokens implemented"
+  roadmap complete db-migration --note "migration done"
   roadmap chart
-  roadmap chart --deps
-  roadmap validate auth-impl --note "pre-advance check on auth artifacts"
-  roadmap retire phase-5-term --cascade --note "descoped — moving auth to external service"
+
+  # Example 3: Debug and iterate
+  roadmap validate --note "check current state"
+  roadmap show auth-impl
+  roadmap retire auth-impl --cascade --note "reworking approach" --undo
+  roadmap advance --note "L12 artifacts verified"
+
+Additional examples:
+  roadmap orient --assign --owners w1,w2,w3 --ttl 900 --note "dispatch L12 — api,db,cache workers"
+  roadmap orient --check
+  roadmap chart --critical-path
   roadmap trail --global --last 5
   roadmap trail --archived --read 2026-02-26
   roadmap dig docs/API.md --restore`);
@@ -6205,7 +6231,7 @@ Examples:
 
 function cmdPropagate(note: string) {
   const dag = loadDAG();
-  const dryRun = args.includes('--dry-run');
+  const dryRun = hasFlag(['--dry-run', '--dryrun'], args);
   const fromIdx = args.indexOf('--from');
   const from = fromIdx !== -1 ? args[fromIdx + 1] : undefined;
   const depthIdx = args.indexOf('--depth');
@@ -6958,9 +6984,9 @@ function loadDAG(): Graph<string> {
   if (!existsSync(headPath)) {
     throw new RoadmapError('NODE_NOT_FOUND', {
       attempted: headPath,
-      fix: 'Initialize roadmap: create .roadmap/head.json',
+      fix: 'Initialize roadmap: create .roadmap/head.json. See roadmap help for examples.',
       entry: 'roadmap orient',
-    }, 'No roadmap found at .roadmap/head.json');
+    }, 'No .roadmap/head.json found. Use "roadmap orient" to initialize, or see "roadmap help" for examples.');
   }
   return JSON.parse(readFileSync(headPath, 'utf-8'));
 }
