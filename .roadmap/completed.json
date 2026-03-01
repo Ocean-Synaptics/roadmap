@@ -1235,5 +1235,36 @@
     ],
     "gitSha": "cb8c07fa881da502f79098a9c5cad86d8957a957",
     "treeSha": "c917d4cd4895cfeecd48a72b399487c740fdd2f9"
+  },
+  {
+    "nodeId": "concurrent-claims-handler",
+    "completedAt": "2026-03-01T21:44:02.667Z",
+    "owner": "claims-handler",
+    "checkpointId": "cp-20260301214401",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "all artifacts exist: tests/cli/concurrent-claims.test.ts, src/lib/claims/claims-atomic.ts"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npm test -- concurrent-claims.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npm test -- concurrent-claims.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "45791b1129ff44868a16adaae202f11cc7ab8b4a0bd648b77bfc86728dbe7f5f",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/concurrent-claims-handler/mm8a21r7-266nm2/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "ecf0b6983cd3311c5eb11f21782db13a2a11f020",
+    "treeSha": "d76215c31cd99477775d01313208386a2beb48be"
   }
 ]
