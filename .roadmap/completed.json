@@ -4256,5 +4256,31 @@
     ],
     "gitSha": "710e088c957ad4f30f82d05c9715ada830fbf59b",
     "treeSha": "8968fa290263ae4f21214115324a13744767a0e0"
+  },
+  {
+    "nodeId": "rm-metaflow-self-insert-layer",
+    "completedAt": "2026-03-01T01:41:27.900Z",
+    "owner": "w3",
+    "checkpointId": "cp-20260301014126",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit && npx vitest run tests/metaflow/self-insert.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit && npx vitest run tests/metaflow/self-insert.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "cebdb9fad80f56b1bd4c9873fce77d9fe1985b487458dc523c00a0c19b71ba03",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/rm-metaflow-self-insert-layer/mm733is4-hd76wx/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "5284b471612bbc8ff87049d76a694f68e798eb75",
+    "treeSha": "0d3ade358a7945b009f97ec3cb4d426d75eec7aa"
   }
 ]
