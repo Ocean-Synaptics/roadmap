@@ -29,18 +29,34 @@
   },
   {
     "nodeId": "state-recovery",
-    "completedAt": "2026-03-01T19:51:25.148Z",
+    "completedAt": "2026-03-01T19:52:56.405Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260301195125",
+    "checkpointId": "cp-20260301195256",
     "validationChecks": [
       {
-        "rule": "skip-validate",
-        "passed": false,
-        "evidence": "validation skipped by --skip-validate flag"
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "all artifacts exist: .roadmap/recovery/state-recovery.json"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): jq -e '.recovery | length > 0' .roadmap/recovery/state-recovery.json || true"
       }
     ],
-    "gitSha": "e4e66cc6ebd1e5ff574954bdfbb3ad3c236d8af4",
-    "treeSha": "b6d9b12ba88ea095f7517ab472ddd103b419d297"
+    "validatorResults": [
+      {
+        "id": "shell:jq -e '.recovery | length > 0' .roadmap/recovery/state-recovery.json || true",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "a17fcf0a2f50e2d495e4f90ce263410edc183add6c62699a2facbccf60410f74",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/state-recovery/mm863617-lzjq5w/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "69808eff88aaa00954e14d50c8051e5fe821dca2",
+    "treeSha": "44b836f1bd323be67e8ad8de57f368f96312186f"
   },
   {
     "nodeId": "mechanical-validators",
