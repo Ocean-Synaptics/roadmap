@@ -3333,5 +3333,52 @@
     ],
     "gitSha": "49e963fdcd6f6f9919a61f25bd7ad4338f0a2e14",
     "treeSha": "27c663001decd7ec7c4d0bd455d19b64ed675380"
+  },
+  {
+    "nodeId": "intent-metaflow-guided-ux",
+    "completedAt": "2026-03-01T00:13:25.029Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301001321",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit && npx vitest run tests/metaflow.test.ts"
+      },
+      {
+        "rule": "spec-conformance",
+        "passed": true,
+        "evidence": "spec conformance: stories [] found in .specify/specs/metaflow-ux-2/spec.md"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): test -f package.json && npm run test 2>&1 | grep -q 'test'"
+      },
+      {
+        "rule": "intent",
+        "passed": true,
+        "evidence": "unevaluated"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit && npx vitest run tests/metaflow.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "58d6c17869c79f8d1441e82a35e9f54fb02ea4ef322ddb4437500eb221ca3c66",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/intent-metaflow-guided-ux/mm6zy9wi-jlnky9/stdout.txt"
+        ]
+      },
+      {
+        "id": "shell:test -f package.json && npm run test 2>&1 | grep -q 'test'",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "6261b09e432a9a0a14d4b5e22b666a3ce4efa3a1",
+    "treeSha": "2b70c1698d3566237619175f8bab05dff26a12cc"
   }
 ]
