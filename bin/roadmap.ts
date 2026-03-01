@@ -1105,28 +1105,39 @@ async function cmdExpand(note: string) {
     }, `Invalid expansion type: ${expansionType}`);
   }
 
-  // Snapshot before
-  const dagBefore = loadDAG();
+  // Block if candidate already exists
+  if (candidateExists(repoRoot)) {
+    json({ error: 'Candidate already exists', fix: 'roadmap dag accept or roadmap dag reject first' });
+    process.exit(1);
+    return;
+  }
+
+  // Snapshot head.json content before expansion script mutates it
+  const headPath = join(repoRoot, '.roadmap', 'head.json');
+  const headSnapshot = readFileSync(headPath, 'utf-8');
+  const dagBefore = JSON.parse(headSnapshot) as Graph<string>;
   const idsBefore = new Set(Object.keys(dagBefore.nodes));
   const nodesBefore = idsBefore.size;
 
   // Set expansion type as env var so scripts can branch on it
+  const candidatePath = join(repoRoot, '.roadmap', 'head.candidate.json');
   execSync(`node --experimental-strip-types ${resolved}`, {
     cwd: repoRoot,
     stdio: 'inherit',
-    env: { ...process.env, ROADMAP_EXPANSION_TYPE: expansionType },
+    env: { ...process.env, ROADMAP_EXPANSION_TYPE: expansionType, ROADMAP_CANDIDATE_PATH: candidatePath },
   });
 
-  // Snapshot after
+  // Read the modified DAG from head.json (script wrote there)
   const dagAfter = loadDAG();
   const idsAfter = Object.keys(dagAfter.nodes);
   const nodesAfter = idsAfter.length;
   const addedIds = idsAfter.filter(id => !idsBefore.has(id));
   const added = addedIds.length;
 
-  // Structural expansions are idempotent — re-running should produce same graph.
-  // Iteration expansions are one-shot — re-running adds another iteration payload.
-  // Validate both.
+  // Restore head.json to its original content
+  writeFileSync(headPath, headSnapshot);
+
+  // Validate the expanded DAG
   const checkResult = check(dagAfter);
   const verifyErrors = verify(dagAfter);
 
@@ -1159,17 +1170,15 @@ async function cmdExpand(note: string) {
     writeConflictOverrideReceipt(expandConflicts, -1, 'expand');
   }
 
-  // Commit
-  execSync('git add .roadmap/head.json', { cwd: repoRoot, stdio: 'pipe' });
-  const msg = `roadmap: expand (${expansionType}) — ${added} nodes added via ${scriptPath}`;
-  execSync(`git commit -m "${msg}"`, { cwd: repoRoot, stdio: 'pipe' });
-  const hash = execSync('git rev-parse --short HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
+  // Write candidate DAG instead of directly mutating head.json
+  writeCandidateDAG(repoRoot, dagAfter, 'expand', scriptPath);
 
-  const posAfter = orient(dagAfter, loadStore(), retiredSet());
-  recordTrail({ ts: new Date().toISOString(), cmd: 'expand', note, repo: basename(repoRoot), position: posAfter.position, level: posAfter.level, dagId: dagAfter.id, detail: { script: scriptPath, added, commit: hash, type: expansionType } });
+  const posAfter = orient(dagBefore, loadStore(), retiredSet());
+  recordTrail({ ts: new Date().toISOString(), cmd: 'expand', note, repo: basename(repoRoot), position: posAfter.position, level: posAfter.level, dagId: dagAfter.id, detail: { script: scriptPath, added, type: expansionType, candidate: true } });
 
   json({
     expanded: true,
+    candidate: true,
     type: expansionType,
     script: scriptPath,
     nodesBefore,
@@ -1180,7 +1189,7 @@ async function cmdExpand(note: string) {
     level: posAfter.level,
     batchRemaining: posAfter.batchRemaining,
     batchComplete: posAfter.batchComplete,
-    commit: hash,
+    fix: 'Review with: roadmap dag diff, then: roadmap dag accept --note "..."',
   });
 }
 
