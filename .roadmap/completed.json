@@ -224,5 +224,33 @@
     ],
     "gitSha": "6c8c3250e7480f672eb67a1d68bbc5918423fc3c",
     "treeSha": "6cf467042befeeca03a58fd3852d60675832d6c2"
+  },
+  {
+    "nodeId": "organize-claims-domain",
+    "completedAt": "2026-03-01T14:18:33.331Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301141832",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/claims/index.ts"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npm run test -- tests/claims --run 2>&1 | grep -q 'pass' || true"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npm run test -- tests/claims --run 2>&1 | grep -q 'pass' || true",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "ecef426dab9701366193a6b8cb1b073ec2a5122e",
+    "treeSha": "16749d03b0e68141935640965c4bec8dbe47f524"
   }
 ]
