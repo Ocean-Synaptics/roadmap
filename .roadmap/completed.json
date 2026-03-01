@@ -1479,5 +1479,20 @@
     ],
     "gitSha": "4101ddbf7bcccd604c44680e77396245c6603023",
     "treeSha": "0b3064fffcf1d1d7601d2bbf16a3fec2c9913497"
+  },
+  {
+    "nodeId": "iter-9-dogfood-measure",
+    "completedAt": "2026-03-01T22:16:18.503Z",
+    "owner": "claims-handler",
+    "checkpointId": "cp-20260301221618",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .roadmap/metaflow-optimizer/iter-9/dogfood-metrics.json"
+      }
+    ],
+    "gitSha": "ad5f2cba1aebea0c0fbf6f6888aec48332866e82",
+    "treeSha": "6708af01c1e88159fe5f697a19d86ed8b9883385"
   }
 ]
