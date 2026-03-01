@@ -1,133 +1,134 @@
 {
-  "id": "fr-meta-refac-001",
-  "desc": "Refactor Survey Swarm → Fan-in Analysis → Next Spec-kit Run",
-  "init": "refac-run-bootstrap",
-  "term": "intent-refac-pipeline",
+  "id": "fr-meta-refac-001-gen",
+  "desc": "Refactoring execution: consolidate schemas, wrap CLI, split tests, move IO, perf validation",
+  "init": "init-refactoring",
+  "term": "intent-refactoring-complete",
   "nodes": {
-    "refac-run-bootstrap": {
-      "id": "refac-run-bootstrap",
-      "desc": "Initialize refactor survey run directory, record baseline metadata (repo HEAD, tool versions, agent roster)",
-      "produces": [
-        ".audit/refactor-runs/<runId>/RUN.json",
-        ".audit/refactor-runs/<runId>/agents/AGENTS.json"
-      ],
+    "init-refactoring": {
+      "id": "init-refactoring",
+      "desc": "Start refactoring work from metaspec synthesis",
+      "produces": [],
       "consumes": [],
       "deps": [],
-      "validate": [
-        { "type": "artifact-exists", "path": ".audit/refactor-runs/<runId>/RUN.json" },
-        { "type": "artifact-exists", "path": ".audit/refactor-runs/<runId>/agents/AGENTS.json" },
-        { "type": "artifact-schema", "path": ".audit/refactor-runs/<runId>/RUN.json", "schema": "repo.headSha, rankingWeights" }
-      ],
+      "validate": [],
       "mode": "execute"
     },
-    "refac-survey-plan": {
-      "id": "refac-survey-plan",
-      "desc": "Plan node for parallel survey agents. Expands into refac-survey-agent-01..N.",
-      "produces": [],
-      "consumes": [".audit/refactor-runs/<runId>/RUN.json", ".audit/refactor-runs/<runId>/agents/AGENTS.json"],
-      "deps": ["refac-run-bootstrap"],
-      "validate": [{ "type": "expanded", "minNodes": 3 }],
-      "mode": "plan"
-    },
-    "refac-survey-agent-01": {
-      "id": "refac-survey-agent-01",
-      "desc": "Scan scope: src/lib, src/protocol, src/agent. Produce structured receipt with evidence.",
-      "produces": [".audit/refactor-runs/<runId>/agents/survey-01.receipt.json"],
-      "consumes": [".audit/refactor-runs/<runId>/agents/AGENTS.json"],
-      "deps": ["refac-survey-plan"],
-      "validate": [
-        { "type": "artifact-exists", "path": ".audit/refactor-runs/<runId>/agents/survey-01.receipt.json" },
-        { "type": "artifact-schema", "path": ".audit/refactor-runs/<runId>/agents/survey-01.receipt.json", "schema": "agentId, findings[]" },
-        { "type": "shell", "command": "jq '.findings | length > 0' .audit/refactor-runs/<runId>/agents/survey-01.receipt.json" }
-      ],
-      "mode": "execute",
-      "expandedFrom": "refac-survey-plan"
-    },
-    "refac-survey-agent-02": {
-      "id": "refac-survey-agent-02",
-      "desc": "Scan scope: bin/, tests/. Produce structured receipt with evidence.",
-      "produces": [".audit/refactor-runs/<runId>/agents/survey-02.receipt.json"],
-      "consumes": [".audit/refactor-runs/<runId>/agents/AGENTS.json"],
-      "deps": ["refac-survey-plan"],
-      "validate": [
-        { "type": "artifact-exists", "path": ".audit/refactor-runs/<runId>/agents/survey-02.receipt.json" },
-        { "type": "artifact-schema", "path": ".audit/refactor-runs/<runId>/agents/survey-02.receipt.json", "schema": "agentId, findings[]" },
-        { "type": "shell", "command": "jq '.findings | length > 0' .audit/refactor-runs/<runId>/agents/survey-02.receipt.json" }
-      ],
-      "mode": "execute",
-      "expandedFrom": "refac-survey-plan"
-    },
-    "refac-survey-agent-03": {
-      "id": "refac-survey-agent-03",
-      "desc": "Scan scope: docs/, scripts/. Produce structured receipt with evidence.",
-      "produces": [".audit/refactor-runs/<runId>/agents/survey-03.receipt.json"],
-      "consumes": [".audit/refactor-runs/<runId>/agents/AGENTS.json"],
-      "deps": ["refac-survey-plan"],
-      "validate": [
-        { "type": "artifact-exists", "path": ".audit/refactor-runs/<runId>/agents/survey-03.receipt.json" },
-        { "type": "artifact-schema", "path": ".audit/refactor-runs/<runId>/agents/survey-03.receipt.json", "schema": "agentId, findings[]" },
-        { "type": "shell", "command": "jq '.findings | length > 0' .audit/refactor-runs/<runId>/agents/survey-03.receipt.json" }
-      ],
-      "mode": "execute",
-      "expandedFrom": "refac-survey-plan"
-    },
-    "refac-fan-in-synthesis": {
-      "id": "refac-fan-in-synthesis",
-      "desc": "Deterministically merge receipts. Cluster, rank, detect conflicts. Produce SYNTHESIS.json.",
-      "produces": [".audit/refactor-runs/<runId>/fan-in/SYNTHESIS.json", ".audit/refactor-runs/<runId>/fan-in/SYNTHESIS.md"],
-      "consumes": [
-        ".audit/refactor-runs/<runId>/agents/survey-01.receipt.json",
-        ".audit/refactor-runs/<runId>/agents/survey-02.receipt.json",
-        ".audit/refactor-runs/<runId>/agents/survey-03.receipt.json"
-      ],
-      "deps": ["refac-survey-agent-01", "refac-survey-agent-02", "refac-survey-agent-03"],
-      "validate": [
-        { "type": "artifact-exists", "path": ".audit/refactor-runs/<runId>/fan-in/SYNTHESIS.json" },
-        { "type": "shell", "command": "jq '.clusters | length > 0' .audit/refactor-runs/<runId>/fan-in/SYNTHESIS.json" }
-      ],
-      "mode": "execute"
-    },
-    "refac-specgen": {
-      "id": "refac-specgen",
-      "desc": "Generate next spec-kit from synthesis. Produce SPEC.md, TASKS.md, PLAN.md, GALLERY.json, SELECTED.json.",
+    "consolidate-schema": {
+      "id": "consolidate-schema",
+      "desc": "Merge audit-schema.ts and perf-schema.ts into single src/lib/schema.ts (highest value: 50)",
       "produces": [
-        ".specify/<specId>/SPEC.md",
-        ".specify/<specId>/TASKS.md",
-        ".specify/<specId>/PLAN.md",
-        ".specify/<specId>/GALLERY.json",
-        ".specify/<specId>/SELECTED.json"
+        "src/lib/schema.ts",
+        ".audit/consolidate-schema.receipt.json"
       ],
       "consumes": [
-        ".audit/refactor-runs/<runId>/fan-in/SYNTHESIS.json",
-        ".audit/refactor-runs/<runId>/fan-in/SYNTHESIS.md"
+        "src/lib/audit/audit-schema.ts",
+        "src/lib/perf/perf-schema.ts"
       ],
-      "deps": ["refac-fan-in-synthesis"],
+      "deps": ["init-refactoring"],
       "validate": [
-        { "type": "artifact-exists", "path": ".specify/<specId>/SPEC.md" },
-        { "type": "artifact-exists", "path": ".specify/<specId>/TASKS.md" },
-        { "type": "artifact-exists", "path": ".specify/<specId>/GALLERY.json" },
-        { "type": "shell", "command": "grep -q 'intent-init\\|intent-term\\|mine-run\\|audit-surface\\|perf-budget' .specify/<specId>/TASKS.md" },
-        { "type": "shell", "command": "jq '.strategies | length >= 2' .specify/<specId>/GALLERY.json" }
+        { "type": "artifact-exists", "path": "src/lib/schema.ts" },
+        { "type": "shell", "command": "test ! -f src/lib/audit/audit-schema.ts || grep -q 'deprecated' src/lib/audit/audit-schema.ts" },
+        { "type": "shell", "command": "npm run test 2>&1 | grep -q 'passing'" }
       ],
       "mode": "execute"
     },
-    "intent-refac-pipeline": {
-      "id": "intent-refac-pipeline",
-      "desc": "Terminal intent gate. Verify governance-complete: spec coherence, DAG acyclic, all validators, gates present.",
-      "produces": [".audit/refactor-runs/<runId>/RECEIPT.json"],
-      "consumes": [
-        ".specify/<specId>/SPEC.md",
-        ".specify/<specId>/TASKS.md",
-        ".specify/<specId>/PLAN.md",
-        ".specify/<specId>/GALLERY.json",
-        ".specify/<specId>/SELECTED.json"
+    "wrap-cli-audit": {
+      "id": "wrap-cli-audit",
+      "desc": "Add 'roadmap audit' command to CLI registry (value: 35)",
+      "produces": [
+        "src/cli/commands/audit.ts",
+        ".audit/wrap-cli-audit.receipt.json"
       ],
-      "deps": ["refac-specgen"],
+      "consumes": [
+        "bin/cli.ts",
+        "src/lib/audit/audit-engine.ts"
+      ],
+      "deps": ["init-refactoring"],
       "validate": [
-        { "type": "artifact-exists", "path": ".audit/refactor-runs/<runId>/RECEIPT.json" },
-        { "type": "artifact-schema", "path": ".audit/refactor-runs/<runId>/RECEIPT.json", "schema": "verdict, gatePasses" }
+        { "type": "artifact-exists", "path": "src/cli/commands/audit.ts" },
+        { "type": "shell", "command": "grep -q 'registerCommand.*audit' src/cli/commands/audit.ts" }
       ],
       "mode": "execute"
+    },
+    "split-integration-tests": {
+      "id": "split-integration-tests",
+      "desc": "Split slow integration tests into separate file (value: 30)",
+      "produces": [
+        "tests/integration-fast.test.ts",
+        "tests/integration-slow.test.ts",
+        ".audit/split-tests.receipt.json"
+      ],
+      "consumes": [
+        "tests/integration.test.ts"
+      ],
+      "deps": ["init-refactoring"],
+      "validate": [
+        { "type": "artifact-exists", "path": "tests/integration-fast.test.ts" },
+        { "type": "artifact-exists", "path": "tests/integration-slow.test.ts" },
+        { "type": "shell", "command": "npm run test -- tests/integration-fast.test.ts --run 2>&1 | tail -5 | grep -q 'passing'" }
+      ],
+      "mode": "execute"
+    },
+    "move-io-purity": {
+      "id": "move-io-purity",
+      "desc": "Move IO imports from src/lib to src/io to preserve lib purity (value: 28)",
+      "produces": [
+        "src/io/",
+        ".audit/move-io.receipt.json"
+      ],
+      "consumes": [
+        "src/lib/audit/audit-engine.ts"
+      ],
+      "deps": ["init-refactoring"],
+      "validate": [
+        { "type": "shell", "command": "! grep -r 'require.*fs\\|import.*fs' src/lib --include='*.ts'" }
+      ],
+      "mode": "execute"
+    },
+    "wrap-cli-expand": {
+      "id": "wrap-cli-expand",
+      "desc": "Add 'roadmap expand' CLI wrapper for scripts (value: 22)",
+      "produces": [
+        "src/cli/commands/expand.ts",
+        ".audit/wrap-cli-expand.receipt.json"
+      ],
+      "consumes": [
+        "bin/cli.ts",
+        "scripts/expand-*.ts"
+      ],
+      "deps": ["init-refactoring"],
+      "validate": [
+        { "type": "artifact-exists", "path": "src/cli/commands/expand.ts" },
+        { "type": "shell", "command": "grep -q 'expandScript' src/cli/commands/expand.ts" }
+      ],
+      "mode": "execute"
+    },
+    "intent-refactoring-complete": {
+      "id": "intent-refactoring-complete",
+      "desc": "Terminal: all refactorings complete, tests pass, vitest <15s, imports verified",
+      "produces": [
+        ".audit/intent-refactoring-complete.receipt.json"
+      ],
+      "consumes": [
+        ".audit/consolidate-schema.receipt.json",
+        ".audit/wrap-cli-audit.receipt.json",
+        ".audit/split-tests.receipt.json",
+        ".audit/move-io.receipt.json",
+        ".audit/wrap-cli-expand.receipt.json"
+      ],
+      "deps": [
+        "consolidate-schema",
+        "wrap-cli-audit",
+        "split-integration-tests",
+        "move-io-purity",
+        "wrap-cli-expand"
+      ],
+      "validate": [
+        { "type": "shell", "command": "npm run test 2>&1 | grep -q 'passing'" },
+        { "type": "shell", "command": "! grep -r 'audit-schema\\|perf-schema' src/lib/audit src/lib/perf --include='*.ts' 2>/dev/null | grep -v deprecated" },
+        { "type": "shell", "command": "npm run build 2>&1 | grep -q 'successful\\|Build complete' || npm run tsc 2>&1 | tail -1 | grep -q 'successfully'" }
+      ],
+      "mode": "plan"
     }
   }
 }
