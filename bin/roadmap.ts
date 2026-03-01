@@ -54,6 +54,10 @@ import { runAuditRecommend } from '../src/lib/audit-recommend.ts';
 import { runProfile } from '../src/lib/profile-cmd.ts';
 import { runPatchStack } from '../src/lib/patch-stack-cmd.ts';
 import { installAll, extractVersionHash, readPackageVersion, computeSkillHash } from '../src/lib/install-skills.ts';
+import { loadCandidate, computeHeadSha, candidateExists, writeCandidateDAG } from '../src/lib/dag-candidate.ts';
+import { writeToken, readToken, listTokens, isTokenExpired, tokenId as deriveTokenId, TOKEN_DIR } from '../src/lib/token-store.ts';
+import type { TokenType, BoundToken } from '../src/lib/token-store.ts';
+import { readIndex, gcTokens } from '../src/lib/token-index.ts';
 import type { Graph } from '../src/protocol.ts';
 import type { SiblingStatus } from '../src/lib/cross-orient.ts';
 import type { OrientV1, OrientDag, OrientDagNode, OrientDagEdge, OrientBlockedNode } from '../src/lib/orient-schema.ts';
@@ -106,6 +110,14 @@ function deriveEnvelopeCmd(): string {
     if (args[1] === 'compile') return 'spec.compile';
     return 'spec';
   }
+  if (cmd === 'dag') {
+    if (args[1] === 'diff') return 'dag.diff';
+    return 'dag';
+  }
+  if (cmd === 'token') {
+    if (args[1]) return `token.${args[1]}`;
+    return 'token';
+  }
   if (cmd === 'mf') {
     if (args[1] === 'init') return 'mf.init';
     if (args[1] === 'dispatch') return 'mf.dispatch';
@@ -154,6 +166,13 @@ if (isOrientCheck) {
 // checkpoint --list/--restore are read-only; --label is note-optional (claim is the evidence trail)
 if (cmd === 'checkpoint' && (args.includes('--list') || args.includes('--restore') || args.includes('--label'))) {
   NOTE_EXEMPT.add('checkpoint');
+}
+// token list/inspect/gc and dag diff are read-only
+if (cmd === 'token' && ['list', 'inspect', 'gc'].includes(args[1])) {
+  NOTE_EXEMPT.add('token');
+}
+if (cmd === 'dag' && args[1] === 'diff') {
+  NOTE_EXEMPT.add('dag');
 }
 // plan status is read-only
 if (cmd === 'plan' && args[1] === 'status') {
@@ -302,6 +321,8 @@ async function main() {
       case 'merge':     return await cmdMergeFrom();
       case 'retire':    return cmdRetire(note!);
       case 'claim':     return cmdClaim();
+      case 'dag':       return cmdDag(note!);
+      case 'token':     return await cmdToken(note!);
       case 'import':    return cmdImport(note!);
       case 'intake':    return cmdIntake(note!);
       case 'federation': return cmdFederation(note!);
@@ -3692,7 +3713,212 @@ function cmdClaim() {
   store[nodeId] = { owner, claimedAt, claimExpiry };
   saveClaims(repoRoot, store);
 
-  json({ claimed: nodeId, owner, claimedAt, claimExpiry, ttlSeconds });
+  // Issue a BoundToken of type 'claim' as well
+  const tokId = deriveTokenId('claim', nodeId, claimedAt);
+  let headSha = 'unknown';
+  try { headSha = computeHeadSha(repoRoot) ?? 'unknown'; } catch {}
+  const claimToken: BoundToken = {
+    schema_version: 1,
+    tokenId: tokId,
+    type: 'claim',
+    subject: nodeId,
+    owner,
+    issuedAt: claimedAt,
+    expiresAt: claimExpiry,
+    boundTo: { headSha },
+    payload: { ttlSeconds },
+    ok: true,
+  };
+  writeToken(repoRoot, claimToken);
+
+  json({ claimed: nodeId, owner, claimedAt, claimExpiry, ttlSeconds, tokenId: tokId });
+}
+
+// --- dag: candidate operations (diff, accept, reject) ---
+
+function cmdDag(note: string) {
+  const sub = args[1];
+  switch (sub) {
+    case 'diff': return cmdDagDiff();
+    default:
+      json({ error: `Unknown dag subcommand: ${sub}`, fix: 'roadmap dag diff' });
+      process.exit(1);
+  }
+}
+
+function cmdDagDiff() {
+  const dag = loadDAG();
+  const envelope = loadCandidate(repoRoot);
+  if (!envelope) {
+    json({ error: 'No candidate found', fix: 'Run roadmap import or roadmap expand first' });
+    process.exit(1);
+    return;
+  }
+
+  const liveIds = new Set(Object.keys(dag.nodes));
+  const candidateIds = new Set(Object.keys(envelope.dag.nodes));
+
+  const added = [...candidateIds].filter(id => !liveIds.has(id));
+  const removed = [...liveIds].filter(id => !candidateIds.has(id));
+  const changed = [...liveIds].filter(id =>
+    candidateIds.has(id) && JSON.stringify(dag.nodes[id]) !== JSON.stringify(envelope.dag.nodes[id])
+  );
+
+  const headSha = computeHeadSha(repoRoot);
+  const staleDrift = headSha !== envelope.baseSha;
+
+  json({
+    added,
+    removed,
+    changed,
+    baseSha: envelope.baseSha,
+    candidateSource: envelope.source,
+    staleDrift,
+  });
+}
+
+// --- token: issue, list, inspect, revoke, gc ---
+
+async function cmdToken(note: string) {
+  const sub = args[1];
+  switch (sub) {
+    case 'issue':   return cmdTokenIssue(note);
+    case 'list':    return cmdTokenList();
+    case 'inspect': return cmdTokenInspect();
+    case 'revoke':  return cmdTokenRevoke(note);
+    case 'gc':      return cmdTokenGc();
+    default:
+      json({ error: `Unknown token subcommand: ${sub}`, fix: 'token issue|list|inspect|revoke|gc' });
+      process.exit(1);
+  }
+}
+
+function cmdTokenIssue(note: string) {
+  const typeIdx = args.indexOf('--type');
+  const type = (typeIdx !== -1 ? args[typeIdx + 1] : undefined) as TokenType | undefined;
+  if (!type || !['claim', 'strategy', 'breakglass', 'run'].includes(type)) {
+    json({ error: 'Missing or invalid --type', fix: 'roadmap token issue --type claim|strategy|breakglass|run --subject <s> --note "..."' });
+    process.exit(1);
+    return;
+  }
+
+  const subjectIdx = args.indexOf('--subject');
+  const subject = subjectIdx !== -1 ? args[subjectIdx + 1] : undefined;
+  if (!subject) {
+    json({ error: 'Missing --subject', fix: 'roadmap token issue --type <type> --subject <subject> --note "..."' });
+    process.exit(1);
+    return;
+  }
+
+  const ownerIdx = args.indexOf('--owner');
+  const owner = ownerIdx !== -1 ? args[ownerIdx + 1] : (process.env['AGENT_ID'] ?? process.env['USER'] ?? 'unknown');
+
+  const expiresIdx = args.indexOf('--expires');
+  const expiresAt = expiresIdx !== -1 ? args[expiresIdx + 1] : undefined;
+
+  const scopeIdx = args.indexOf('--scope');
+  const scope = scopeIdx !== -1 && args[scopeIdx + 1] ? args[scopeIdx + 1].split(',') : undefined;
+
+  const issuedAt = new Date().toISOString();
+  const id = deriveTokenId(type, subject, issuedAt);
+
+  let headSha = 'unknown';
+  try { headSha = computeHeadSha(repoRoot) ?? 'unknown'; } catch {}
+
+  const token: BoundToken = {
+    schema_version: 1,
+    tokenId: id,
+    type,
+    subject,
+    owner,
+    issuedAt,
+    ...(expiresAt ? { expiresAt } : {}),
+    boundTo: { headSha },
+    ...(scope ? { scope } : {}),
+    reason: note,
+    payload: {},
+    ok: true,
+  };
+
+  const path = writeToken(repoRoot, token);
+
+  recordTrail({
+    ts: issuedAt, cmd: 'token.issue', note,
+    repo: basename(repoRoot),
+    detail: { tokenId: id, type, subject, owner, path },
+  });
+
+  json({ issued: true, tokenId: id, type, subject, owner, path });
+}
+
+function cmdTokenList() {
+  const typeIdx = args.indexOf('--type');
+  const type = typeIdx !== -1 ? args[typeIdx + 1] as TokenType : undefined;
+
+  const entries = readIndex(repoRoot);
+  const filtered = type ? entries.filter(e => e.type === type) : entries;
+  json({ tokens: filtered, count: filtered.length });
+}
+
+function cmdTokenInspect() {
+  const id = args[2];
+  if (!id) {
+    json({ error: 'Missing token ID', fix: 'roadmap token inspect <tokenId>' });
+    process.exit(1);
+    return;
+  }
+
+  // Search across all types
+  for (const t of ['claim', 'strategy', 'breakglass', 'run'] as TokenType[]) {
+    const token = readToken(repoRoot, t, id);
+    if (token) {
+      json(token);
+      return;
+    }
+  }
+
+  json({ error: `Token not found: ${id}`, fix: 'roadmap token list to see available tokens' });
+  process.exit(1);
+}
+
+function cmdTokenRevoke(note: string) {
+  const id = args[2];
+  const typeIdx = args.indexOf('--type');
+  const type = typeIdx !== -1 ? args[typeIdx + 1] as TokenType : undefined;
+
+  if (!id) {
+    json({ error: 'Missing token ID', fix: 'roadmap token revoke <tokenId> --type <type> --note "..."' });
+    process.exit(1);
+    return;
+  }
+
+  // If type given, try that; otherwise search
+  const types: TokenType[] = type ? [type] : ['claim', 'strategy', 'breakglass', 'run'];
+  for (const t of types) {
+    const token = readToken(repoRoot, t, id);
+    if (token) {
+      token.ok = false;
+      const path = join(repoRoot, TOKEN_DIR, t, id + '.json');
+      writeFileSync(path, JSON.stringify(token, null, 2) + '\n');
+
+      recordTrail({
+        ts: new Date().toISOString(), cmd: 'token.revoke', note,
+        repo: basename(repoRoot),
+        detail: { tokenId: id, type: t },
+      });
+
+      json({ revoked: true, tokenId: id, type: t });
+      return;
+    }
+  }
+
+  json({ error: `Token not found: ${id}`, fix: 'roadmap token list to see available tokens' });
+  process.exit(1);
+}
+
+function cmdTokenGc() {
+  const result = gcTokens(repoRoot);
+  json({ pruned: result.deleted, remaining: result.kept, deletedIds: result.deletedIds });
 }
 
 // --- dispatch: plan, apply, status for cluster-based work distribution ---
