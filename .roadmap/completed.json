@@ -4383,5 +4383,28 @@
     ],
     "gitSha": "c2456d212ff1379d6b6bee1146086349b2b09662",
     "treeSha": "f6ae8ea34262eea05d004e3108e1b430931c4bf0"
+  },
+  {
+    "nodeId": "rkg4-kernel-config",
+    "completedAt": "2026-03-01T08:52:37.433Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301085233",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "a34a97670102ec74e3d81e2e1618a55962c85489",
+    "treeSha": "ac21081699cbc8afb1e991f95d494703cbd84986"
   }
 ]
