@@ -5126,5 +5126,20 @@
     ],
     "gitSha": "53bd1059a523f0841f722f2bc588846e81cacb97",
     "treeSha": "cab73722f46496afc33e4707198f980e7d0648d3"
+  },
+  {
+    "nodeId": "rf-breakglass",
+    "completedAt": "2026-03-01T09:10:00.723Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301091000",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/receipt-first/breakglass.ts"
+      }
+    ],
+    "gitSha": "9a762f1058568b920e67a61e823c5eb467692746",
+    "treeSha": "78d900564ff5f5d3e7f9370b3634685c93ee6fda"
   }
 ]
