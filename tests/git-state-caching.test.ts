@@ -5,7 +5,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import { orient } from '../src/protocol.ts';
 import { readGitState, isFresh, validateGitState } from '../src/lib/git-state.schema.ts';
-import { orientCached, updateRoadmapPosition } from '../src/lib/orient-cached.ts';
+import { orientCached, updateRoadmapPosition } from '../src/lib/core/orient-cached.ts';
 
 describe('git-state-caching', () => {
   let tmpRepo: string;
