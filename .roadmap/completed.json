@@ -1449,5 +1449,20 @@
     ],
     "gitSha": "c108023dc57b0e8ccb6349343908be56b7d3fb9e",
     "treeSha": "5b132019e204960025f62a37fc293dbccfbcd3cc"
+  },
+  {
+    "nodeId": "iter-9-measure",
+    "completedAt": "2026-03-01T22:14:41.107Z",
+    "owner": "state-doctor",
+    "checkpointId": "cp-20260301221441",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .roadmap/metaflow-optimizer/iter-9/metrics.json"
+      }
+    ],
+    "gitSha": "49d58ccab1502448c1b56cb26cc5a4ab943313be",
+    "treeSha": "b6f422709a91e59c53ff51f86779ac9534f44a77"
   }
 ]
