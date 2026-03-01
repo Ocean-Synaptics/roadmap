@@ -20,6 +20,7 @@ export { boxPanel, boxTable } from './box.ts';
 export { progressBar, progressLine } from './bars.ts';
 export { renderDagLayers, renderCriticalPath } from './dag.ts';
 export { renderErrorPanel } from './errors.ts';
+export { renderMetaflowHeader } from './metaflow-header.ts';
 
 function render(model: RenderModel, opts: RenderOpts): RenderOutput {
   const plain = renderNodes(model.nodes, { ...opts, color: false }).join('\n');
