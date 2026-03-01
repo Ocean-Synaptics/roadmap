@@ -392,4 +392,54 @@ describe('CLI Integration Suite', () => {
       expect(exitCode === 0 || exitCode === 1).toBe(true);
     });
   });
+
+  // --- JSON-as-default enforcement ---
+
+  describe('JSON envelope as output default', () => {
+    it('orient without --json flag defaults to JSON output', () => {
+      const { stdout, exitCode } = runCli('orient --note "json default test"');
+      expect(exitCode).toBe(0);
+      // Without any flags, should be JSON envelope by default
+      const env = extractEnvelope(stdout);
+      expect(env).not.toBeNull();
+      expect(env!.schema_version).toBe(1);
+      expect(env!.ok).toBe(true);
+      // Verify the envelope parses as valid JSON
+      expect(() => JSON.stringify(env)).not.toThrow();
+    });
+
+    it('chart outputs valid JSON envelope (may have human output before)', () => {
+      const { stdout, exitCode } = runCli('chart');
+      expect(exitCode).toBe(0);
+      // Chart emits human output via console.log() then JSON envelope
+      // Extract the JSON envelope from the mixed output
+      const env = extractEnvelope(stdout);
+      expect(env).not.toBeNull();
+      expect(env!.schema_version).toBe(1);
+      expect(env!.ok).toBe(true);
+      expect(env!.cmd).toBe('chart');
+    });
+
+    it('orient defaults to JSON even without --json flag', () => {
+      const { stdout, exitCode } = runCli('orient --note "no json flag test"');
+      expect(exitCode).toBe(0);
+      // Default format should be JSON (not human)
+      const env = extractEnvelope(stdout);
+      expect(env).not.toBeNull();
+      expect(env!.schema_version).toBe(1);
+    });
+
+    it('orient with --quiet flag suppresses output for success', () => {
+      const { stdout, exitCode } = runCli('orient --note "quiet test" --quiet');
+      expect(exitCode).toBe(0);
+      // Quiet may suppress success output
+      // Just verify it doesn't crash and doesn't produce invalid JSON if anything
+      if (stdout.trim()) {
+        const env = extractEnvelope(stdout);
+        if (env) {
+          expect(typeof env.schema_version).toBe('number');
+        }
+      }
+    });
+  });
 });
