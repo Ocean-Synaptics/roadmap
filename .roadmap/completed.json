@@ -1464,5 +1464,20 @@
     ],
     "gitSha": "49d58ccab1502448c1b56cb26cc5a4ab943313be",
     "treeSha": "b6f422709a91e59c53ff51f86779ac9534f44a77"
+  },
+  {
+    "nodeId": "iter-9-integration-test",
+    "completedAt": "2026-03-01T22:15:09.172Z",
+    "owner": "validator",
+    "checkpointId": "cp-20260301221509",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .roadmap/metaflow-optimizer/iter-9/integration-test-report.json"
+      }
+    ],
+    "gitSha": "4101ddbf7bcccd604c44680e77396245c6603023",
+    "treeSha": "0b3064fffcf1d1d7601d2bbf16a3fec2c9913497"
   }
 ]
