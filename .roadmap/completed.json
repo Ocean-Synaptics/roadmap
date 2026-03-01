@@ -179,5 +179,20 @@
     ],
     "gitSha": "5509e9bcfa92f8de76082b394d25b49061fc0b1e",
     "treeSha": "ce8e7d4459cbf7ba172b50c30d59faad0ee004da"
+  },
+  {
+    "nodeId": "audit-directory-structure",
+    "completedAt": "2026-03-01T13:41:33.926Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301134133",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: audit-report.json"
+      }
+    ],
+    "gitSha": "7d90e0f52822bb04c70af8e7776ce52071ff130b",
+    "treeSha": "0c8859ca67071540de9fb929659dab508ba3e6d2"
   }
 ]
