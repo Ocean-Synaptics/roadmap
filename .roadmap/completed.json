@@ -4542,5 +4542,35 @@
     ],
     "gitSha": "ddf2ee01a1a86b764e6155aa72cae8ed929990ba",
     "treeSha": "00f8e0e860a81dbc7c9be2322312c2f91f63defa"
+  },
+  {
+    "nodeId": "sgk-plan",
+    "completedAt": "2026-03-01T09:00:39.829Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301090039",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .specify/pre-spec/sgk.md"
+      },
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .specify/specs/sgk/spec.md"
+      },
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .specify/specs/sgk/tasks.md"
+      },
+      {
+        "rule": "expanded",
+        "passed": true,
+        "evidence": "expanded into 8 node(s): sgk-foundation, sgk-receipts, sgk-cli-enforce, sgk-strategy-surface, sgk-intent-cmds, sgk-mine-audit, sgk-display, sgk-e2e"
+      }
+    ],
+    "gitSha": "b84006d0755a531d126ff839fb74cbe3b6bfaca9",
+    "treeSha": "6691d7c4f88d6ebc97f07764731ace6f77861872"
   }
 ]
