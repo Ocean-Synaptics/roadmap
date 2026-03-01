@@ -683,7 +683,8 @@
         "rkg4-algo-report",
         "rkg3-dispatch-enforcement",
         "rkg6-rate-card",
-        "cli-output-plan"
+        "cli-output-plan",
+        "dag-candidate-flow"
       ],
       "validate": [
         {
@@ -752,6 +753,46 @@
         {
           "type": "artifact-exists",
           "path": ".specify/specs/cli-output/tasks.md"
+        },
+        {
+          "type": "expanded",
+          "minNodes": 3
+        }
+      ],
+      "idempotent": false
+    },
+    "dag-candidate-flow": {
+      "id": "dag-candidate-flow",
+      "desc": "Non-destructive import/expand: write candidate DAG to head.candidate.json, provide diff + accept/reject before head.json is mutated. Spec-kit → parallel agents.",
+      "mode": "plan",
+      "produces": [
+        ".specify/pre-spec/dag-candidate.md",
+        ".specify/specs/dag-candidate/spec.md",
+        ".specify/specs/dag-candidate/tasks.md"
+      ],
+      "consumes": [],
+      "ambient": [
+        "src/lib/speckit-import.ts",
+        "src/lib/plan-overlay.ts",
+        "src/lib/intake.ts",
+        "src/lib/spec-origin.ts",
+        "bin/roadmap.ts"
+      ],
+      "deps": [
+        "init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "path": ".specify/pre-spec/dag-candidate.md"
+        },
+        {
+          "type": "artifact-exists",
+          "path": ".specify/specs/dag-candidate/spec.md"
+        },
+        {
+          "type": "artifact-exists",
+          "path": ".specify/specs/dag-candidate/tasks.md"
         },
         {
           "type": "expanded",
