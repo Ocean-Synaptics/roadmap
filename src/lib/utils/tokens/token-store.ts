@@ -27,6 +27,9 @@ export interface BoundToken {
 
 export const TOKEN_DIR = '.roadmap/tokens';
 
+// Module-level cache: key = "${repoRoot}:${type}", value = BoundToken[]
+const tokenCache = new Map<string, BoundToken[]>();
+
 /** Derive tokenId: "tok-" + sha256(type+subject+issuedAt)[0:16] */
 export function tokenId(type: TokenType, subject: string, issuedAt: string): string {
   const hash = createHash('sha256').update(type + subject + issuedAt).digest('hex');
@@ -54,6 +57,10 @@ export function writeToken(repoRoot: string, token: BoundToken): string {
   const entry = { tokenId: token.tokenId, type: token.type, subject: token.subject, issuedAt: token.issuedAt, ok: token.ok };
   appendFileSync(idx, JSON.stringify(entry) + '\n');
 
+  // Invalidate cache for this repoRoot:type combination
+  const cacheKey = `${repoRoot}:${token.type}`;
+  tokenCache.delete(cacheKey);
+
   return path;
 }
 
@@ -77,14 +84,28 @@ export function listTokens(repoRoot: string, type?: TokenType): BoundToken[] {
   const tokens: BoundToken[] = [];
 
   for (const t of types) {
+    const cacheKey = `${repoRoot}:${t}`;
+
+    // Return cached result if available
+    if (tokenCache.has(cacheKey)) {
+      tokens.push(...tokenCache.get(cacheKey)!);
+      continue;
+    }
+
     const dir = join(base, t);
     if (!existsSync(dir)) continue;
+
+    const typeTokens: BoundToken[] = [];
     for (const f of readdirSync(dir)) {
       if (!f.endsWith('.json')) continue;
       try {
-        tokens.push(JSON.parse(readFileSync(join(dir, f), 'utf-8')) as BoundToken);
+        typeTokens.push(JSON.parse(readFileSync(join(dir, f), 'utf-8')) as BoundToken);
       } catch { /* skip malformed */ }
     }
+
+    // Store in cache before adding to results
+    tokenCache.set(cacheKey, typeTokens);
+    tokens.push(...typeTokens);
   }
 
   return tokens;
