@@ -65,6 +65,9 @@ import type { OrientData, ChartData, GalleryData, PlanSelectData, PlanStatusData
 import { ensureRunDir, readMeta, writeMeta, type RunId, type RunMeta, generateRunId } from '../src/lib/metaflow/index.ts';
 import { isReceiptRequired } from '../src/lib/metaflow/command-registry.ts';
 import { SessionStore } from '../src/lib/metaflow/session-store.ts';
+import { buildQuestionBlock, recordAnswer, getAnswers } from '../src/lib/metaflow/ask.ts';
+import { InteractionReceiptWriter } from '../src/lib/metaflow/receipt-writer.ts';
+import { wrapSubcommand } from '../src/lib/metaflow/wrap.ts';
 
 const rawArgs = process.argv.slice(2);
 const repoRoot = process.cwd();
@@ -4914,6 +4917,64 @@ function cmdMf(note: string) {
       const retiredCount = rtStore.retireAll();
       json({ cmd: 'mf.retire-team', runId: rtRunId, retiredCount });
       recordTrail({ ts: new Date().toISOString(), cmd: 'mf.retire-team', note, repo: basename(repoRoot), position: ['mf-session-binding'], level: 2 });
+      break;
+    }
+    case 'ask': {
+      const aRunIdx = args.indexOf('--run');
+      if (aRunIdx === -1 || !args[aRunIdx + 1]) {
+        json({ error: 'Missing --run <runId>', fix: 'roadmap mf ask --run <runId> --step <stepId> --question-id <id> --text "..." --type choice|text --note "..."' });
+        process.exit(1);
+      }
+      const aRunId = args[aRunIdx + 1] as RunId;
+      const aStepIdx = args.indexOf('--step');
+      const aStepId = (aStepIdx !== -1 ? args[aStepIdx + 1] : `ask-${Date.now()}`) as import('../src/lib/metaflow/types.ts').StepId;
+      const aQidIdx = args.indexOf('--question-id');
+      const aQid = aQidIdx !== -1 ? args[aQidIdx + 1] : `q-${Date.now()}`;
+      const aTextIdx = args.indexOf('--text');
+      const aText = aTextIdx !== -1 ? args[aTextIdx + 1] : '';
+      const aTypeIdx = args.indexOf('--type');
+      const aType = (aTypeIdx !== -1 ? args[aTypeIdx + 1] : 'text') as 'choice' | 'text';
+      const aChoicesIdx = args.indexOf('--choices');
+      const aChoices = aChoicesIdx !== -1 && args[aChoicesIdx + 1] ? args[aChoicesIdx + 1].split(',') : undefined;
+
+      const question = buildQuestionBlock({ id: aQid, text: aText, type: aType, choices: aChoices });
+      const aMeta = readMeta(aRunId, repoRoot);
+      aMeta.questions = [...(aMeta.questions ?? []), question];
+      writeMeta(aRunId, aMeta, repoRoot);
+
+      // Receipt
+      let aHeadSha = '';
+      try {
+        aHeadSha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
+      } catch { aHeadSha = '000000000000'; }
+      const aWriter = new InteractionReceiptWriter(aRunId, { base: repoRoot, headSha: aHeadSha });
+      aWriter.begin(aStepId, 'mf.ask', note, 'agent');
+      aWriter.writeSnapshot(aStepId, JSON.stringify({ cmd: 'mf.ask', runId: aRunId, stepId: aStepId, question }, null, 2));
+      aWriter.commit(aStepId, 'mf.ask', note, 'agent', { toolCalls: 0 });
+
+      json({ cmd: 'mf.ask', runId: aRunId, stepId: aStepId, question });
+      recordTrail({ ts: new Date().toISOString(), cmd: 'mf.ask', note, repo: basename(repoRoot), position: ['mf-guided-ask-answer'], level: 3 });
+      break;
+    }
+    case 'answer': {
+      const nRunIdx = args.indexOf('--run');
+      if (nRunIdx === -1 || !args[nRunIdx + 1]) {
+        json({ error: 'Missing --run <runId>', fix: 'roadmap mf answer --run <runId> --question-id <id> --value "..." --note "..."' });
+        process.exit(1);
+      }
+      const nRunId = args[nRunIdx + 1] as RunId;
+      const nQidIdx = args.indexOf('--question-id');
+      if (nQidIdx === -1 || !args[nQidIdx + 1]) {
+        json({ error: 'Missing --question-id <id>', fix: 'roadmap mf answer --run <runId> --question-id <id> --value "..."' });
+        process.exit(1);
+      }
+      const nQid = args[nQidIdx + 1];
+      const nValIdx = args.indexOf('--value');
+      const nValue = nValIdx !== -1 ? args[nValIdx + 1] : '';
+
+      const answer = recordAnswer(nRunId, nQid, nValue, repoRoot);
+      json({ cmd: 'mf.answer', runId: nRunId, questionId: nQid, value: nValue, answer });
+      recordTrail({ ts: new Date().toISOString(), cmd: 'mf.answer', note, repo: basename(repoRoot), position: ['mf-guided-ask-answer'], level: 3 });
       break;
     }
     default:
