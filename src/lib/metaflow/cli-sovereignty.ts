@@ -26,15 +26,14 @@ import type { RenderReceipt } from "./execution/render-receipt.ts";
 // --- Error ---
 
 export class SovereigntyError extends Error {
+  readonly code: "UNGOVERNED_REPO" | "TREASHA_MISMATCH" | "FLOW_NOT_FOUND" | "NO_RENDER_RECEIPT";
+
   constructor(
-    public readonly code:
-      | "UNGOVERNED_REPO"
-      | "TREASHA_MISMATCH"
-      | "FLOW_NOT_FOUND"
-      | "NO_RENDER_RECEIPT",
+    code: "UNGOVERNED_REPO" | "TREASHA_MISMATCH" | "FLOW_NOT_FOUND" | "NO_RENDER_RECEIPT",
     message: string,
   ) {
     super(message);
+    this.code = code;
     this.name = "SovereigntyError";
   }
 }

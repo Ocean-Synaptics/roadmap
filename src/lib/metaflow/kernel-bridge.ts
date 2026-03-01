@@ -16,11 +16,11 @@ import { hasSpecOriginSync } from '../intake/spec-origin.ts';
 // ── Error ────────────────────────────────────────────────────────────────────
 
 export class KernelBridgeError extends Error {
-  constructor(
-    public readonly code: 'PLAN_SELECT_MISSING' | 'SPEC_ORIGIN_MISSING',
-    message: string,
-  ) {
+  readonly code: 'PLAN_SELECT_MISSING' | 'SPEC_ORIGIN_MISSING';
+
+  constructor(code: 'PLAN_SELECT_MISSING' | 'SPEC_ORIGIN_MISSING', message: string) {
     super(message);
+    this.code = code;
     this.name = 'KernelBridgeError';
   }
 }
