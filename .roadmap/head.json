@@ -1,269 +1,224 @@
 {
-  "id": "metaflow-ux-2",
+  "id": "fr-metaflow-001",
   "desc": "Imported from spec-kit",
-  "init": "mf-init",
-  "term": "intent-metaflow-guided-ux",
+  "init": "mf-sv-init",
+  "term": "intent-metaflow-sovereignty",
   "nodes": {
-    "mf-init": {
-      "id": "mf-init",
-      "desc": "Existing codebase — cli-envelope.ts, render library, bin/roadmap.ts, existing DAG engine",
+    "mf-sv-init": {
+      "id": "mf-sv-init",
+      "desc": "bootstrap metaflow sovereignty scaffolding — flow-schema.ts (flow step types, render field, stage_min/max, requires_authority) and authority-schema.ts (.governance/authority.json: kernel, stage, treeSha, since, receipt); no authority required for init; typecheck clean",
       "produces": [
-        "src/lib/cli-envelope.ts",
-        "src/lib/render/index.ts",
-        "bin/roadmap.ts"
+        "src/lib/metaflow/flow-schema.ts",
+        "src/lib/metaflow/authority-schema.ts"
       ],
       "consumes": [],
       "deps": [],
       "validate": [
         {
-          "type": "spec-conformance",
-          "spec": ".specify/specs/metaflow-ux-2/spec.md",
-          "scenario": "Plan clarity validated against feature spec",
-          "section": "Specification"
+          "type": "shell",
+          "command": "pnpm -s tsc --noEmit"
+        }
+      ],
+      "idempotent": true
+    },
+    "mf-sv-authority": {
+      "id": "mf-sv-authority",
+      "desc": "authority.json contract + helpers — read/write/verify treeSha binding; UNGOVERNED state detection (absent authority.json → only metaflow init allowed); authority helpers used by all subsequent commands; unit tests cover: write → read → verify round-trip, treeSha mismatch detection, UNGOVERNED_REPO error",
+      "produces": [
+        "src/lib/metaflow/authority.ts",
+        "tests/metaflow/authority.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "mf-sv-init"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "pnpm -s tsc --noEmit"
+        },
+        {
+          "type": "shell",
+          "command": "pnpm -s vitest run tests/metaflow/authority.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "mf-sv-flow-registry": {
+      "id": "mf-sv-flow-registry",
+      "desc": "flow registry loader + schema validation — INDEX.json + per-flow files under .roadmap/flows/; load + validate on startup; reject malformed flows at load time with structured error; unit tests cover: load valid registry, reject invalid schema, empty registry → empty list",
+      "produces": [
+        "src/lib/metaflow/flows.ts",
+        "tests/metaflow/flows.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "mf-sv-init"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "pnpm -s tsc --noEmit"
+        },
+        {
+          "type": "shell",
+          "command": "pnpm -s vitest run tests/metaflow/flows.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "mf-sv-render-receipts": {
+      "id": "mf-sv-render-receipts",
+      "desc": "mandatory render receipts — store human-readable view as .roadmap/render/<cmd>-<treeSha>.md + JSON sidecar .roadmap/render/<cmd>-<treeSha>.json; metaflow render --last re-renders from last JSON envelope + writes receipt; render receipt required for interactive commands; unit tests: write → read back, re-render idempotent, missing receipt → error on verify",
+      "produces": [
+        "src/lib/metaflow/render-receipt.ts",
+        "tests/metaflow/render.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "mf-sv-authority"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "pnpm -s tsc --noEmit"
+        },
+        {
+          "type": "shell",
+          "command": "pnpm -s vitest run tests/metaflow/render.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "mf-sv-cli-surface": {
+      "id": "mf-sv-cli-surface",
+      "desc": "roadmap metaflow subcommands — init / status / list / run / render / verify; integrate with existing JSON envelope + --human renderer (no second formatting system); metaflow run requires authority.json or returns UNGOVERNED_REPO; unit tests for each command in isolation",
+      "produces": [
+        "src/lib/metaflow/cli-sovereignty.ts",
+        "tests/metaflow/cli.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "mf-sv-flow-registry",
+        "mf-sv-render-receipts"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "pnpm -s tsc --noEmit"
+        },
+        {
+          "type": "shell",
+          "command": "pnpm -s vitest run tests/metaflow/cli.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "mf-sv-no-env-bypass": {
+      "id": "mf-sv-no-env-bypass",
+      "desc": "remove/deny env-variable bypass behavior — any bypass requires explicit receipt written under .roadmap/receipts/ with passed:false + reason; SKIP_* env vars do not affect behavior; test: set SKIP_PLAN_GATE=1 → verify no effect on metaflow run; no global state outside .roadmap/ + .governance/",
+      "produces": [
+        "src/lib/metaflow/guards.ts",
+        "tests/metaflow/bypass.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "mf-sv-cli-surface"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "pnpm -s tsc --noEmit"
+        },
+        {
+          "type": "shell",
+          "command": "pnpm -s vitest run tests/metaflow/bypass.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "mf-sv-kernel-integration": {
+      "id": "mf-sv-kernel-integration",
+      "desc": "integrate metaflow with existing kernel invariants — plan-select receipt + spec-origin receipt required for metaflow run when authority.json exists; no logic duplication (bridge to existing kernel, not fork); tests: metaflow run without plan-select receipt → fails; with receipt → proceeds",
+      "produces": [
+        "src/lib/metaflow/kernel-bridge.ts",
+        "tests/metaflow/kernel-bridge.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "mf-sv-no-env-bypass"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "pnpm -s tsc --noEmit"
+        },
+        {
+          "type": "shell",
+          "command": "pnpm -s vitest run tests/metaflow/kernel-bridge.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "mf-sv-terminal-invariants": {
+      "id": "mf-sv-terminal-invariants",
+      "desc": "metaflow verify — all invariants checked: authority present + kernel correct, schemas valid, receipts treeSha-bound, render receipts present where required, no env bypass active; e2e test suite: A) no plan-select → fail, B) SKIP_PLAN_GATE=1 → no effect, C) --human write render receipt, D) treeSha mismatch → TREE_SHA_MISMATCH, E) no authority.json → UNGOVERNED_REPO on non-init",
+      "produces": [
+        "src/lib/metaflow/verify.ts",
+        "tests/metaflow/verify.e2e.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "mf-sv-kernel-integration"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "pnpm -s tsc --noEmit"
+        },
+        {
+          "type": "shell",
+          "command": "pnpm -s vitest run tests/metaflow/verify.e2e.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "intent-metaflow-sovereignty": {
+      "id": "intent-metaflow-sovereignty",
+      "desc": "terminal intent — once authority.json exists, every workflow routes through metaflow and produces render receipts; authority marker is sovereign; no env bypass survives; SOVEREIGNTY.md documents the invariant set and acceptance evidence",
+      "produces": [
+        "docs/metaflow/SOVEREIGNTY.md"
+      ],
+      "consumes": [],
+      "deps": [
+        "mf-sv-terminal-invariants"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "test -f docs/metaflow/SOVEREIGNTY.md"
+        },
+        {
+          "type": "shell",
+          "command": "pnpm -s tsc --noEmit"
         }
       ],
       "idempotent": true,
-      "ambient": [
-        ".specify/specs/metaflow-ux-2/tasks.md"
-      ]
-    },
-    "mf-init-schemas": {
-      "id": "mf-init-schemas",
-      "desc": "TypeScript types and filesystem helpers for MetaFlow. **Types** in src/lib/metaflow/types.ts: `RunId` (branded string: `mf_${YYYYMMDD}_${HHMMSSz}_${sha6}`), `StepId` (branded string), `RunMeta` ({ schema_version:1, runId, repoRoot, headSha, createdAt, strictReceipts: boolean }), `InteractionReceipt` ({ schema_version:1, runId, stepId, cmd, intent, audience, render: { plainPath, ansiPath, width, emoji, color }, tutorial?: TutorialBlock, evidence: { headSha, toolCalls, latencyMs } }), `TutorialBlock` ({ mode: 'guided'|'inform', askedQuestions?: QuestionBlock[], nextStepHints: string[] }), `QuestionBlock` ({ id, text, type: 'choice'|'text', choices?: string[] }), `AnswerRecord` ({ questionId, value, recordedAt }), `SessionBinding` ({ workerId, agentSessionId, headSha, gitIndexFile, hookProfile, lastSeenAt, capabilities: string[], status: 'idle'|'running'|'blocked' }), `SessionsStore` ({ schema_version:1, teamId, sessions: SessionBinding[] }), `MiningResult` ({ schema_version:1, runId, computedAt, latencyP50Ms, latencyP95Ms, toolCallTotal, hotspots: ToolHotspot[], friction: FrictionFinding[], teamReuseMissed: boolean }), `ToolHotspot` ({ tool, count, agentIds: string[] }), `FrictionFinding` ({ category: FrictionCategory, subcategory: string, agent: string, detail: string, time?: number }), `FrictionCategory` ('orient-churn'|'validate-loop'|'tool-inflation'|'ask-churn'|'enforcement-retry'), `GanttEntry` ({ nodeId, batchLevel, deps: string[], startOffset?: number, endOffset?: number }), `GanttChart` ({ schema_version:1, runId, entries: GanttEntry[], generatedAt }), `OptimizationNode` ({ id, desc, produces: string[], consumes: string[], rationale: string }). **FS helpers** in src/lib/metaflow/fs.ts: `runDir(runId, base?)` → string, `renderDir(runId, base?)` → string, `plainPath(runId, stepId, base?)` → string, `ansiPath(runId, stepId, base?)` → string, `ensureRunDir(runId, base?)` → void (mkdirSync recursive), `readMeta(runId, base?)` → RunMeta, `writeMeta(runId, meta, base?)` → void, `appendReceipt(runId, receipt, base?)` → void (append NDJSON line), `readSphinctreceipts(runId, base?)` → InteractionReceipt[], `readSessions(runId, base?)` → SessionsStore, `writeSessions(runId, store, base?)` → void. **runId generation** in src/lib/metaflow/run-id.ts: `generateRunId(headSha)` → RunId. **Command** `roadmap mf init [--run <id>] --note \"...\"` in bin/roadmap.ts: creates `.roadmap/metaflow/runs/<runId>/` directory tree, writes meta.json with strictReceipts defaulting to true (from .roadmap/metaflow/config.json if present, else true), prints JSON envelope with runId.",
-      "produces": [
-        "src/lib/metaflow/types.ts",
-        "src/lib/metaflow/fs.ts",
-        "src/lib/metaflow/run-id.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-init"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        },
-        {
-          "type": "intent",
-          "statement": "The RENDER/UX-2 MetaFlow plan is unambiguous and complete: all types, FS helpers, CLI commands, enforcement boundaries, and per-node acceptance criteria are defined with zero-question precision",
-          "confidence": 0.9,
-          "evaluator": "self",
-          "expandOnFail": true
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-interaction-receipt-writer": {
-      "id": "mf-interaction-receipt-writer",
-      "desc": "`InteractionReceiptWriter` class in src/lib/metaflow/receipt-writer.ts. Constructor: `(runId: RunId, opts: { base?: string })`. Methods: `begin(stepId, cmd, intent, audience)` → starts a step timer; `writeSnapshot(stepId, plain: string, ansi?: string)` → writes render/<stepId>.plain.txt and render/<stepId>.ansi.txt; `commit(stepId, evidence: { toolCalls: number })` → builds InteractionReceipt, appends to interactions.ndjson via appendReceipt(), returns receipt. **Envelope integration**: add optional `receiptRequired?: boolean` field to command registry (src/lib/metaflow/command-registry.ts — a JSON-keyed map of commandKey → { receiptRequired: boolean }; commandKey = first two argv tokens e.g. \"mf step\"). In bin/roadmap.ts emit(), after writing JSON to stdout: if strictReceipts (from current run meta.json if --mf-run is active, else false) AND commandKey is receipt-required AND no receipt committed → process.stderr.write error JSON + process.exit(3) with code INTERACTION_RECEIPT_MISSING. No env vars — strictReceipts comes only from meta.json or .roadmap/metaflow/config.json.",
-      "produces": [
-        "src/lib/metaflow/receipt-writer.ts",
-        "src/lib/metaflow/command-registry.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-init-schemas"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-session-binding": {
-      "id": "mf-session-binding",
-      "desc": "`SessionStore` class in src/lib/metaflow/session-store.ts. Methods: `register(runId, binding: Omit<SessionBinding, 'lastSeenAt' | 'status'>)` → writes/merges entry into sessions.json, status='running'; `touch(runId, workerId)` → updates lastSeenAt; `retire(runId, workerId)` → status='idle'; `findReusable(runId, capabilities: string[])` → returns first SessionBinding with status='idle' and superset capabilities, or null; `validate(runId)` → if sessions.json absent or empty → throws with code SESSION_BINDING_MISSING. **Command** `roadmap mf dispatch --run <runId> --worker-id <id> --agent-session <id> --git-index <path> --hook-profile <path> --capabilities <csv> --note \"...\"` → registers session; if findReusable() returns non-null AND a new registration is being added → appends TEAM_REUSE_MISSED finding to mining pre-findings (sessions.json reuse field). **Command** `roadmap mf retire-team --run <runId> --note \"...\"` → sets all sessions to idle. **Exit code enforcement**: any dispatch subcommand (mf dispatch, mf wrap) calls validate() first; SESSION_BINDING_MISSING → exit(3).",
-      "produces": [
-        "src/lib/metaflow/session-store.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-init-schemas"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-guided-ask-answer": {
-      "id": "mf-guided-ask-answer",
-      "desc": "Commands in bin/roadmap.ts and logic in src/lib/metaflow/ask.ts. `roadmap mf ask --run <runId> --step <stepId> --question-id <id> --text \"...\" --type choice --choices \"a,b,c\" --note \"...\"` → builds QuestionBlock, appends to meta.json questions[] array, emits it as a TutorialBlock in a receipt via InteractionReceiptWriter (receipt-required for this command). `roadmap mf answer --run <runId> --question-id <id> --value \"...\" --note \"...\"` → validates questionId exists in meta.json questions, appends AnswerRecord to meta.json answers[] array. Export types from src/lib/metaflow/ask.ts: `buildQuestionBlock`, `recordAnswer`, `getAnswers`.",
-      "produces": [
-        "src/lib/metaflow/ask.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-interaction-receipt-writer"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-gantt-render": {
-      "id": "mf-gantt-render",
-      "desc": "`render.gantt(dag, receipts, opts)` function in src/lib/render/gantt.ts. **Primary input**: DAG graph — uses `parallelOrder(g)` to compute batch levels → GanttEntry[]. Each node gets batchLevel = its parallelOrder index, deps from NodeSpec.deps, startOffset/endOffset from receipt latencyMs if a matching stepId exists in receipts[] (match by nodeId === stepId prefix). **ASCII renderer**: `renderGantt(chart: GanttChart, opts: RenderOpts)` → string with batch-level columns: node labels left-padded, bar blocks `█` proportional to endOffset-startOffset (or unit if no timing data), batch level as column header. **Command** `roadmap mf gantt --run <runId> [--dag-id <id>] --note \"...\"` → loads DAG from .roadmap/head.json, reads receipts via readReceipts(), calls gantt(), writes .roadmap/metaflow/runs/<runId>/gantt.json, renders ASCII to RenderV1 in envelope. Export from src/lib/render/index.ts. Snapshot-test against a fixture DAG.",
-      "produces": [
-        "src/lib/render/gantt.ts",
-        "src/lib/render/index.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-init-schemas"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-transcript-miner": {
-      "id": "mf-transcript-miner",
-      "desc": "First-class miner module in src/lib/metaflow/miner.ts. **Inputs**: InteractionReceipt[] (from readReceipts), SessionsStore (from readSessions), optional hooks.log path. **Friction detectors** (port + extend from regent transcript-pathology pattern): (1) `detectOrientChurn(receipts)` — counts receipts where cmd starts with \"roadmap orient\" within a run; flags if >3 sequential orients with no intervening \"complete\"; (2) `detectValidateLoop(receipts)` — cmd \"roadmap complete\" → \"roadmap validate\" pattern repeating >2x; (3) `detectToolInflation(sessions)` — same tool appearing in hotspots >5x for a single workerId within 60s window; (4) `detectAskChurn(receipts)` — mf ask/answer cycles >4 for same questionId; (5) `detectEnforcementRetry(hooksLog?)` — port of extractRetryPatterns from regent-transcript-pathology (denial of same tool within 10s). **Output**: `mine(receipts, sessions, hooksLogPath?)` → MiningResult: latencyP50/P95 computed from receipt evidence.latencyMs array, toolCallTotal summed, hotspots ranked, friction[] assembled, teamReuseMissed from sessions reuse field. Export: `mine`, `detectOrientChurn`, `detectValidateLoop`, `detectToolInflation`, `detectAskChurn`, `detectEnforcementRetry`.",
-      "produces": [
-        "src/lib/metaflow/miner.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-init-schemas"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-wrap-subcommand": {
-      "id": "mf-wrap-subcommand",
-      "desc": "`roadmap mf wrap --run <runId> --cmd \"roadmap complete X\" --step <stepId> --note \"...\"` in bin/roadmap.ts + src/lib/metaflow/wrap.ts. Logic: (1) validate run exists (readMeta); (2) validate session binding (SessionStore.validate); (3) begin receipt (InteractionReceiptWriter.begin); (4) spawn subprocess via `spawnSync` passing the command with shell:true; capture stdout+stderr buffers; (5) writeSnapshot with captured stderr as plain; (6) commit receipt with toolCalls:0 (subcommand is opaque) and actual latency; (7) write subprocess stdout to own stdout, subprocess stderr to own stderr. If strictReceipts and receipt not committed on subprocess error → exit(3) INTERACTION_RECEIPT_MISSING. `--mf-run <runId>` flag: wrap passes it as an extra arg to the subcommand if the subcommand is a roadmap command (detected by argv[0] === \"roadmap\"). Not an env var.",
-      "produces": [
-        "src/lib/metaflow/wrap.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-interaction-receipt-writer",
-        "mf-session-binding"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-mine-run": {
-      "id": "mf-mine-run",
-      "desc": "`roadmap mf mine --run <runId> --note \"...\"` in bin/roadmap.ts + src/lib/metaflow/mine-run.ts. Logic: (1) readReceipts(runId); (2) readSessions(runId); (3) optionally read ~/.claude/regent/hooks.log if it exists; (4) call mine(receipts, sessions, hooksLogPath); (5) write mining.json to run dir; (6) render MiningResult as RenderV1: latency table (p50/p95/total), hotspots table (tool | count | agents), friction list with category badges, teamReuseMissed warning if true; (7) emit envelope. A run is not \"complete\" until mining.json exists — mf-complete command (bonus: add `roadmap mf complete --run <runId>`) checks for mining.json presence and exits 3 with MINING_REQUIRED if absent.",
-      "produces": [
-        "src/lib/metaflow/mine-run.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-transcript-miner",
-        "mf-wrap-subcommand"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-opt-dag-generator": {
-      "id": "mf-opt-dag-generator",
-      "desc": "`roadmap mf opt --run <runId> [--emit] --note \"...\"` in bin/roadmap.ts + src/lib/metaflow/opt-dag.ts. Reads mining.json. **Mapping rules** (friction → optimization node): orient-churn → `opt-reduce-orient-churn` (desc: \"Cache orient result in run context; skip re-orient if headSha unchanged\"); validate-loop → `opt-validate-cache` (desc: \"Cache validator output keyed by nodeId+headSha\"); tool-inflation → `opt-merge-toolcalls` (desc: \"Batch repeated tool calls into single aggregate call\"); ask-churn → `opt-streamline-questions` (desc: \"Merge redundant questions into single decision block\"); enforcement-retry → `opt-fix-enforcement-gaps` (desc: \"Add pre-check before blocked tool call\"). teamReuseMissed → `opt-enforce-team-reuse` node. Each OptimizationNode gets: id, desc, produces: [`mining.json` patch path], consumes: [`mining.json`], rationale (friction detail). With `--emit`: writes optimization nodes to .roadmap/expansions/expand-opt-<runId>.ts and runs `roadmap expand` on it to commit the sub-DAG. Without `--emit`: dry-run, prints proposed nodes as JSON.",
-      "produces": [
-        "src/lib/metaflow/opt-dag.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-mine-run"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "intent-metaflow-guided-ux": {
-      "id": "intent-metaflow-guided-ux",
-      "desc": "Fixture-backed demonstration and full acceptance test suite. **Fixture run**: commit a synthetic MF run at `.roadmap/metaflow/runs/mf-fixture-001/` containing: meta.json (strictReceipts:true, runId:\"mf-fixture-001\"), interactions.ndjson (4 receipts: mf-init, mf ask, mf answer, mf wrap), sessions.json (1 session, status:idle), gantt.json (DAG-derived from mf-init-schemas node), mining.json (computed from fixture receipts — latencyP50:120, 2 friction findings). **Test file** tests/metaflow.test.ts — minimum 15 tests: (1) INTERACTION_RECEIPT_MISSING: invoke mf step with strictReceipts:true + no receipt committed → process exits 3; (2) receipt written: InteractionReceiptWriter.commit() → appends valid NDJSON to interactions.ndjson; (3) plain snapshot deterministic: same receipt input → identical .plain.txt on two writes; (4) ansi snapshot deterministic: same receipt → identical .ansi.txt; (5) SESSION_BINDING_MISSING: mf dispatch without prior register → exit 3; (6) session register + retire round-trip: register → status running, retire → idle; (7) TEAM_REUSE_MISSED: register when findReusable() non-null → reuse field set; (8) gantt from DAG: parallelOrder produces correct batchLevel assignments; (9) gantt ASCII render: stable snapshot against fixture; (10) orient churn detection: >3 sequential orient receipts → FrictionFinding category=orient-churn; (11) validate loop detection: complete→validate>2x → friction finding; (12) tool inflation: same tool >5x in 60s → hotspot; (13) mine produces mining.json with p50/p95; (14) opt-dag-generator maps friction → OptimizationNode correctly; (15) mf complete exits 3 MINING_REQUIRED if mining.json absent. tsc clean. All tests passing.",
-      "produces": [
-        "tests/metaflow.test.ts",
-        ".roadmap/metaflow/runs/mf-fixture-001/meta.json",
-        ".roadmap/metaflow/runs/mf-fixture-001/interactions.ndjson",
-        ".roadmap/metaflow/runs/mf-fixture-001/sessions.json",
-        ".roadmap/metaflow/runs/mf-fixture-001/gantt.json",
-        ".roadmap/metaflow/runs/mf-fixture-001/mining.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-opt-dag-generator",
-        "mf-gantt-render",
-        "mf-guided-ask-answer"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit && npx vitest run tests/metaflow.test.ts"
-        },
-        {
-          "type": "spec-conformance",
-          "spec": ".specify/specs/metaflow-ux-2/spec.md",
-          "scenario": "All acceptance scenarios pass (User Stories 1-6)",
-          "section": "Feature Specification"
-        },
-        {
-          "type": "shell",
-          "command": "test -f package.json && npm run test 2>&1 | grep -q 'test'",
-          "expectExitCode": 0
-        },
-        {
-          "type": "intent",
-          "statement": "MetaFlow is a complete governed interaction system: INTERACTION_RECEIPT_MISSING exits 3 on missing receipt, SESSION_BINDING_MISSING gates dispatch, mining.json is produced with friction taxonomy and latency percentiles, gantt derives from DAG parallelOrder, opt DAG generator maps friction findings to optimization nodes, all 15 acceptance tests pass, tsc clean",
-          "confidence": 0.85,
-          "evaluator": "self",
-          "expandOnFail": true,
-          "context": [
-            "src/lib/metaflow/",
-            "tests/metaflow.test.ts",
-            ".roadmap/metaflow/runs/mf-fixture-001/"
-          ]
-        }
-      ],
-      "idempotent": true,
-      "ambient": []
+      "mode": "plan"
     }
   },
   "version": "0.3.0",
   "protocolVersion": "0.3.0",
   "spec": {
-    "compiled_sha256": "c4487e0651c83efc20904a5c1baba0f8b0ff3cbb7d6752c2b2bce8b236792e8a",
+    "compiled_sha256": "1854b5e5343d093cef6f6551b23b79a54acf242598a129483d9f1e9d5bd8f24d",
     "engine": {
       "name": "speckit",
       "version": "0.1.0"
     },
     "inputs": [
       {
-        "path": ".specify/specs/metaflow-ux-2/tasks.md",
-        "sha256": "c4487e0651c83efc20904a5c1baba0f8b0ff3cbb7d6752c2b2bce8b236792e8a"
+        "path": ".specify/specs/tasks-fr-metaflow-001.md",
+        "sha256": "1854b5e5343d093cef6f6551b23b79a54acf242598a129483d9f1e9d5bd8f24d"
       }
     ]
   }
