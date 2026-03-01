@@ -392,5 +392,33 @@
     ],
     "gitSha": "20f3ea9f18d2d9b10699f1dad3e30c0fb0e3b3cf",
     "treeSha": "853932218882d620392ce06c1b6a774e5a4dc8ec"
+  },
+  {
+    "nodeId": "reorganize-utils-layer",
+    "completedAt": "2026-03-01T14:20:46.066Z",
+    "owner": "worker-utils",
+    "checkpointId": "cp-20260301142031",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/utils/index.ts"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npm run test -- tests/ --run 2>&1 | grep -q 'pass'"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npm run test -- tests/ --run 2>&1 | grep -q 'pass'",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "2e2b731a06e677022b3f06bf7a5fe803e467c5b2",
+    "treeSha": "1ddb8575f555a26a4ecb16a0068abffe51904d79"
   }
 ]
