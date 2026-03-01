@@ -4018,5 +4018,31 @@
     ],
     "gitSha": "599b270c821666777b392e2410e2d8e2beab7f86",
     "treeSha": "bb99fa09ade4c0337a1260198cde28fb1d7a5df4"
+  },
+  {
+    "nodeId": "rm-audit-opt-expansion",
+    "completedAt": "2026-03-01T01:33:36.864Z",
+    "owner": "w1",
+    "checkpointId": "cp-20260301013335",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit && npx vitest run tests/audit/opt-map.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit && npx vitest run tests/audit/opt-map.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "8fa08342437b2fdbc7ae44921355953437768e162d4eae9de82fc3f8262caedc",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/rm-audit-opt-expansion/mm72tfbj-bu8dh8/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "46f439ba5372e71142858431fc95053ed405bd04",
+    "treeSha": "da02ff3c544d98d51e0dca57b3fb052f30631552"
   }
 ]
