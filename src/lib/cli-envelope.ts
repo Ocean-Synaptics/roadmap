@@ -1,79 +1,169 @@
-// @module cli
-// @exports emit, json, maybeJSON
-// @types OutputOptions
+// @module cli-envelope
+// @exports emit, emitError, parseOutputOpts, CliEnvelope, CliError, OutputOpts, OutputFormat, ErrorCode, SCHEMA_VERSION, RenderV1, RenderSection
+// @entry roadmap/cli-envelope
 
-import { writeSync } from 'fs';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
-/**
- * CLI output envelope system.
- * Ensures consistent, JSON-compatible output format.
- * Separates JSON from text (documentation, progress) via different streams.
- */
+// --- Types ---
 
-export interface OutputOptions {
-  format?: 'json' | 'text';
-  cmd?: string;
-  render?: boolean;
+export const SCHEMA_VERSION = 1;
+
+export interface RenderSection {
+  id: string;
+  title: string;
+  body: string;
 }
 
-const _outputOpts: OutputOptions = {
-  format: process.argv.includes('--json') ? 'json' : 'text',
-  render: !process.argv.includes('--json'),
-};
-
-/**
- * Set output format globally.
- */
-export function setOutputFormat(opts: OutputOptions) {
-  Object.assign(_outputOpts, opts);
+export interface RenderV1 {
+  format: 'ansi' | 'plain';
+  mime: 'text/x-roadmap-ui';
+  title: string;
+  body: string;
+  sections?: RenderSection[];
 }
 
-/**
- * Emit JSON output to stdout (with render text to stderr if needed).
- */
-export function emit(data: any, opts?: OutputOptions) {
-  const mergedOpts = { ..._outputOpts, ...opts };
-  
-  if (mergedOpts.format === 'json') {
-    // JSON to stdout
-    console.log(JSON.stringify(data, null, 2));
-  } else if (data.render && mergedOpts.render) {
-    // Render text to stderr
-    console.error(data.render);
+export interface CliEnvelope<T = unknown> {
+  schema_version: number;
+  ok: boolean;
+  cmd: string;
+  repoRoot: string;
+  headSha: string | null;
+  data?: T;
+  render?: RenderV1;
+  error?: CliError;
+}
+
+export interface CliError {
+  code: string;
+  message: string;
+  fix?: string[];
+}
+
+export type OutputFormat = 'json' | 'human';
+
+export interface OutputOpts {
+  format: OutputFormat;
+  quiet: boolean;
+  cmd: string;
+  humanRenderer?: (data: unknown) => string;
+}
+
+// --- Error codes ---
+
+export const ErrorCode = {
+  PLAN_NOT_SELECTED: 'PLAN_NOT_SELECTED',
+  HEAD_SHA_MISMATCH: 'HEAD_SHA_MISMATCH',
+  VALIDATION_FAILED: 'VALIDATION_FAILED',
+  NODE_NOT_FOUND: 'NODE_NOT_FOUND',
+  BATCH_INCOMPLETE: 'BATCH_INCOMPLETE',
+  DAG_INVALID: 'DAG_INVALID',
+  INTERNAL_ERROR: 'INTERNAL_ERROR',
+  CLAIM_CONFLICT: 'CLAIM_CONFLICT',
+  COMPLETION_REJECTED: 'COMPLETION_REJECTED',
+  RENDER_MISSING: 'RENDER_MISSING',
+} as const;
+
+export type ErrorCodeValue = typeof ErrorCode[keyof typeof ErrorCode];
+
+// --- Helpers ---
+
+/** Read .roadmap/git-state.json, return lastCommit sha or null. Never throws. */
+export function getHeadSha(): string | null {
+  try {
+    const raw = readFileSync(join(process.cwd(), '.roadmap', 'git-state.json'), 'utf-8');
+    const parsed = JSON.parse(raw);
+    // git-state.json stores sha as `lastCommit`
+    if (typeof parsed.lastCommit === 'string') return parsed.lastCommit;
+    // fallback: head.hash from full GitState schema
+    if (parsed.head && typeof parsed.head.hash === 'string') return parsed.head.hash;
+    return null;
+  } catch {
+    return null;
   }
 }
 
-/**
- * Convenience: emit JSON object.
- */
-export function json(data: any) {
-  emit(data, { format: 'json' });
+/** Repo root — cwd as-is. */
+export function getRepoRoot(): string {
+  return process.cwd();
 }
 
-/**
- * Emit both JSON (stdout) and text (stderr).
- */
-export function maybeJSON(textOutput: string, jsonData: any, opts?: OutputOptions) {
-  const mergedOpts = { ..._outputOpts, ...opts };
-  
-  // Always output JSON to stdout
-  console.log(JSON.stringify(jsonData, null, 2));
-  
-  // Output render text to stderr (optional)
-  if (mergedOpts.render && textOutput) {
-    console.error(textOutput);
-  }
-}
+// --- Output opts parsing ---
 
 /**
- * Create a structured response object.
+ * Parse --human, --json, --quiet from args array.
+ * Precedence: default=json, --human=human, --json overrides --human.
  */
-export function createResponse<T>(data: T, opts: { cmd: string; ok?: boolean; error?: any }) {
-  return {
-    schema_version: 1,
-    ok: opts.ok !== undefined ? opts.ok : !opts.error,
-    cmd: opts.cmd,
-    data: opts.ok !== false ? data : undefined,
-    error: opts.error,
+export function parseOutputOpts(args: string[], cmd: string): OutputOpts {
+  const hasHuman = args.includes('--human');
+  const hasJson = args.includes('--json');
+  const hasQuiet = args.includes('--quiet');
+
+  let format: OutputFormat = 'json';
+  if (hasHuman && !hasJson) format = 'human';
+
+  return { format, quiet: hasQuiet, cmd };
+}
+
+// --- Emit ---
+
+type EmitResult =
+  | { ok: true; cmd: string; data: unknown }
+  | { ok: false; cmd: string; error: CliError };
+
+interface EmitOpts {
+  format: OutputFormat;
+  quiet: boolean;
+  humanRenderer?: (data: unknown) => string;
+  render?: RenderV1;
+}
+
+/** Single output funnel. Wraps result in envelope, writes to stdout. */
+export function emit(result: EmitResult, opts: EmitOpts): void {
+  const envelope: CliEnvelope = {
+    schema_version: SCHEMA_VERSION,
+    ok: result.ok,
+    cmd: result.cmd,
+    repoRoot: getRepoRoot(),
+    headSha: getHeadSha(),
   };
+
+  if (result.ok) {
+    envelope.data = result.data;
+  } else {
+    envelope.error = result.error;
+  }
+
+  if (opts.render) {
+    envelope.render = opts.render;
+  }
+
+  if (opts.quiet && result.ok) return;
+
+  if (opts.format === 'human' && opts.humanRenderer && result.ok) {
+    process.stdout.write(opts.humanRenderer(result.data) + '\n');
+    return;
+  }
+
+  // json format, or human without renderer — fall back to JSON
+  process.stdout.write(JSON.stringify(envelope, null, 2) + '\n');
+}
+
+/** Emit an error envelope and exit. */
+export function emitError(
+  cmd: string,
+  code: string,
+  message: string,
+  fix?: string[],
+  opts?: { format?: OutputFormat; quiet?: boolean },
+): never {
+  const error: CliError = { code, message };
+  if (fix && fix.length > 0) error.fix = fix;
+
+  emit(
+    { ok: false, cmd, error },
+    { format: opts?.format ?? 'json', quiet: opts?.quiet ?? false },
+  );
+
+  process.exit(1);
 }
