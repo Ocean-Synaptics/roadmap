@@ -5187,5 +5187,28 @@
     ],
     "gitSha": "9808d57460dac84bfde4f74a64ba1a90eec6cd4b",
     "treeSha": "e01e8051f8a461eeafc55d21e23390dceb618e5c"
+  },
+  {
+    "nodeId": "rkg6-convergence-metrics",
+    "completedAt": "2026-03-01T09:10:09.920Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301091008",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "fe847ab0cb87412748d9503cc4e8975ba6ab23c4",
+    "treeSha": "fd5a019f02fa6954891a19f804a76cb00cfcef64"
   }
 ]
