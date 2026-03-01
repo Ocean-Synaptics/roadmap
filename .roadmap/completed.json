@@ -568,5 +568,14 @@
     "validationChecks": [],
     "gitSha": "a92e99767ef930c00cbc14dc6e86ffc40ae38f96",
     "treeSha": "04847d1d173f465f28f62d6d26c33d96fc72e587"
+  },
+  {
+    "nodeId": "detector-intent-convergence-gap",
+    "completedAt": "2026-03-01T16:24:43.977Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301162443",
+    "validationChecks": [],
+    "gitSha": "12e57b3cf4aa45675dcce21db7e2898ccb838568",
+    "treeSha": "82ba6ec3774a1c80c662b0bbb3b9db81d58b9e1c"
   }
 ]
