@@ -108,13 +108,15 @@ describe('cli-envelope unit', () => {
       { ok: true, cmd: 'render-test', data: {} },
       {
         format: 'json', quiet: false,
-        render: { format: 'plain', mime: 'text/x-roadmap-ui', title: 'test', body: 'body' },
+        render: { format: 'plain', mime: 'text/x-roadmap-ui', title: 'test' },
       },
     );
     const env = lastEnvelope();
     expect(env.render).toBeDefined();
     expect(env.render!.format).toBe('plain');
     expect(env.render!.mime).toBe('text/x-roadmap-ui');
+    expect(env.render!.title).toBe('test');
+    expect(env.render!.body).toBeUndefined();
   });
 });
 

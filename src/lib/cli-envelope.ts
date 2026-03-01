@@ -19,8 +19,6 @@ export interface RenderV1 {
   format: 'ansi' | 'plain';
   mime: 'text/x-roadmap-ui';
   title: string;
-  body: string;
-  sections?: RenderSection[];
 }
 
 export interface CliEnvelope<T = unknown> {

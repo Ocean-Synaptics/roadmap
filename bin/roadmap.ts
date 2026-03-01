@@ -6901,7 +6901,6 @@ function json(obj: unknown, renderModel?: RenderModel) {
       format: _renderOpts.tty ? 'ansi' : 'plain',
       mime: 'text/x-roadmap-ui',
       title: renderModel.title,
-      body: renderOutput.plain,
     };
     process.stderr.write((renderOutput.ansi ?? renderOutput.plain) + '\n');
   } else if (!_outputOpts.quiet) {

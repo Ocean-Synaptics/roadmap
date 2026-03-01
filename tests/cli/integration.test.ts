@@ -114,7 +114,9 @@ describe('CLI Integration Suite', () => {
       expect(env!.ok).toBe(true);
       expect(env!.cmd).toBe('chart');
       expect(env!.render).toBeDefined();
-      expect(env!.render!.body.length).toBeGreaterThan(0);
+      expect(env!.render!.format).toBeDefined();
+      expect(env!.render!.title).toBeDefined();
+      expect(env!.render!.body).toBeUndefined();
     });
   });
 
@@ -362,11 +364,13 @@ describe('CLI Integration Suite', () => {
       expect(orientEnv).not.toBeNull();
       expect(chartEnv).not.toBeNull();
 
-      // Chart render body should reference the current level
+      // Chart render spec guides client-side rendering
       const orientData = orientEnv!.data as any;
-      const chartBody = chartEnv!.render?.body ?? '';
-      // The chart should contain level markers
-      expect(chartBody).toContain('L0');
+      const chartRenderSpec = chartEnv!.render;
+      // The render spec should define format and mime
+      expect(chartRenderSpec).toBeDefined();
+      expect(chartRenderSpec!.format).toBeDefined();
+      expect(chartRenderSpec!.mime).toBe('text/x-roadmap-ui');
     });
   });
 

@@ -42,11 +42,13 @@ describe('ui-snapshot: orient --check', () => {
     expect(typeof j.ok).toBe('boolean');
   });
 
-  it('stdout JSON has render.body string (non-empty)', () => {
+  it('stdout JSON has render spec (format, mime, title)', () => {
     const j = parsed();
     expect(j.render).toBeDefined();
-    expect(typeof j.render.body).toBe('string');
-    expect(j.render.body.length).toBeGreaterThan(0);
+    expect(j.render.format).toBeDefined();
+    expect(j.render.mime).toBeDefined();
+    expect(j.render.title).toBeDefined();
+    expect(j.render.body).toBeUndefined();
   });
 
   it('stdout JSON render.mime === text/x-roadmap-ui', () => {
@@ -54,36 +56,25 @@ describe('ui-snapshot: orient --check', () => {
     expect(j.render.mime).toBe('text/x-roadmap-ui');
   });
 
-  it('stderr contains render output (progress bar or DAG layer)', () => {
-    // stderr receives the rendered plain text from json() function
-    // Capture stderr properly via execFileSync error path or direct check
-    let stderr = '';
-    try {
-      execFileSync('npx', ['tsx', 'bin/roadmap.ts', 'orient', '--check', '--note', 'stderr-probe'], {
-        cwd: ROOT, encoding: 'utf-8',
-        env: { ...process.env, NO_COLOR: '1' },
-        timeout: 30_000,
-        stdio: ['pipe', 'pipe', 'pipe'],
-      });
-    } catch (e: any) {
-      stderr = e.stderr ?? '';
-    }
-    // For successful commands, execFileSync doesn't expose stderr via return
-    // The render output goes to stderr — verify via the JSON envelope which captures it
+  it('render spec guides client-side rendering (data contains structured output)', () => {
+    // Render output goes to stderr. The JSON envelope contains the data and render spec.
+    // Consumers must parse data and follow render.format to generate output.
     const j = parsed();
-    expect(j.render.body).toContain('L0');
+    expect(j.render).toBeDefined();
+    expect(j.render.format).toBeDefined();
+    expect(j.render.mime).toBe('text/x-roadmap-ui');
+    expect(j.data).toBeDefined();
   });
 
-  it('render.body contains progress bar characters', () => {
+  it('render.format specifies plain (NO_COLOR=1)', () => {
     const j = parsed();
-    const hasBar = j.render.body.includes('█') || j.render.body.includes('░');
-    expect(hasBar).toBe(true);
+    expect(j.render.format).toBe('plain');
   });
 
-  it('render.body does NOT contain ANSI escape codes (NO_COLOR=1)', () => {
+  it('render spec has valid format and mime', () => {
     const j = parsed();
-    // ANSI escape codes start with ESC[ (0x1b 0x5b)
-    expect(j.render.body).not.toMatch(/\x1b\[/);
+    expect(['ansi', 'plain']).toContain(j.render.format);
+    expect(j.render.mime).toBe('text/x-roadmap-ui');
   });
 });
 
@@ -97,11 +88,12 @@ describe('ui-snapshot: chart', () => {
     expect(j.cmd).toBe('chart');
   });
 
-  it('stdout JSON has render.body', () => {
+  it('stdout JSON has render spec', () => {
     const j = extractJson(result.stdout);
     expect(j.render).toBeDefined();
-    expect(typeof j.render.body).toBe('string');
-    expect(j.render.body.length).toBeGreaterThan(0);
+    expect(j.render.format).toBeDefined();
+    expect(j.render.mime).toBe('text/x-roadmap-ui');
+    expect(j.render.body).toBeUndefined();
   });
 });
 
@@ -138,11 +130,12 @@ describe('ui-snapshot: --quiet flag', () => {
 });
 
 describe('ui-snapshot: determinism', () => {
-  it('orient render.body is deterministic across two runs', () => {
+  it('orient render.format and data are deterministic across two runs', () => {
     const r1 = runCmd(['orient', '--check', '--note', 'det-1']);
     const r2 = runCmd(['orient', '--check', '--note', 'det-2']);
     const j1 = extractJson(r1.stdout);
     const j2 = extractJson(r2.stdout);
-    expect(j1.render.body).toBe(j2.render.body);
+    expect(j1.render.format).toBe(j2.render.format);
+    expect(JSON.stringify(j1.data)).toBe(JSON.stringify(j2.data));
   });
 });
