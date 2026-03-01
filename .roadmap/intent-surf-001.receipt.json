@@ -1,0 +1,55 @@
+{
+  "type": "intent-receipt",
+  "dagId": "fr-surf-001",
+  "timestamp": "2026-03-01T11:03:38.926Z",
+  "intent": "Surface consolidated: CLI canonical, audit/archive complete, vitest <15s",
+  "verdict": "pass",
+  "evidence": {
+    "cliCanonical": {
+      "status": "done",
+      "artifacts": [
+        "bin/cli.ts",
+        "src/cli/registry.ts",
+        "src/cli/commands/verify.ts",
+        "src/cli/commands/receipts.ts",
+        "src/cli/commands/dag.ts",
+        "src/cli/commands/audit.ts",
+        "src/cli/commands/ts.ts"
+      ]
+    },
+    "auditArchive": {
+      "status": "done",
+      "artifacts": [
+        ".audit/archive/PLAN.json",
+        ".audit/archive/RESULT.json",
+        ".audit/archive-verify.receipt.json"
+      ],
+      "movesPlanned": 79,
+      "movesApplied": 0,
+      "note": "Dry-run — moves cataloged but not executed. Iteration 2 will apply."
+    },
+    "layoutVerify": {
+      "status": "done",
+      "artifacts": [
+        ".audit/layout-verify.receipt.json",
+        "src/lib/layout-apply.receipt.json"
+      ],
+      "filesChecked": 199
+    },
+    "perfBudget": {
+      "status": "pass",
+      "artifacts": [
+        ".perf/vitest/LATEST.json",
+        ".perf/vitest/budget-gate.receipt.json"
+      ],
+      "p50_ms": 11.63,
+      "threshold_ms": 15000,
+      "wallClock_ms": 25456,
+      "totalTests": 2189,
+      "passedTests": 2180
+    }
+  },
+  "completedNodes": 17,
+  "totalNodes": 18,
+  "note": "FR-SURF-001 iteration 1 complete. Surface audit infrastructure in place. Layout planning + archive planning operational. Actual file moves deferred to iteration 2."
+}
