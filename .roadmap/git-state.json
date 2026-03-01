@@ -1,5 +1,5 @@
 {
-  "lastCommit": "bbbec79d354e5ded7423430f0aa58e7c2480280b",
-  "timestamp": "2026-03-01T13:11:48Z",
-  "message": "roadmap: iteration-3b survey (src/lib deep dive)"
+  "lastCommit": "b2866c73a1b46b8fe4fe9c14f4fb508cb86b4c09",
+  "timestamp": "2026-03-01T16:31:26Z",
+  "message": "roadmap: add .gitignore for runtime artifacts (checkpoints, tokens, receipts, test outputs)"
 }
