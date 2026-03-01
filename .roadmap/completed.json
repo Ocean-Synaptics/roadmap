@@ -448,5 +448,20 @@
     ],
     "gitSha": "502698ce0eb7dbb3cd85c10d954d5c82c526f972",
     "treeSha": "3d3063d298907b579baa1ccbdc43e9891866f7a0"
+  },
+  {
+    "nodeId": "verify-structure",
+    "completedAt": "2026-03-01T14:26:43.952Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301142643",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: structure-audit.json"
+      }
+    ],
+    "gitSha": "f33aab6a406c2f264bc41e7815fb67e1d701be8d",
+    "treeSha": "21a686e0592a47bf52b224457aa738fded944ef4"
   }
 ]
