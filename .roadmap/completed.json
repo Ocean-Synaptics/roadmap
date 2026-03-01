@@ -6043,5 +6043,20 @@
     ],
     "gitSha": "258cf95eee53f689f4345ccdcb386d3893bb519f",
     "treeSha": "260eaae3d15f6d8697b8a125dd7d9ae317719269"
+  },
+  {
+    "nodeId": "surf-cli-wrap-core",
+    "completedAt": "2026-03-01T10:51:52.065Z",
+    "owner": "w-wrap-core",
+    "checkpointId": "cp-20260301105152",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/cli/commands/verify.ts"
+      }
+    ],
+    "gitSha": "a7f5051c180746b160cc07c6476a9048fb27f8c4",
+    "treeSha": "345a6fb8c835374b94a9d7f82a9fed63298d7ad8"
   }
 ]
