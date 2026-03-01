@@ -6213,5 +6213,20 @@
     ],
     "gitSha": "a910a1793537f60a4216dd7993bfd4caf40f5841",
     "treeSha": "e1d05b1e653bc6d83121e5731b104bc40bc46d5c"
+  },
+  {
+    "nodeId": "surf-perf-vitest-cmd",
+    "completedAt": "2026-03-01T11:01:31.767Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301110131",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .perf/vitest/LATEST.json"
+      }
+    ],
+    "gitSha": "6824395fc5072b2abe104345a88eaf30d9ea862a",
+    "treeSha": "4ff4bf3b044c61087640b6616337f9c4c4782bf2"
   }
 ]
