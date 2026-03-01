@@ -1419,5 +1419,35 @@
     ],
     "gitSha": "199ca296ef6e39c9bb82083b2dc3db298050b284",
     "treeSha": "9fdd75e9e1e6223c633c03d36d11fb33f6688933"
+  },
+  {
+    "nodeId": "iter-9-propose",
+    "completedAt": "2026-03-01T22:05:37.320Z",
+    "owner": "claims-handler",
+    "checkpointId": "cp-20260301220537",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .roadmap/metaflow-optimizer/iter-9/proposals.json"
+      }
+    ],
+    "gitSha": "70bdb0ea570442236c1eee43cc22a9ddb5d59edf",
+    "treeSha": "3ad6826047413b72c80750034ab50b8d742899a5"
+  },
+  {
+    "nodeId": "iter-9-implement",
+    "completedAt": "2026-03-01T22:13:29.506Z",
+    "owner": "claims-handler",
+    "checkpointId": "cp-20260301221329",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .roadmap/metaflow-optimizer/iter-9/impl.json"
+      }
+    ],
+    "gitSha": "c108023dc57b0e8ccb6349343908be56b7d3fb9e",
+    "treeSha": "5b132019e204960025f62a37fc293dbccfbcd3cc"
   }
 ]
