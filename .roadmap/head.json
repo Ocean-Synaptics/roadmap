@@ -1,224 +1,491 @@
 {
-  "id": "fr-metaflow-001",
+  "id": "fr-rm-audit-stack",
   "desc": "Imported from spec-kit",
-  "init": "mf-sv-init",
-  "term": "intent-metaflow-sovereignty",
+  "init": "rm-audit-contract",
+  "term": "intent-metaflow-self-inserting-sovereign",
   "nodes": {
-    "mf-sv-init": {
-      "id": "mf-sv-init",
-      "desc": "bootstrap metaflow sovereignty scaffolding — flow-schema.ts (flow step types, render field, stage_min/max, requires_authority) and authority-schema.ts (.governance/authority.json: kernel, stage, treeSha, since, receipt); no authority required for init; typecheck clean",
+    "rm-audit-contract": {
+      "id": "rm-audit-contract",
+      "desc": "Existing codebase — src/lib/metaflow/ (all modules), bin/roadmap.ts, src/lib/render/, src/lib/import/",
       "produces": [
-        "src/lib/metaflow/flow-schema.ts",
-        "src/lib/metaflow/authority-schema.ts"
+        "src/lib/metaflow/types.ts",
+        "src/lib/metaflow/miner.ts",
+        "bin/roadmap.ts"
       ],
       "consumes": [],
       "deps": [],
       "validate": [
         {
-          "type": "shell",
-          "command": "pnpm -s tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-sv-authority": {
-      "id": "mf-sv-authority",
-      "desc": "authority.json contract + helpers — read/write/verify treeSha binding; UNGOVERNED state detection (absent authority.json → only metaflow init allowed); authority helpers used by all subsequent commands; unit tests cover: write → read → verify round-trip, treeSha mismatch detection, UNGOVERNED_REPO error",
-      "produces": [
-        "src/lib/metaflow/authority.ts",
-        "tests/metaflow/authority.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-sv-init"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "pnpm -s tsc --noEmit"
-        },
-        {
-          "type": "shell",
-          "command": "pnpm -s vitest run tests/metaflow/authority.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-sv-flow-registry": {
-      "id": "mf-sv-flow-registry",
-      "desc": "flow registry loader + schema validation — INDEX.json + per-flow files under .roadmap/flows/; load + validate on startup; reject malformed flows at load time with structured error; unit tests cover: load valid registry, reject invalid schema, empty registry → empty list",
-      "produces": [
-        "src/lib/metaflow/flows.ts",
-        "tests/metaflow/flows.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-sv-init"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "pnpm -s tsc --noEmit"
-        },
-        {
-          "type": "shell",
-          "command": "pnpm -s vitest run tests/metaflow/flows.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-sv-render-receipts": {
-      "id": "mf-sv-render-receipts",
-      "desc": "mandatory render receipts — store human-readable view as .roadmap/render/<cmd>-<treeSha>.md + JSON sidecar .roadmap/render/<cmd>-<treeSha>.json; metaflow render --last re-renders from last JSON envelope + writes receipt; render receipt required for interactive commands; unit tests: write → read back, re-render idempotent, missing receipt → error on verify",
-      "produces": [
-        "src/lib/metaflow/render-receipt.ts",
-        "tests/metaflow/render.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-sv-authority"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "pnpm -s tsc --noEmit"
-        },
-        {
-          "type": "shell",
-          "command": "pnpm -s vitest run tests/metaflow/render.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-sv-cli-surface": {
-      "id": "mf-sv-cli-surface",
-      "desc": "roadmap metaflow subcommands — init / status / list / run / render / verify; integrate with existing JSON envelope + --human renderer (no second formatting system); metaflow run requires authority.json or returns UNGOVERNED_REPO; unit tests for each command in isolation",
-      "produces": [
-        "src/lib/metaflow/cli-sovereignty.ts",
-        "tests/metaflow/cli.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-sv-flow-registry",
-        "mf-sv-render-receipts"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "pnpm -s tsc --noEmit"
-        },
-        {
-          "type": "shell",
-          "command": "pnpm -s vitest run tests/metaflow/cli.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-sv-no-env-bypass": {
-      "id": "mf-sv-no-env-bypass",
-      "desc": "remove/deny env-variable bypass behavior — any bypass requires explicit receipt written under .roadmap/receipts/ with passed:false + reason; SKIP_* env vars do not affect behavior; test: set SKIP_PLAN_GATE=1 → verify no effect on metaflow run; no global state outside .roadmap/ + .governance/",
-      "produces": [
-        "src/lib/metaflow/guards.ts",
-        "tests/metaflow/bypass.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-sv-cli-surface"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "pnpm -s tsc --noEmit"
-        },
-        {
-          "type": "shell",
-          "command": "pnpm -s vitest run tests/metaflow/bypass.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-sv-kernel-integration": {
-      "id": "mf-sv-kernel-integration",
-      "desc": "integrate metaflow with existing kernel invariants — plan-select receipt + spec-origin receipt required for metaflow run when authority.json exists; no logic duplication (bridge to existing kernel, not fork); tests: metaflow run without plan-select receipt → fails; with receipt → proceeds",
-      "produces": [
-        "src/lib/metaflow/kernel-bridge.ts",
-        "tests/metaflow/kernel-bridge.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-sv-no-env-bypass"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "pnpm -s tsc --noEmit"
-        },
-        {
-          "type": "shell",
-          "command": "pnpm -s vitest run tests/metaflow/kernel-bridge.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "mf-sv-terminal-invariants": {
-      "id": "mf-sv-terminal-invariants",
-      "desc": "metaflow verify — all invariants checked: authority present + kernel correct, schemas valid, receipts treeSha-bound, render receipts present where required, no env bypass active; e2e test suite: A) no plan-select → fail, B) SKIP_PLAN_GATE=1 → no effect, C) --human write render receipt, D) treeSha mismatch → TREE_SHA_MISMATCH, E) no authority.json → UNGOVERNED_REPO on non-init",
-      "produces": [
-        "src/lib/metaflow/verify.ts",
-        "tests/metaflow/verify.e2e.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-sv-kernel-integration"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "pnpm -s tsc --noEmit"
-        },
-        {
-          "type": "shell",
-          "command": "pnpm -s vitest run tests/metaflow/verify.e2e.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "intent-metaflow-sovereignty": {
-      "id": "intent-metaflow-sovereignty",
-      "desc": "terminal intent — once authority.json exists, every workflow routes through metaflow and produces render receipts; authority marker is sovereign; no env bypass survives; SOVEREIGNTY.md documents the invariant set and acceptance evidence",
-      "produces": [
-        "docs/metaflow/SOVEREIGNTY.md"
-      ],
-      "consumes": [],
-      "deps": [
-        "mf-sv-terminal-invariants"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "test -f docs/metaflow/SOVEREIGNTY.md"
-        },
-        {
-          "type": "shell",
-          "command": "pnpm -s tsc --noEmit"
+          "type": "spec-conformance",
+          "spec": ".specify/specs/fr-rm-audit-stack/spec.md",
+          "scenario": "Plan clarity validated against feature spec",
+          "section": "Specification"
         }
       ],
       "idempotent": true,
-      "mode": "plan"
+      "ambient": [
+        ".specify/specs/fr-rm-audit-stack/spec.md",
+        ".specify/specs/fr-rm-audit-stack/tasks.md"
+      ]
+    },
+    "rm-audit-schema": {
+      "id": "rm-audit-schema",
+      "desc": "REQUIRED.json contract + TypeScript schema + operator docs. **`src/lib/metaflow/audit/required-schema.ts`**: types `AuditContract` ({ schema_version:1, version:string, thresholds:{ latencyP95MaxMs:number, toolCallInflationMax:number, orientChurnMax:number }, requiredDetectors:string[], requiredTerminalNodeId:string, bindFields:['treeSha','sessionIds','runId'] }), `AuditReport` ({ schema_version:1, runId, treeSha, sessionIds:string[], computedAt:string, passed:boolean, detectorResults:DetectorResult[] }), `DetectorResult` ({ code:string, passed:boolean, evidence:string[], fix:string[] }), `AuditReceipt` ({ schema_version:1, runId, treeSha, sessionIds:string[], passed:boolean, reason?:string, reportPath:string, emittedAt:string }). **`.roadmap/metaflow/audit/REQUIRED.json`**: `{ schema_version:1, version:\"1.0.0\", thresholds:{ latencyP95MaxMs:5000, toolCallInflationMax:10, orientChurnMax:3 }, requiredDetectors:[\"RD-001\",\"RD-002\",\"RD-003\",\"IR-001\",\"IR-002\",\"IR-003\",\"IR-004\",\"IR-005\",\"PE-001\",\"PE-002\",\"MF-001\",\"MF-002\",\"MF-003\",\"MF-004\",\"MF-005\"], requiredTerminalNodeId:\"intent-metaflow-audit-required\", bindFields:[\"treeSha\",\"sessionIds\",\"runId\"] }`. **`docs/metaflow/AUDIT_REQUIRED.md`**: operator contract — what each detector checks, failure→fix steps, how to wire audit tail into a new spec, exemption taxonomy.",
+      "produces": [
+        "src/lib/metaflow/audit/required-schema.ts",
+        ".roadmap/metaflow/audit/REQUIRED.json",
+        "docs/metaflow/AUDIT_REQUIRED.md"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-audit-contract"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        },
+        {
+          "type": "intent",
+          "statement": "The FR-RM-AUDIT-STACK plan is unambiguous: all 22 nodes have explicit produces, validates, and acceptance criteria; the three-spec chain (010 process audit → 012 CLI compliance → 013 MetaFlow sovereignty) is well-defined with zero-question executable nodes",
+          "confidence": 0.9,
+          "evaluator": "self",
+          "expandOnFail": true
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-audit-engine": {
+      "id": "rm-audit-engine",
+      "desc": "Core audit engine. **`src/lib/metaflow/audit/audit.ts`**: `runAudit(runId, detectors, opts:{base?,treeSha?,sessionIds?})` → reads REQUIRED.json thresholds, reads MiningResult via readMining(), runs each detector, builds AuditReport, writes `.roadmap/metaflow/audit/<runId>.json`, writes AuditReceipt via writeAuditReceipt(), returns AuditReport. `loadRequired(base?)` → reads REQUIRED.json. **`src/lib/metaflow/audit/report.ts`**: `buildReport(runId, treeSha, sessionIds, results, contract)` → AuditReport; `renderReport(report, opts:RenderOpts)` → string: per-detector table (code | ✅/❌ | evidence snippet | fix[0]), summary line (N/M passed), PASSED/FAILED banner. **`src/lib/metaflow/audit/receipt.ts`**: `writeAuditReceipt(runId, treeSha, sessionIds, report, base?)` → AuditReceipt to `.roadmap/receipts/audit-<runId>.json`; `readAuditReceipt(runId, base?)` → AuditReceipt; `auditReceiptExists(runId, base?)` → boolean. **Test** `tests/audit/audit-engine.test.ts`: 6 tests — all-passing detectors → passed:true receipt; one failing → passed:false; report render contains PASSED/FAILED banner; receipt written to correct path; loadRequired reads thresholds; treeSha+sessionIds bound in output.",
+      "produces": [
+        "src/lib/metaflow/audit/audit.ts",
+        "src/lib/metaflow/audit/report.ts",
+        "src/lib/metaflow/audit/receipt.ts",
+        "tests/audit/audit-engine.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-audit-schema"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/audit/audit-engine.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-audit-detectors-display": {
+      "id": "rm-audit-detectors-display",
+      "desc": "Rich display regression detectors RD-001..003. **`src/lib/metaflow/audit/detectors/display.ts`**: exports `detectDisplayRegression(receipts:InteractionReceipt[], opts:{required?:string[]})` → `DetectorResult[]`. **RD-001** `detectMissingTable`: for receipts where cmd includes orient/chart/gantt/mine/verify AND audience==='user' — check render.plainPath file contains at least one `|`; fail if absent. **RD-002** `detectMissingDagRender`: for orient/chart receipts — check plain render contains at least one of: `L0`, `L00`, `conflict`, `critical`; fail if none. **RD-003** `detectMissingProgressBar`: for complete/chart receipts — check plain render contains `█`, `░`, or `[`; fail if missing. Each returns `{code, passed, evidence:string[], fix:string[]}`. **Test** `tests/audit/display-detectors.test.ts`: 8 tests — RD-001 passes with table; fails without; RD-002 passes with batch markers; fails without; RD-003 passes with bar; fails without; detectDisplayRegression returns 3 results; all-pass on well-formed fixture.",
+      "produces": [
+        "src/lib/metaflow/audit/detectors/display.ts",
+        "tests/audit/display-detectors.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-audit-engine"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/audit/display-detectors.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-audit-detectors-integration": {
+      "id": "rm-audit-detectors-integration",
+      "desc": "Integration rough point detectors IR-001..005 + PE-001. **`src/lib/metaflow/audit/detectors/integration.ts`**: exports `detectIntegrationRoughPoints(receipts, sessions, miningResult, opts:{base?,repoRoot?})` → `DetectorResult[]`. **IR-001** `detectMissingPlanReceipt`: check `.roadmap/receipts/PLAN_SELECTED.json` exists and headSha matches `git rev-parse HEAD`; fail if absent or mismatched. **IR-002** `detectAuthorityMarker`: check `.roadmap/git-state.json` activePlan matches current dag id; fail if null or mismatched. **IR-003** `detectReceiptChainGaps`: scan receipts for receipt-required command (COMMAND_REGISTRY) without a matching InteractionReceipt for that stepId; fail if count > 0. **IR-004** `detectCompletedDrift`: `git status --porcelain .roadmap/completed.json` — if dirty AND last-commit mtime for completed.json older than its file mtime → finding. **IR-005** `detectToolCallHotspots`: check MiningResult hotspots for count > contract.thresholds.toolCallInflationMax OR latencyP95Ms > latencyP95MaxMs. **PE-001** `detectProcessEscape`: if `.roadmap/metaflow/runs/` exists AND any receipt cmd not in COMMAND_REGISTRY and not `roadmap mf *` → finding. **Test** `tests/audit/integration-detectors.test.ts`: 8 tests — IR-001 passes with valid PLAN_SELECTED; IR-002 passes with matching activePlan; IR-004 fires on dirty completed.json (mock git); IR-005 fires on high hotspot count; IR-005 fires on high latency; PE-001 fires on unregistered command; all pass on clean fixture; 6 detectors returned total.",
+      "produces": [
+        "src/lib/metaflow/audit/detectors/integration.ts",
+        "tests/audit/integration-detectors.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-audit-engine"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/audit/integration-detectors.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-completion-autocommit": {
+      "id": "rm-completion-autocommit",
+      "desc": "Deterministic completion commits. **`src/lib/completion/auto-commit.ts`**: `isCompletionDirty(repoRoot)` → runs `git status --porcelain .roadmap/completed.json .roadmap/receipts/` via execSync, returns boolean. `autoCommitCompletion(nodeId, repoRoot)` → if dirty: `git add .roadmap/completed.json .roadmap/receipts/` then `git commit --no-verify -m \"roadmap: auto-commit completion state — <nodeId>\"`; on success return `{committed:true}`; on failure write non-passing AuditReceipt with reason `completion-autocommit-failed` return `{committed:false,receipt}`; if clean return `{committed:false,reason:'nothing-dirty'}`. **Wire into `bin/roadmap.ts`** cmdComplete: after existing completion logic, call `autoCommitCompletion(nodeId, repoRoot)`. `--no-commit` flag: skip autocommit + write non-passing receipt with reason. No env bypass. **Test** `tests/completion/auto-commit.test.ts`: 6 tests — isCompletionDirty true on modified completed.json; autoCommitCompletion triggers git add+commit; returns committed:false on clean; --no-commit writes non-passing receipt; failed commit writes non-passing receipt; post-commit isCompletionDirty false.",
+      "produces": [
+        "src/lib/completion/auto-commit.ts",
+        "bin/roadmap.ts",
+        "tests/completion/auto-commit.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-audit-engine"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/completion/auto-commit.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-import-audit-tail-gate": {
+      "id": "rm-import-audit-tail-gate",
+      "desc": "Enforce required audit terminal at import time. **`src/lib/import/audit-tail-gate.ts`**: `validateAuditTail(g:Graph<string>, contract:AuditContract)` → checks graph contains a terminal node matching `contract.requiredTerminalNodeId` or pattern `intent-metaflow-audit-*`; if missing → `{passed:false, code:'AUDIT_TERMINAL_MISSING', fix:['roadmap mf audit-tail emit --dag <id>']}`. `isAuditTailPresent(g)` → boolean. **Wire into `bin/roadmap.ts`** cmdImport: after graph build, call `validateAuditTail(g, loadRequired())`; if not passed → stderr error JSON + exit(3) with AUDIT_TERMINAL_MISSING. `--skip-audit-tail` flag writes non-passing AuditReceipt with reason instead of exiting. **Test** `tests/import/audit-tail-gate.test.ts`: 6 tests — passes on graph with matching terminal; fails AUDIT_TERMINAL_MISSING on graph without; isAuditTailPresent both cases; cmdImport exit 3 on missing (execSync integration); --skip-audit-tail writes non-passing receipt; passes with intent-metaflow-audit-required as terminal.",
+      "produces": [
+        "src/lib/import/audit-tail-gate.ts",
+        "tests/import/audit-tail-gate.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-audit-detectors-integration"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/import/audit-tail-gate.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-cli-mf-audit": {
+      "id": "rm-cli-mf-audit",
+      "desc": "CLI surface for audit. **`src/lib/metaflow/audit/cli.ts`**: `cmdMfAudit(runId, opts:{required?,base?})` → if --required: reads REQUIRED.json, renders table (detector code | threshold | requiredTerminalNodeId), emits JSON+RenderV1; else: calls `runAudit(runId, allDetectors, opts)`, renders AuditReport, emits JSON+render. `cmdAuditTailEmit(dagId)` → reads REQUIRED.json, produces canonical IR snippet (tasks.md fragment) for audit tail nodes: intent-metaflow-audit-required + its standard deps — a ready-to-merge IR block that can be appended to any spec. **Wire into `bin/roadmap.ts`**: `mf audit` + `mf audit-tail` cases. **Test** `tests/audit/cli.e2e.test.ts`: 8 tests — `mf audit --required` outputs REQUIRED.json fields; `mf audit --run mf-fixture-001` produces schema_version:1 AuditReport JSON; PASSED/FAILED banner in render; receipt at correct path; `mf audit-tail emit` outputs valid tasks.md fragment with intent-metaflow-audit-required; fragment parseable by import pipeline; all-pass on clean fixture run; re-run idempotent.",
+      "produces": [
+        "src/lib/metaflow/audit/cli.ts",
+        "tests/audit/cli.e2e.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-audit-detectors-display",
+        "rm-import-audit-tail-gate"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/audit/cli.e2e.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-audit-opt-expansion": {
+      "id": "rm-audit-opt-expansion",
+      "desc": "Map detector findings to OptimizationNodes. **`src/lib/metaflow/audit/opt-map.ts`**: `DETECTOR_TO_OPT:Record<string,{id:string;desc:string}>` for all 9 base detector codes + 5 MF codes (mapped in later phase). `buildAuditOptNodes(report:AuditReport)` → `OptimizationNode[]` for each failing detector, deduped by id. `emitAuditOptExpansion(runId, nodes, base?)` → writes `.roadmap/expansions/expand-audit-opt-<runId>.ts`. **Wire into `bin/roadmap.ts`** mf opt: also run buildAuditOptNodes if audit report exists for run. **Test** `tests/audit/opt-map.test.ts`: 6 tests — DETECTOR_TO_OPT has all 9 codes; buildAuditOptNodes maps failing RD-001 → opt-add-tables node; deduplicates; emitAuditOptExpansion writes valid TS; file imports from protocol.ts; re-emit idempotent.",
+      "produces": [
+        "src/lib/metaflow/audit/opt-map.ts",
+        "tests/audit/opt-map.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-cli-mf-audit"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/audit/opt-map.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "intent-metaflow-audit-required": {
+      "id": "intent-metaflow-audit-required",
+      "desc": "Terminal gate for 010 — passing audit receipt bound to treeSha+sessionIds, all detectors satisfied, display invariants met, completed.json drift prevented. Runs all 010 test suites end-to-end.",
+      "produces": [
+        ".roadmap/metaflow/audit/REQUIRED.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-audit-opt-expansion",
+        "rm-completion-autocommit"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/audit/ && npx vitest run tests/completion/ && npx vitest run tests/import/"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-cli-inventory-cmd": {
+      "id": "rm-cli-inventory-cmd",
+      "desc": "CLI command registry inventory. **`src/lib/cli/inventory.ts`**: `CommandEntry` type: `{ id:string, tokens:string[], description:string, flags:string[], mustHaveDisplayReceipt:boolean, exempt?:{exemptClass:'plumbing'|'internal'|'deprecated', exemptReason:string, removalPlanNode?:string}, requiredSignals:string[], examples:string[] }`. `buildInventory(argv:string[][])` → scans bin/roadmap.ts switch cases (or reads a COMMAND_MANIFEST.json if present) and builds CommandEntry[]. `validateInventory(entries)` → fails any non-exempt entry without examples[] (MISSING_EXAMPLE_VECTOR). `writeInventory(entries, base?)` → writes `.roadmap/cli/commands.json`. **`roadmap cli inventory [--write]`** command in bin/roadmap.ts: builds inventory, validates, if --write writes commands.json, emits JSON+render (table: command | receipt-required | exempt | examples-count). **Test** `tests/cli/inventory.test.ts`: 6 tests — buildInventory returns entries for known commands; non-exempt with no examples fails validation; exempt entry passes without examples; --write produces commands.json; commands.json is deterministic (second run diff-empty); requiredSignals propagated from COMMAND_REGISTRY.",
+      "produces": [
+        "src/lib/cli/inventory.ts",
+        "tests/cli/inventory.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "intent-metaflow-audit-required"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/cli/inventory.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-cli-audit-runner": {
+      "id": "rm-cli-audit-runner",
+      "desc": "Compliance audit runner with fast/full sampling. **`src/lib/cli/audit.ts`**: `ComplianceState` = 'COMPLIANT'|'EXEMPT'|'NONCOMPLIANT'. `ComplianceResult` = `{id, tokens, state, evidence:string[], failingInvariant?:string}`. `auditCommand(entry:CommandEntry, mode:'fast'|'full')` → for non-exempt: runs entry.examples[0] via execSync, checks DisplayReceipt exists + ok:true + requiredSignals present; returns ComplianceResult. For exempt: verifies machine-only JSON envelope (no display receipt needed). **`src/lib/cli/audit-samples.ts`**: `FAST_SAMPLE = ['orient','chart','mf.gantt','mf.mine','mf.audit','mf.wrap','receipts.show']` — critical command subset for fast mode. `runComplianceAudit(mode:'fast'|'full', base?)` → loads commands.json, runs auditCommand per entry (fast: FAST_SAMPLE only), returns ComplianceResult[]. **`roadmap cli audit [--sample fast|full] [--json]`** in bin/roadmap.ts. **Test** `tests/cli/audit.e2e.test.ts`: 6 tests — auditCommand COMPLIANT on well-formed receipt; NONCOMPLIANT on missing receipt; EXEMPT on exempt entry; fast mode runs only sample; full mode runs all; compliance report JSON has schema_version:1.",
+      "produces": [
+        "src/lib/cli/audit.ts",
+        "src/lib/cli/audit-samples.ts",
+        "tests/cli/audit.e2e.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-cli-inventory-cmd"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/cli/audit.e2e.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-cli-compliance-tests": {
+      "id": "rm-cli-compliance-tests",
+      "desc": "100% coverage compliance test harness. **`tests/cli/compliance.e2e.test.ts`**: one test per command in inventory — for non-exempt: invokes command example, asserts DisplayReceipt exists + ok:true + requiredSignals. For exempt: asserts no DisplayReceipt written and output is valid JSON. All commands covered; any NONCOMPLIANT fails the suite. **`tests/cli/exemptions.test.ts`**: for each exempt command — asserts exemptClass is valid enum value; asserts exemptReason is non-empty; asserts machine-only JSON output (no ansi in stdout); for deprecated: asserts removalPlanNode is set. Exemption count capped at 10 (assertion); each internal/deprecated exemption must have removalPlanNode.",
+      "produces": [
+        "tests/cli/compliance.e2e.test.ts",
+        "tests/cli/exemptions.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-cli-audit-runner"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/cli/compliance.e2e.test.ts && npx vitest run tests/cli/exemptions.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-doctor-cli-compliance": {
+      "id": "rm-doctor-cli-compliance",
+      "desc": "Human-readable compliance status. **`src/lib/cli/doctor-cli.ts`**: `renderCliCompliance(results:ComplianceResult[], opts:RenderOpts)` → string: table (command | state emoji | evidence | requiredSignals | failing invariant) + progress bar showing % compliant + PASSED/FAILED summary. `cmdDoctorCliCompliance(opts:{base?})` → runs compliance audit fast mode, renders table, emits JSON+RenderV1. **`roadmap doctor cli --compliance`** in bin/roadmap.ts. **Test** `tests/cli/doctor-cli.test.ts`: 6 tests — renderCliCompliance produces table with | separators; contains progress bar (█/░); FAILED banner when any NONCOMPLIANT; PASSED banner when all compliant; cmdDoctorCliCompliance emits JSON with schema_version:1; table includes at least one diagram when failures present.",
+      "produces": [
+        "src/lib/cli/doctor-cli.ts",
+        "tests/cli/doctor-cli.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-cli-audit-runner"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/cli/doctor-cli.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-verify-cli-compliance-invariant": {
+      "id": "rm-verify-cli-compliance-invariant",
+      "desc": "Wire CLI_COMPLIANCE into roadmap verify. **`src/lib/verify/invariants/cli-compliance.ts`**: `CLI_COMPLIANCE` invariant: runs `runComplianceAudit('fast')` and fails if any result.state === 'NONCOMPLIANT'. `CLI_COMPLIANCE_FULL`: same with 'full' mode. **`src/lib/verify/kernel-config.ts`**: add CLI_COMPLIANCE to default kernel invariant set. **Wire into `bin/roadmap.ts`** verify: if CLI_COMPLIANCE in invariant list, run fast compliance audit. **Test** `tests/verify/cli-compliance.test.ts`: 6 tests — CLI_COMPLIANCE passes on all-compliant audit; fails on one NONCOMPLIANT command; kernel config includes CLI_COMPLIANCE; fast mode called by default; full mode on --release flag; invariant result has code + evidence + fix[].",
+      "produces": [
+        "src/lib/verify/invariants/cli-compliance.ts",
+        "src/lib/verify/kernel-config.ts",
+        "tests/verify/cli-compliance.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-cli-compliance-tests",
+        "rm-doctor-cli-compliance"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/verify/cli-compliance.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "intent-cli-compliance-terminal": {
+      "id": "intent-cli-compliance-terminal",
+      "desc": "Terminal gate for 012 — CLI inventory is authoritative, every command is COMPLIANT or EXEMPT with tests, verify enforces CLI_COMPLIANCE, CI blocks drift.",
+      "produces": [
+        ".roadmap/cli/commands.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-verify-cli-compliance-invariant"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/cli/ && npx vitest run tests/verify/cli-compliance.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-metaflow-self-insert-layer": {
+      "id": "rm-metaflow-self-insert-layer",
+      "desc": "Auto wrapSubcommand injection in CLI dispatch pipeline. **`src/lib/metaflow/self-insert.ts`**: `ELIGIBLE_COMMANDS:string[]` = commands that mutate DAG state, receipts, dispatch agents, complete nodes, perform plan selection, or emit interactive human output (populate from COMMAND_REGISTRY intersected with inventory mustHaveDisplayReceipt). `readActiveRun(base?)` → reads `.roadmap/metaflow/active-run.json` or null if absent. `isEligible(tokens:string[])` → boolean check against ELIGIBLE_COMMANDS. `selfInsert(argv:string[], activeRunId:RunId, base?)` → calls wrapSubcommand({runId: activeRunId, stepId: auto-generated StepId, cmd: argv.join(' '), base}), writes `.roadmap/receipts/metaflow-self-insert-<stepId>.json` (AuditReceipt-style). **Wire into `bin/roadmap.ts`** entry point: before command dispatch, if activeRun exists AND isEligible(argv) AND no --mf-run in argv → call selfInsert(); if selfInsert throws SESSION_BINDING_MISSING → exit(3) META_FLOW_REQUIRED. **Test** `tests/metaflow/self-insert.test.ts`: 6 tests (written but the test files will be created in this node — since auto-commit doesn't exist yet, they are run after rm-completion-autocommit is wired).",
+      "produces": [
+        "src/lib/metaflow/self-insert.ts",
+        "tests/metaflow/self-insert.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "intent-cli-compliance-terminal"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/metaflow/self-insert.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-metaflow-active-run": {
+      "id": "rm-metaflow-active-run",
+      "desc": "active-run.json lifecycle and binding rules. **`src/lib/metaflow/active-run.ts`**: `ActiveRun` type: `{ schema_version:1, runId:RunId, stage:string, startedAt:string, sessionIds:string[] }`. `writeActiveRun(run:ActiveRun, base?)` → writes `.roadmap/metaflow/active-run.json`. `readActiveRun(base?)` → ActiveRun or null. `clearActiveRun(base?, opts:{requireMiningExists?:boolean, requireAuditReceipt?:boolean})` → validates mining.json + audit receipt exist (if opts set) then removes active-run.json; fails with ACTIVE_RUN_NOT_CLEARABLE if conditions unmet. **Wire into `bin/roadmap.ts`**: `mf init` → calls writeActiveRun; `mf complete` → calls clearActiveRun({requireMiningExists:true, requireAuditReceipt:true}). **Test** `tests/metaflow/active-run.test.ts`: 6 tests — writeActiveRun creates file; readActiveRun returns null if absent; clearActiveRun succeeds when mining+audit exist; fails ACTIVE_RUN_NOT_CLEARABLE without mining; fails without audit receipt; mf init writes active-run.json.",
+      "produces": [
+        "src/lib/metaflow/active-run.ts",
+        "tests/metaflow/active-run.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-metaflow-self-insert-layer"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/metaflow/active-run.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-metaflow-surface-header": {
+      "id": "rm-metaflow-surface-header",
+      "desc": "Required MetaFlow header block in human renderer. **`src/lib/render/metaflow-header.ts`**: `renderMetaflowHeader(run:ActiveRun, stepId:StepId, treeSha:string, opts:RenderOpts)` → string: `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\\nMetaFlow Run: <runId>\\nStage: <stage>\\nStep: <stepId>\\nTreeSha: <sha[:12]>\\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`. Export from src/lib/render/index.ts. **Wire into `bin/roadmap.ts`** render path: when active-run.json present AND command is eligible (isEligible), prepend renderMetaflowHeader to stderr render output. Also write `.roadmap/receipts/metaflow-surface-<stepId>.json` with presence proof. **Test** `tests/render/metaflow-header.test.ts`: 6 tests — renderMetaflowHeader contains runId; contains StepId; contains sha[:12]; contains ━ border chars; stable across two calls with same input (deterministic); width respects opts.width.",
+      "produces": [
+        "src/lib/render/metaflow-header.ts",
+        "src/lib/render/index.ts",
+        "tests/render/metaflow-header.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-metaflow-active-run"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/render/metaflow-header.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-metaflow-surface-detectors": {
+      "id": "rm-metaflow-surface-detectors",
+      "desc": "MF-001..MF-005 detectors + PE-002. **`src/lib/metaflow/audit/detectors/metaflow.ts`**: exports `detectMetaflowCompliance(receipts, sessions, opts:{base?})` → `DetectorResult[]`. **MF-001** `detectMissingSelfInsert`: if active-run.json exists AND eligible command in receipts without matching metaflow-self-insert-*.json receipt → finding. **MF-002** `detectMissingSurfaceHeader`: for each wrapped-command receipt — check metaflow-surface-*.json exists and its render.plainPath file contains `MetaFlow Run:` AND `━` border → failing if absent. **MF-003** `detectActiveRunNotPrinted`: for mf audit/mine/wrap receipts — check plain render contains the active runId string. **MF-004** `detectStateMutationWithoutRunBinding`: IR-004 analogue — any completion/dispatch command without corresponding self-insert receipt → finding. **MF-005** `detectDisplayReceiptMissingRunId`: if DisplayReceipt (receipt with --mf-run context) omits runId field → finding. **PE-002** `detectProcessEscapePostSelfInsert`: eligible command invoked without wrap when authority present AND no self-insert receipt emitted → fail closed. **Test** `tests/audit/metaflow-detectors.test.ts`: 8 tests — MF-001 fires on missing self-insert; MF-002 fires on missing header; MF-003 fires on missing runId in render; MF-004 fires on state mutation without binding; PE-002 fires on unwrapped eligible command; all pass on properly wrapped fixture; detectMetaflowCompliance returns 6 results on fixture; updateDAETECTOR_TO_OPT includes all MF codes.",
+      "produces": [
+        "src/lib/metaflow/audit/detectors/metaflow.ts",
+        "tests/audit/metaflow-detectors.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-metaflow-surface-header"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/audit/metaflow-detectors.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "rm-cli-audit-metaflow": {
+      "id": "rm-cli-audit-metaflow",
+      "desc": "Extend cli audit to include MetaFlow compliance. **`src/lib/cli/audit-metaflow.ts`**: `auditMetaflowCompliance(entries:CommandEntry[], base?)` → for each eligible non-exempt command: checks self-insert receipt exists, surface header present, runId in render; returns `MetaflowComplianceResult[]` with state COMPLIANT|NONCOMPLIANT|EXEMPT. **`roadmap cli audit --metaflow`** in bin/roadmap.ts: runs both compliance audit + metaflow compliance audit, renders combined table (command | receipt-state | metaflow-state | self-insert | header). **Test** `tests/cli/metaflow-audit.test.ts`: 6 tests — auditMetaflowCompliance COMPLIANT on command with all receipts; NONCOMPLIANT on missing self-insert; NONCOMPLIANT on missing header; cli audit --metaflow renders combined table; zero noncompliant on fixture; table contains ━ border chars.",
+      "produces": [
+        "src/lib/cli/audit-metaflow.ts",
+        "tests/cli/metaflow-audit.test.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-metaflow-surface-detectors"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/cli/metaflow-audit.test.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "intent-metaflow-self-inserting-sovereign": {
+      "id": "intent-metaflow-self-inserting-sovereign",
+      "desc": "Terminal intent — if authority present, eligible commands are auto-wrapped, surfaced with MetaFlow header, MF-001..MF-005 + PE-002 detectors satisfied, cli audit --metaflow zero noncompliant. No command can mutate DAG state outside MetaFlow when active.",
+      "produces": [
+        ".roadmap/metaflow/active-run.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "rm-cli-audit-metaflow"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit && npx vitest run tests/metaflow/ && npx vitest run tests/audit/ && npx vitest run tests/cli/metaflow-audit.test.ts && npx vitest run tests/render/metaflow-header.test.ts"
+        },
+        {
+          "type": "spec-conformance",
+          "spec": ".specify/specs/fr-rm-audit-stack/spec.md",
+          "scenario": "All acceptance scenarios pass (User Stories 1-6)",
+          "section": "Feature Specification"
+        },
+        {
+          "type": "shell",
+          "command": "test -f package.json && npm run test 2>&1 | grep -q 'test'",
+          "expectExitCode": 0
+        },
+        {
+          "type": "shell",
+          "command": "npm run build 2>&1 | grep -q \"built\"",
+          "expectExitCode": 0
+        },
+        {
+          "type": "intent",
+          "statement": "Eligible CLI commands auto-insert into active MetaFlow runs; surface header and self-insert receipts are mandatory; MF-001..MF-005 and PE-002 detectors all pass; cli audit --metaflow shows zero noncompliant; no DAG mutation escapes MetaFlow when active",
+          "confidence": 0.85,
+          "evaluator": "self",
+          "expandOnFail": true,
+          "context": [
+            "src/lib/metaflow/",
+            "src/lib/cli/",
+            "tests/metaflow/",
+            "tests/cli/metaflow-audit.test.ts"
+          ]
+        }
+      ],
+      "idempotent": true,
+      "ambient": [
+        ".specify/specs/fr-rm-audit-stack/spec.md"
+      ]
     }
   },
   "version": "0.3.0",
   "protocolVersion": "0.3.0",
   "spec": {
-    "compiled_sha256": "1854b5e5343d093cef6f6551b23b79a54acf242598a129483d9f1e9d5bd8f24d",
+    "compiled_sha256": "965da035d6a74c50426efc4aee218c65576faad3a0ce6f779aab58ef3e532094",
     "engine": {
       "name": "speckit",
       "version": "0.1.0"
     },
     "inputs": [
       {
-        "path": ".specify/specs/tasks-fr-metaflow-001.md",
-        "sha256": "1854b5e5343d093cef6f6551b23b79a54acf242598a129483d9f1e9d5bd8f24d"
+        "path": ".specify/specs/fr-rm-audit-stack/tasks.md",
+        "sha256": "965da035d6a74c50426efc4aee218c65576faad3a0ce6f779aab58ef3e532094"
       }
     ]
   }

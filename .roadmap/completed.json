@@ -3336,9 +3336,9 @@
   },
   {
     "nodeId": "intent-metaflow-guided-ux",
-    "completedAt": "2026-03-01T00:13:25.029Z",
+    "completedAt": "2026-03-01T00:13:32.824Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260301001321",
+    "checkpointId": "cp-20260301001326",
     "validationChecks": [
       {
         "rule": "shell",
@@ -3366,9 +3366,9 @@
         "id": "shell:npx tsc --noEmit && npx vitest run tests/metaflow.test.ts",
         "passed": true,
         "exitCode": 0,
-        "stdoutSha": "58d6c17869c79f8d1441e82a35e9f54fb02ea4ef322ddb4437500eb221ca3c66",
+        "stdoutSha": "9753f6054ce0449e9d17381fe80c56b2f1520307fe79772cf969e1e901db3453",
         "artifactPaths": [
-          "/home/griffin/src/roadmap/.roadmap/artifacts/intent-metaflow-guided-ux/mm6zy9wi-jlnky9/stdout.txt"
+          "/home/griffin/src/roadmap/.roadmap/artifacts/intent-metaflow-guided-ux/mm6zyfej-1l0dev/stdout.txt"
         ]
       },
       {
@@ -3378,7 +3378,342 @@
         "artifactPaths": []
       }
     ],
-    "gitSha": "6261b09e432a9a0a14d4b5e22b666a3ce4efa3a1",
-    "treeSha": "2b70c1698d3566237619175f8bab05dff26a12cc"
+    "gitSha": "56ae2536f8ef54f16585b45db803c45b0d93f0c6",
+    "treeSha": "3d5ea3f5f5b3aaf384ba2822e9ec88736fa0e7f3"
+  },
+  {
+    "nodeId": "mf-sv-init",
+    "completedAt": "2026-03-01T00:33:44.499Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301003343",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:pnpm -s tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "083c2b09284e2ad7c01e1357516df7eef2924a45",
+    "treeSha": "5f97c5a68654ace4a54b0477c264a204e5fe08dc"
+  },
+  {
+    "nodeId": "mf-sv-authority",
+    "completedAt": "2026-03-01T00:36:23.582Z",
+    "owner": "roadmap-b",
+    "checkpointId": "cp-20260301003621",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s tsc --noEmit"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s vitest run tests/metaflow/authority.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:pnpm -s tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:pnpm -s vitest run tests/metaflow/authority.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "fd5c94c6722a09a3b56dfe82b04684321fa67b3d01563359d437650372820245",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/mf-sv-authority/mm70ru6u-9bp8rg/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "4ed2a95a28b491bf5399e7e23ba07b10f06d9ed1",
+    "treeSha": "2dd080e580ee770729fce4ffdbe2873e106fae4c"
+  },
+  {
+    "nodeId": "mf-sv-flow-registry",
+    "completedAt": "2026-03-01T00:36:36.872Z",
+    "owner": "roadmap-b",
+    "checkpointId": "cp-20260301003635",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s tsc --noEmit"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s vitest run tests/metaflow/flows.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:pnpm -s tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:pnpm -s vitest run tests/metaflow/flows.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "ff54f6d7f562de282149a0bc495b91f8cd4228d321058dec943b010839bdafe1",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/mf-sv-flow-registry/mm70s4fu-8g4bcj/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "4ed2a95a28b491bf5399e7e23ba07b10f06d9ed1",
+    "treeSha": "2dd080e580ee770729fce4ffdbe2873e106fae4c"
+  },
+  {
+    "nodeId": "mf-sv-render-receipts",
+    "completedAt": "2026-03-01T00:39:07.290Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301003905",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s tsc --noEmit"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s vitest run tests/metaflow/render.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:pnpm -s tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:pnpm -s vitest run tests/metaflow/render.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "715adbd878252ba3c1e3a42cb11e0947b80e90553334d02301ca46093eb934cb",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/mf-sv-render-receipts/mm70vcia-c0fqnu/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "c1f77936502f1db1c3af47dd79f2c88f3da82b3b",
+    "treeSha": "5ebf74d00e4f6c55f36939144423039fe8745e00"
+  },
+  {
+    "nodeId": "mf-sv-cli-surface",
+    "completedAt": "2026-03-01T00:41:31.268Z",
+    "owner": "roadmap-c",
+    "checkpointId": "cp-20260301004129",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s tsc --noEmit"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s vitest run tests/metaflow/cli.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:pnpm -s tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:pnpm -s vitest run tests/metaflow/cli.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "c7ec4a38baf4fac27f7f3f5b0e6355bc04a72a08cf85d50e2ff1cfe41ec47758",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/mf-sv-cli-surface/mm70yflp-y5n70a/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "291c11a10bd3873ac967c8e85a7d4e995d1b77eb",
+    "treeSha": "51132dedc4a1b36e6b8ca108a0e331f96efbcd7b"
+  },
+  {
+    "nodeId": "mf-sv-no-env-bypass",
+    "completedAt": "2026-03-01T00:43:18.897Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301004317",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s tsc --noEmit"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s vitest run tests/metaflow/bypass.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:pnpm -s tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:pnpm -s vitest run tests/metaflow/bypass.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "cd0a771e1a460cc93caa4093556759509e9c48ae29e266279b7efc3a2c18b52d",
+        "stderrSha": "0fba1bb94127280a0e51421d532b8b402b5f512c320f442436424694a6384807",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/mf-sv-no-env-bypass/mm710qn2-gvgfql/stdout.txt",
+          "/home/griffin/src/roadmap/.roadmap/artifacts/mf-sv-no-env-bypass/mm710qn2-gvgfql/stderr.txt"
+        ]
+      }
+    ],
+    "gitSha": "443d509ec14c17b4d5ea2b70ac785f12410f7a0d",
+    "treeSha": "26ecdaa8688cbd564a68e8ecd18a341e124b58a5"
+  },
+  {
+    "nodeId": "mf-sv-kernel-integration",
+    "completedAt": "2026-03-01T00:46:01.812Z",
+    "owner": "roadmap-b",
+    "checkpointId": "cp-20260301004600",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s tsc --noEmit"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s vitest run tests/metaflow/kernel-bridge.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:pnpm -s tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:pnpm -s vitest run tests/metaflow/kernel-bridge.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "ebf97ee3d250cff6241d779fc22aaec04dd570cb02e84a0246f26ac5b50abedf",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/mf-sv-kernel-integration/mm7148cm-2a3707/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "51f1b7bc35ea54ea5e7a27fb51fe210e7dae661f",
+    "treeSha": "dbe5ddfa30a4cf4500c1fe5f25fa2990474c947b"
+  },
+  {
+    "nodeId": "mf-sv-terminal-invariants",
+    "completedAt": "2026-03-01T00:47:12.454Z",
+    "owner": "roadmap-b",
+    "checkpointId": "cp-20260301004710",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s tsc --noEmit"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s vitest run tests/metaflow/verify.e2e.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:pnpm -s tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:pnpm -s vitest run tests/metaflow/verify.e2e.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "6d0078c4beb56ee4eaccaa90728f07768b09387202fcb287ea6db92cdac76908",
+        "stderrSha": "ddd0cfa971889c6bba95209bf2622604d892e9713072f00c8057fab6569cfff7",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/mf-sv-terminal-invariants/mm715quq-4hvesc/stdout.txt",
+          "/home/griffin/src/roadmap/.roadmap/artifacts/mf-sv-terminal-invariants/mm715quq-4hvesc/stderr.txt"
+        ]
+      }
+    ],
+    "gitSha": "51f1b7bc35ea54ea5e7a27fb51fe210e7dae661f",
+    "treeSha": "dbe5ddfa30a4cf4500c1fe5f25fa2990474c947b"
+  },
+  {
+    "nodeId": "intent-metaflow-sovereignty",
+    "completedAt": "2026-03-01T00:48:20.542Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301004819",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): test -f docs/metaflow/SOVEREIGNTY.md"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm -s tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:test -f docs/metaflow/SOVEREIGNTY.md",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:pnpm -s tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "5aff2db1b92ea57bfe8ad4e683e86c74c8531bf0",
+    "treeSha": "f855930d37d4d6926490f727536279d603d7758f"
+  },
+  {
+    "nodeId": "rm-audit-contract",
+    "completedAt": "2026-03-01T00:55:16.069Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301005516",
+    "validationChecks": [
+      {
+        "rule": "spec-conformance",
+        "passed": true,
+        "evidence": "spec conformance: stories [] found in .specify/specs/fr-rm-audit-stack/spec.md"
+      }
+    ],
+    "gitSha": "2de9a9127180310dae6fed62cb25e76e7f53d87f",
+    "treeSha": "9c566a222671acea92dafc8d21c8bc0e7d617ec4"
   }
 ]
