@@ -2668,11 +2668,11 @@ async function cmdComplete(note: string) {
     const exploreRules = ((nodeSpec?.validate ?? []) as any[]).filter((r: any) => r.type === 'runtime-explore');
 
     if (exploreRules.length > 0) {
-      const { launchApp, runExploreScript, teardown: teardownApp } = await import('../src/lib/runtime-explore.ts');
+      const { launchApp, runExploreScript, teardown: teardownApp } = await import('../src/lib/exploration/runtime.ts');
       exploreResults = [];
 
       for (const rule of exploreRules) {
-        let handle: import('../src/lib/runtime-explore.ts').LaunchHandle | undefined;
+        let handle: import('../src/lib/exploration/runtime.ts').LaunchHandle | undefined;
         try {
           handle = await launchApp({
             command: rule.launch ?? 'npx electron .',
@@ -5989,9 +5989,9 @@ async function cmdExplore() {
     const buildCommand = buildIdx !== -1 ? args[buildIdx + 1] : undefined;
     const keepAlive = args.includes('--keep-alive');
 
-    const { launchApp, runExploreScript, teardown: teardownApp } = await import('../src/lib/runtime-explore.ts');
+    const { launchApp, runExploreScript, teardown: teardownApp } = await import('../src/lib/exploration/runtime.ts');
 
-    let handle: import('../src/lib/runtime-explore.ts').LaunchHandle | undefined;
+    let handle: import('../src/lib/exploration/runtime.ts').LaunchHandle | undefined;
 
     try {
       // Launch app if command provided

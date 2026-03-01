@@ -1382,7 +1382,7 @@ export async function validateNode<T extends string>(
           evidence = `explore failed: ${result.error ?? 'unknown error'}`;
         } else if (result.result) {
           // Map observations to individual checks
-          const { mapObservationsToChecks } = await import('./lib/runtime-explore.ts');
+          const { mapObservationsToChecks } = await import('./lib/exploration/runtime.ts');
           const obsChecks = mapObservationsToChecks(result.result.observations, rule);
           for (const oc of obsChecks) {
             checks.push(oc);
