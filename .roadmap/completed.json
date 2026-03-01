@@ -3940,5 +3940,31 @@
     ],
     "gitSha": "8fb6446b817490b6848acfb8f9dfcde019ff7fe8",
     "treeSha": "d2788321f531ed47f74a468de0660e419663d97d"
+  },
+  {
+    "nodeId": "rm-strategy-propose-select-cli",
+    "completedAt": "2026-03-01T01:30:11.315Z",
+    "owner": "w3",
+    "checkpointId": "cp-20260301013009",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit && npx vitest run tests/cli/strategy.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit && npx vitest run tests/cli/strategy.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "1efd25a5a1ab7be4dd0e20624dad410dde53047483f705e47855202bd7057b9b",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/rm-strategy-propose-select-cli/mm72p0q0-6zll0o/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "c1c3f5514891f1abb5029042e636d73b487405fa",
+    "treeSha": "6ad4345f8113910f2fab5a11c6061229772a6da6"
   }
 ]
