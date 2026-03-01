@@ -586,5 +586,14 @@
     "validationChecks": [],
     "gitSha": "ce487197bd8a3492db504f633673960ef31beab1",
     "treeSha": "040e241e820ef03812d56bd17e5c836c464e6573"
+  },
+  {
+    "nodeId": "cli-repair-interactive",
+    "completedAt": "2026-03-01T16:24:44.781Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301162444",
+    "validationChecks": [],
+    "gitSha": "76aca39b311f375e0bdeb53fafee5a3d1530b6bf",
+    "treeSha": "eb58aec1456c194a6eacd88fc27e120b32ced0af"
   }
 ]
