@@ -4512,5 +4512,35 @@
     ],
     "gitSha": "0213e609918e7cec401c31b8c3ca7ecfce8ee44a",
     "treeSha": "868d34c323e13925885253126431b0dc87e7509e"
+  },
+  {
+    "nodeId": "receipt-first-plan",
+    "completedAt": "2026-03-01T08:56:37.836Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301085637",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .specify/pre-spec/receipt-first.md"
+      },
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .specify/specs/receipt-first/spec.md"
+      },
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .specify/specs/receipt-first/tasks.md"
+      },
+      {
+        "rule": "expanded",
+        "passed": true,
+        "evidence": "expanded into 6 node(s): rf-cmd-receipt, rf-breakglass, rf-scenario-registry, rf-chain-enforcer, rf-verify-integration, rf-tests"
+      }
+    ],
+    "gitSha": "ddf2ee01a1a86b764e6155aa72cae8ed929990ba",
+    "treeSha": "00f8e0e860a81dbc7c9be2322312c2f91f63defa"
   }
 ]
