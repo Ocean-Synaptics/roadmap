@@ -69,6 +69,7 @@ import { buildQuestionBlock, recordAnswer, getAnswers } from '../src/lib/metaflo
 import { InteractionReceiptWriter } from '../src/lib/metaflow/receipt-writer.ts';
 import { wrapSubcommand } from '../src/lib/metaflow/wrap.ts';
 import { mineRun, miningExists } from '../src/lib/metaflow/mine-run.ts';
+import { buildOptimizationNodes, readMining, emitOptExpansion } from '../src/lib/metaflow/opt-dag.ts';
 
 const rawArgs = process.argv.slice(2);
 const repoRoot = process.cwd();
@@ -5074,6 +5075,37 @@ function cmdMf(note: string) {
       const miningPath = join(runDir(cRunId, repoRoot), 'mining.json');
       json({ cmd: 'mf.complete', runId: cRunId, status: 'complete', miningPath });
       recordTrail({ ts: new Date().toISOString(), cmd: 'mf.complete', note, repo: basename(repoRoot), position: ['mf-mine-run'], level: 4 });
+      break;
+    }
+    case 'opt': {
+      const oRunIdx = args.indexOf('--run');
+      if (oRunIdx === -1 || !args[oRunIdx + 1]) {
+        json({ error: 'Missing --run <runId>', fix: 'roadmap mf opt --run <runId> [--emit] --note "..."' });
+        process.exit(1);
+      }
+      const oRunId = args[oRunIdx + 1] as RunId;
+      const oEmit = args.includes('--emit');
+
+      const mining = readMining(oRunId, repoRoot);
+      const optNodes = buildOptimizationNodes(mining);
+
+      if (oEmit && optNodes.length > 0) {
+        const expansionPath = emitOptExpansion(oRunId, optNodes, repoRoot);
+        json({ cmd: 'mf.opt', runId: oRunId, nodes: optNodes, expansionPath, emitted: true });
+      } else {
+        json({ cmd: 'mf.opt', runId: oRunId, nodes: optNodes, emitted: false });
+      }
+
+      if (optNodes.length === 0) {
+        process.stderr.write('(no optimizations — run is clean)\n');
+      } else {
+        process.stderr.write(`Optimization nodes (${optNodes.length}):\n`);
+        for (const n of optNodes) {
+          process.stderr.write(`  ${n.id}: ${n.desc}\n    rationale: ${n.rationale}\n`);
+        }
+      }
+
+      recordTrail({ ts: new Date().toISOString(), cmd: 'mf.opt', note, repo: basename(repoRoot), position: ['mf-opt-dag-generator'], level: 5 });
       break;
     }
     default:
