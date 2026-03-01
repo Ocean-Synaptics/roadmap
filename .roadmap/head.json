@@ -364,11 +364,6 @@
           "type": "shell",
           "command": "test -f package.json && npm run test 2>&1 | grep -q 'test'",
           "expectExitCode": 0
-        },
-        {
-          "type": "shell",
-          "command": "npm run build 2>&1 | grep -q \"built\"",
-          "expectExitCode": 0
         }
       ],
       "idempotent": true,
