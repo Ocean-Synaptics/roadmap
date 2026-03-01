@@ -4152,5 +4152,31 @@
     ],
     "gitSha": "cb4c8d8bc79a59ee7b980490e1ca3c24a50883ae",
     "treeSha": "56267a1055a18a39ad3ed72c4936b3502775354f"
+  },
+  {
+    "nodeId": "rm-doctor-cli-compliance",
+    "completedAt": "2026-03-01T01:37:54.652Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301013753",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit && npx vitest run tests/cli/doctor-cli.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit && npx vitest run tests/cli/doctor-cli.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "286ebb9b89c391d86da047092862ec4e19db04fba53352e8656c8b0a72e08092",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/rm-doctor-cli-compliance/mm72yy8h-v63qun/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "c265c1842530ec287a2b6a9fa3bcf692143241a3",
+    "treeSha": "3ebef25f826ea2a4097bee650a39a1e646142e2d"
   }
 ]
