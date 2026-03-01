@@ -5474,5 +5474,28 @@
     ],
     "gitSha": "a2b2d0f6e3e62dc2a00a67bdc3f08a39adc796fd",
     "treeSha": "b60341d3bb71dea2f7c51c58d99336180a6e6246"
+  },
+  {
+    "nodeId": "dc-import-candidate",
+    "completedAt": "2026-03-01T09:19:17.453Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301091916",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "470e52af2631e98df212fc59ffdd50e2d578ed55",
+    "treeSha": "776e16b3c8fe0bae836d97f6eb59e8b217da43e8"
   }
 ]
