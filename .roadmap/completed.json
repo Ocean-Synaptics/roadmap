@@ -791,5 +791,28 @@
     ],
     "gitSha": "565ba14eca1f2c35115d4208dccdbd347dd2d256",
     "treeSha": "ac872a0536c8a7a5c2e0c37c694a02077a8a268a"
+  },
+  {
+    "nodeId": "worktree-spawn-command",
+    "completedAt": "2026-03-02T14:32:44.251Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302143242",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "e535f8f0929779271a1e03f768c71c1d3869823f",
+    "treeSha": "9912effdd27fccafaea4de42c78cc1e5b1a56fba"
   }
 ]

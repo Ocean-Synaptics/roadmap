@@ -2276,6 +2276,7 @@ function cmdPatch(note: string) {
   recordTrail({ ts: new Date().toISOString(), cmd: 'patch', note, repo: basename(repoRoot), position: '', level: 0 });
   json(record);
 }
+
 function cmdEnvAudit() {
   const result = runEnvAudit(repoRoot);
   json(result);
@@ -2403,6 +2404,7 @@ function cmdAudit(note: string) {
   json({ error: `Unknown audit subcommand: ${sub}`, fix: 'roadmap audit ingest <path> | audit recommend' });
   process.exit(1);
 }
+
 function cmdDiff() {
   if (!hasLocalDAG) {
     console.log('No roadmap in this repo.');
@@ -3367,6 +3369,7 @@ function cmdCleanupWorktrees() {
     results,
   });
 }
+
 function cmdInstall() {
   const scriptDir = resolve(import.meta.dirname || join(repoRoot, 'bin'));
   const binPath = join(scriptDir, 'roadmap');
