@@ -1,0 +1,89 @@
+{
+  "id": "typescript-cleanup-001",
+  "desc": "Resolve all remaining TypeScript compilation errors (17 total) across completion-evidence, evidence, mining, protocol, and roadmap modules. Fix missing types, export issues, and type mismatches.",
+  "init": "fix-completion-enforcer-types",
+  "term": "typescript-validation-complete",
+  "nodes": {
+    "fix-completion-enforcer-types": {
+      "id": "fix-completion-enforcer-types",
+      "desc": "Fix 9 CompletionRecord type errors in completion-enforcer.ts. Replace with CompletionRecordWithEvidence or define CompletionRecord type. All uses are in functions expecting completion records.",
+      "produces": ["src/lib/evidence/completion-enforcer.ts"],
+      "consumes": ["src/lib/evidence/completion-evidence.ts"],
+      "deps": [],
+      "validate": [{"type": "shell", "cmd": "npx tsc --noEmit 2>&1 | grep -c completion-enforcer || echo 0"}],
+      "idempotent": true
+    },
+    "fix-protocol-orientation-export": {
+      "id": "fix-protocol-orientation-export",
+      "desc": "Add missing Orientation export to src/lib/protocol/types.ts. batch-invariants.ts imports it but it's not exported.",
+      "produces": ["src/lib/protocol/types.ts"],
+      "consumes": ["src/lib/protocol/batch-invariants.ts"],
+      "deps": ["fix-completion-enforcer-types"],
+      "validate": [{"type": "shell", "cmd": "npx tsc --noEmit 2>&1 | grep -c batch-invariants || echo 0"}],
+      "idempotent": true
+    },
+    "fix-batch-invariants-generics": {
+      "id": "fix-batch-invariants-generics",
+      "desc": "Fix generic type T in batch-invariants.ts line 155. Define or remove the undefined generic parameter.",
+      "produces": ["src/lib/protocol/batch-invariants.ts"],
+      "consumes": [],
+      "deps": ["fix-protocol-orientation-export"],
+      "validate": [{"type": "shell", "cmd": "npx tsc --noEmit 2>&1 | grep 'Cannot find name' | grep -c T || echo 0"}],
+      "idempotent": true
+    },
+    "fix-artifact-gates-integration": {
+      "id": "fix-artifact-gates-integration",
+      "desc": "Add missing 'desc' property to node spec in artifact-gates-integration.ts line 232. Node requires both id and desc fields.",
+      "produces": ["src/lib/roadmap/artifact-gates-integration.ts"],
+      "consumes": [],
+      "deps": ["fix-batch-invariants-generics"],
+      "validate": [{"type": "shell", "cmd": "npx tsc --noEmit 2>&1 | grep -c 'artifact-gates' || echo 0"}],
+      "idempotent": true
+    },
+    "fix-headsha-recovery-type": {
+      "id": "fix-headsha-recovery-type",
+      "desc": "Fix type error in headsha-recovery.ts line 126. Boolean field assignment with string|boolean|undefined value. Use type guard or null coalescing.",
+      "produces": ["src/lib/roadmap/headsha-recovery.ts"],
+      "consumes": [],
+      "deps": ["fix-artifact-gates-integration"],
+      "validate": [{"type": "shell", "cmd": "npx tsc --noEmit 2>&1 | grep -c 'headsha-recovery' || echo 0"}],
+      "idempotent": true
+    },
+    "fix-anomaly-detector-property": {
+      "id": "fix-anomaly-detector-property",
+      "desc": "Fix missing 'endIdx' property in anomaly-detector.ts line 389. Object type has startIdx and resyncCount but code expects endIdx.",
+      "produces": ["src/lib/mining/anomaly-detector.ts"],
+      "consumes": [],
+      "deps": ["fix-headsha-recovery-type"],
+      "validate": [{"type": "shell", "cmd": "npx tsc --noEmit 2>&1 | grep -c 'anomaly-detector' || echo 0"}],
+      "idempotent": true
+    },
+    "fix-mock-dag-switcher-imports": {
+      "id": "fix-mock-dag-switcher-imports",
+      "desc": "Fix missing module import in mock-dag-switcher.ts. '../../protocol.ts' cannot be found. Check correct import path for protocol module.",
+      "produces": ["src/lib/roadmap/mocks/mock-dag-switcher.ts"],
+      "consumes": [],
+      "deps": ["fix-anomaly-detector-property"],
+      "validate": [{"type": "shell", "cmd": "npx tsc --noEmit 2>&1 | grep -c 'mock-dag-switcher' || echo 0"}],
+      "idempotent": true
+    },
+    "fix-roadmap-json-render": {
+      "id": "fix-roadmap-json-render",
+      "desc": "Fix render assignment in bin/roadmap.ts line 7100. RenderV1 type now requires 'content' property but assignment creates object without it.",
+      "produces": ["bin/roadmap.ts"],
+      "consumes": ["src/lib/cli-envelope.ts"],
+      "deps": ["fix-mock-dag-switcher-imports"],
+      "validate": [{"type": "shell", "cmd": "npx tsc --noEmit 2>&1 | grep -c 'bin/roadmap' || echo 0"}],
+      "idempotent": true
+    },
+    "typescript-validation-complete": {
+      "id": "typescript-validation-complete",
+      "desc": "Final validation: all TypeScript errors resolved. Run npx tsc --noEmit with zero errors.",
+      "produces": [],
+      "consumes": [],
+      "deps": ["fix-roadmap-json-render"],
+      "validate": [{"type": "shell", "cmd": "npx tsc --noEmit 2>&1 | wc -l | awk '{if($1==0) exit 0; else exit 1}'"}],
+      "idempotent": true
+    }
+  }
+}
