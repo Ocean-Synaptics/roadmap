@@ -253,5 +253,20 @@
     ],
     "gitSha": "868d9f2d47ed8fce4eb61e7b4f1b6535ee201e1d",
     "treeSha": "cbf04a71da56db893aebc7943e18eb666550bd0d"
+  },
+  {
+    "nodeId": "test-artifact-gates",
+    "completedAt": "2026-03-02T12:12:33.028Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302121233",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: tests/artifact-gates.test.ts"
+      }
+    ],
+    "gitSha": "f9963c5fd800acb8ac0a2895a7ced668183c816b",
+    "treeSha": "1532cd59319ed3cd5f2af24f4532d0ecda6e88de"
   }
 ]
