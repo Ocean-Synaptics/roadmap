@@ -14,18 +14,20 @@ export function journalDir(repoRoot: string): string {
   return join(repoRoot, '.dispatch');
 }
 
+function nodeDir(repoRoot: string, nodeId: string): string {
+  return join(repoRoot, '.dispatch', nodeId);
+}
+
 /**
- * Write an interim checkpoint.
- * @param nodeId - node being executed
- * @param entry - interim handoff data
- * @param dir - resolved journal directory (.dispatch/{nodeId})
+ * Write an interim checkpoint. Auto-resolves .dispatch/{nodeId}/.
  * Returns the sequence number assigned.
  */
 export async function writeInterimHandoff(
+  repoRoot: string,
   nodeId: string,
   entry: InterimHandoff,
-  dir: string,
 ): Promise<number> {
+  const dir = nodeDir(repoRoot, nodeId);
   await mkdir(dir, { recursive: true });
 
   const existing = await readdir(dir).catch(() => []);
@@ -37,32 +39,25 @@ export async function writeInterimHandoff(
   return seq;
 }
 
-/**
- * Write a final handoff. Overwrites any previous final.
- * @param nodeId - node being executed
- * @param entry - final handoff data
- * @param dir - resolved journal directory (.dispatch/{nodeId})
- */
+/** Write a final handoff. Overwrites any previous final. */
 export async function writeFinalHandoff(
+  repoRoot: string,
   nodeId: string,
   entry: FinalHandoff,
-  dir: string,
 ): Promise<void> {
+  const dir = nodeDir(repoRoot, nodeId);
   await mkdir(dir, { recursive: true });
 
   const path = join(dir, 'handoff.json');
   await writeFile(path, JSON.stringify(entry, null, 2) + '\n', 'utf-8');
 }
 
-/**
- * Load the full handoff chain for a node: all interims then final.
- * @param nodeId - node to load journal for
- * @param dir - resolved journal directory (.dispatch/{nodeId})
- */
+/** Load the full handoff chain: all interims then final. */
 export async function loadHandoffChain(
+  repoRoot: string,
   nodeId: string,
-  dir: string,
 ): Promise<JournalEntry[]> {
+  const dir = nodeDir(repoRoot, nodeId);
   const files = await readdir(dir).catch(() => []);
 
   const interims = files
@@ -86,30 +81,20 @@ export async function loadHandoffChain(
   return journal;
 }
 
-/**
- * Load only the final handoff for a node. Returns undefined if not yet written.
- */
+/** Load only the final handoff. Returns undefined if not yet written. */
 export async function loadFinal(
+  repoRoot: string,
   nodeId: string,
-  dir: string,
 ): Promise<FinalHandoff | undefined> {
   try {
-    const content = await readFile(join(dir, 'handoff.json'), 'utf-8');
+    const content = await readFile(join(nodeDir(repoRoot, nodeId), 'handoff.json'), 'utf-8');
     return JSON.parse(content) as FinalHandoff;
   } catch {
     return undefined;
   }
 }
 
-// Convenience aliases — (repoRoot, nodeId, entry) → auto-resolve dir
-export async function saveInterim(repoRoot: string, nodeId: string, entry: InterimHandoff): Promise<number> {
-  return writeInterimHandoff(nodeId, entry, join(repoRoot, '.dispatch', nodeId));
-}
-
-export async function saveFinal(repoRoot: string, nodeId: string, entry: FinalHandoff): Promise<void> {
-  return writeFinalHandoff(nodeId, entry, join(repoRoot, '.dispatch', nodeId));
-}
-
-export async function loadJournal(repoRoot: string, nodeId: string): Promise<JournalEntry[]> {
-  return loadHandoffChain(nodeId, join(repoRoot, '.dispatch', nodeId));
-}
+// Aliases
+export const saveInterim = writeInterimHandoff;
+export const saveFinal = writeFinalHandoff;
+export const loadJournal = loadHandoffChain;
