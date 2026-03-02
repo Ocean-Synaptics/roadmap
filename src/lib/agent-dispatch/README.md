@@ -2,28 +2,37 @@
 
 Sealed brief orchestration for parallel roadmap execution.
 
-## Sealed brief model
-
-Each agent receives only its contract:
-- **position**: nodeId to execute
-- **produces**: files to create
-- **consumes**: files available from predecessors
-- **description**: what to build
-- **pattern**: how to build
-
-No DAG introspection. No access to other nodes.
+## Concept
+Agents receive ONLY what they need to execute:
+- position: the nodeId
+- produces: files to create
+- consumes: files to read
+- description: what to build
+- pattern: how to build
+- **NO access to full DAG**
 
 ## Modules
+- dispatch-coordinator: compute batch + assign agents + validate briefs
+- agent-executor: execute sealed brief → implement → handoff
+- brief-gate: contract validation before dispatch
+- handoff-journal: interim checkpoints + final handoffs + chain for next agent
+- orchestrator: read dispatch plan + spawn sealed agents
 
-| Module | Responsibility |
-|--------|---------------|
-| dispatch-coordinator | Compute batch + assign agents |
-| agent-executor | Execute sealed brief, produce handoff |
-| brief-gate | Validate contract before/after execution |
-| handoff-journal | Track progress + decisions across agents |
+## Workflow
+```
+Orchestrator: compute dispatch (batch → sealed briefs)
+  ↓
+Sealed Executor 1 ← Brief 1 (no DAG)
+Sealed Executor 2 ← Brief 2 (no DAG)
+  ↓
+Each agent: read brief → execute → checkpoint → handoff
+  ↓
+Handoff journal: collect progress + decisions
+  ↓
+Advance batch → next agents receive prior handoffs
+```
 
-## Runtime files
-
-- `.dispatch/plan.json` — orchestrator's dispatch assignments
-- `.dispatch/{nodeId}/interim-N.json` — progress checkpoints
-- `.dispatch/{nodeId}/handoff.json` — final decisions + blockers
+## Files
+- `.dispatch/plan.json`: orchestrator's dispatch assignments (nodeId → brief)
+- `.dispatch/{nodeId}/interim-N.json`: progress checkpoints (25%, 50%, 75%)
+- `.dispatch/{nodeId}/handoff.json`: final summary + decisions + blockers for next agent
