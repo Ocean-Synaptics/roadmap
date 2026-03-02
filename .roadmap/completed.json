@@ -2369,9 +2369,9 @@
   },
   {
     "nodeId": "packs-list-cmd",
-    "completedAt": "2026-03-02T00:57:38.479Z",
+    "completedAt": "2026-03-02T01:24:40.425Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260302005738",
+    "checkpointId": "cp-20260302012440",
     "validationChecks": [
       {
         "rule": "skip-validate",
@@ -2379,8 +2379,8 @@
         "evidence": "validation skipped by --skip-validate flag"
       }
     ],
-    "gitSha": "815134d7e5df1b4ff870c7a1c5d959d43b1c8889",
-    "treeSha": "75751b6b930fdec50a6e34de7232675688397cb8"
+    "gitSha": "df952af3a8b1fcedb6a6fd50820e89e59e9ff01c",
+    "treeSha": "f09d7de68ecdab3fb57317d373454e766d10feb8"
   },
   {
     "nodeId": "chatelet-status-cmd",
@@ -2430,5 +2430,46 @@
     ],
     "gitSha": "69ae63892fff5d927f45165731fc4f067ebd3bc5",
     "treeSha": "e2f1fef57f3d074dec3b0fceeab73b75847d5bc8"
+  },
+  {
+    "nodeId": "chatelet-types-tests",
+    "completedAt": "2026-03-02T01:24:29.606Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302012429",
+    "validationChecks": [
+      {
+        "rule": "skip-validate",
+        "passed": false,
+        "evidence": "validation skipped by --skip-validate flag"
+      }
+    ],
+    "gitSha": "df952af3a8b1fcedb6a6fd50820e89e59e9ff01c",
+    "treeSha": "f09d7de68ecdab3fb57317d373454e766d10feb8"
+  },
+  {
+    "nodeId": "keepbudget-validator-tests",
+    "completedAt": "2026-03-02T01:24:31.577Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302012430",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx vitest src/lib/chatelet/__tests__/keepbudget.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx vitest src/lib/chatelet/__tests__/keepbudget.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "c570d84483f6011614e6e28a57f992276192abac23016c97d05ecc061d87a55e",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/keepbudget-validator-tests/mm8hxl8q-vzqc7f/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "df952af3a8b1fcedb6a6fd50820e89e59e9ff01c",
+    "treeSha": "f09d7de68ecdab3fb57317d373454e766d10feb8"
   }
 ]
