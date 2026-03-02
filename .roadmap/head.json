@@ -1,15 +1,90 @@
 {
   "id": "enforcement-hardening-001",
   "desc": "Enforce invariants to prevent clutter: task list hygiene, design doc commitment, worktree cleanup, DAG documentation.",
-  "init": "task-list-enforcement",
+  "init": "dag-manifest-impl",
   "term": "clutter-prevention-gates",
   "nodes": {
-    "task-list-enforcement": {
-      "id": "task-list-enforcement",
-      "desc": "Enforce task list invariants: no in_progress > 48h without update, no undefined in_progress, completion requires evidence. Auto-flag stale items.",
+    "dag-manifest-impl": {
+      "id": "dag-manifest-impl",
+      "desc": "Implement dag-manifest.ts — scan .roadmap/head.*.json, validate documentation, enforce pre-commit.",
       "produces": [
-        "src/lib/enforcement/task-list-validator.ts",
-        "tests/task-list-validator.test.ts"
+        "src/lib/enforcement/dag-manifest.ts"
+      ],
+      "consumes": [
+        ".roadmap/head.json"
+      ],
+      "deps": [],
+      "validate": [
+        {"type": "artifact-exists", "path": "src/lib/enforcement/dag-manifest.ts"}
+      ],
+      "idempotent": true,
+      "mode": "execute",
+      "level": 0,
+      "expandedFrom": "dag-documentation-requirement"
+    },
+    "dag-manifest-tests": {
+      "id": "dag-manifest-tests",
+      "desc": "Test dag-manifest.ts — unit + integration tests for orphan detection, validation rules.",
+      "produces": [
+        "tests/dag-manifest.test.ts"
+      ],
+      "consumes": [
+        "src/lib/enforcement/dag-manifest.ts"
+      ],
+      "deps": [
+        "dag-manifest-impl"
+      ],
+      "validate": [
+        {"type": "artifact-exists", "path": "tests/dag-manifest.test.ts"}
+      ],
+      "idempotent": true,
+      "mode": "execute",
+      "level": 1,
+      "expandedFrom": "dag-documentation-requirement"
+    },
+    "design-doc-hook-impl": {
+      "id": "design-doc-hook-impl",
+      "desc": "Implement design-doc-hook.sh — pre-commit enforcement for design docs during phase transitions.",
+      "produces": [
+        "src/lib/enforcement/design-doc-hook.sh"
+      ],
+      "consumes": [
+        ".roadmap/task-5-artifact-gates-design.md"
+      ],
+      "deps": [],
+      "validate": [
+        {"type": "artifact-exists", "path": "src/lib/enforcement/design-doc-hook.sh"}
+      ],
+      "idempotent": true,
+      "mode": "execute",
+      "level": 0,
+      "expandedFrom": "design-doc-commitment"
+    },
+    "design-doc-hook-tests": {
+      "id": "design-doc-hook-tests",
+      "desc": "Test design-doc-hook.sh — validate enforcement logic, test bypass scenarios.",
+      "produces": [
+        "tests/design-doc-hook.test.ts"
+      ],
+      "consumes": [
+        "src/lib/enforcement/design-doc-hook.sh"
+      ],
+      "deps": [
+        "design-doc-hook-impl"
+      ],
+      "validate": [
+        {"type": "artifact-exists", "path": "tests/design-doc-hook.test.ts"}
+      ],
+      "idempotent": true,
+      "mode": "execute",
+      "level": 1,
+      "expandedFrom": "design-doc-commitment"
+    },
+    "task-validator-impl": {
+      "id": "task-validator-impl",
+      "desc": "Implement task-list-validator.ts — enforce no stale tasks, flag in_progress > 48h, require evidence on completion.",
+      "produces": [
+        "src/lib/enforcement/task-list-validator.ts"
       ],
       "consumes": [
         ".claude/CLAUDE.md",
@@ -21,32 +96,34 @@
       ],
       "idempotent": true,
       "mode": "execute",
-      "level": 1
+      "level": 0,
+      "expandedFrom": "task-list-enforcement"
     },
-    "design-doc-commitment": {
-      "id": "design-doc-commitment",
-      "desc": "Enforce design docs committed during phase, not end. Pre-commit hook blocks untracked .md files in .roadmap/. Spec/ is version-controlled.",
+    "task-validator-tests": {
+      "id": "task-validator-tests",
+      "desc": "Test task-list-validator.ts — stale detection, evidence validation, edge cases.",
       "produces": [
-        "src/lib/enforcement/design-doc-hook.sh",
-        "tests/design-doc-hook.test.ts"
+        "tests/task-list-validator.test.ts"
       ],
       "consumes": [
-        ".roadmap/task-5-artifact-gates-design.md"
+        "src/lib/enforcement/task-list-validator.ts"
       ],
-      "deps": [],
+      "deps": [
+        "task-validator-impl"
+      ],
       "validate": [
-        {"type": "artifact-exists", "path": "src/lib/enforcement/design-doc-hook.sh"}
+        {"type": "artifact-exists", "path": "tests/task-list-validator.test.ts"}
       ],
       "idempotent": true,
       "mode": "execute",
-      "level": 1
+      "level": 1,
+      "expandedFrom": "task-list-enforcement"
     },
-    "worktree-cleanup-automation": {
-      "id": "worktree-cleanup-automation",
-      "desc": "Auto-cleanup stale worktrees. Post-session hook: git worktree prune. Dead agent branches auto-deleted. Orphan detection in git-ops.",
+    "worktree-cleanup-impl": {
+      "id": "worktree-cleanup-impl",
+      "desc": "Implement worktree-cleanup.ts — git worktree prune, orphan detection, dead agent branch cleanup.",
       "produces": [
-        "src/lib/enforcement/worktree-cleanup.ts",
-        "src/hooks/post-session-cleanup.sh"
+        "src/lib/enforcement/worktree-cleanup.ts"
       ],
       "consumes": [
         ".claude/worktrees/"
@@ -57,25 +134,28 @@
       ],
       "idempotent": true,
       "mode": "execute",
-      "level": 1
+      "level": 0,
+      "expandedFrom": "worktree-cleanup-automation"
     },
-    "dag-documentation-requirement": {
-      "id": "dag-documentation-requirement",
-      "desc": "Every DAG head.*.json must have documented intent/status. Orphaned DAGs (no head.json in current use) auto-archived to .roadmap/archived/. Pre-commit hook enforces.",
+    "worktree-cleanup-hook": {
+      "id": "worktree-cleanup-hook",
+      "desc": "Implement post-session-cleanup.sh — invoke worktree cleanup on session end.",
       "produces": [
-        "src/lib/enforcement/dag-manifest.ts",
-        "tests/dag-manifest.test.ts"
+        "src/hooks/post-session-cleanup.sh"
       ],
       "consumes": [
-        ".roadmap/head.json"
+        "src/lib/enforcement/worktree-cleanup.ts"
       ],
-      "deps": [],
+      "deps": [
+        "worktree-cleanup-impl"
+      ],
       "validate": [
-        {"type": "artifact-exists", "path": "src/lib/enforcement/dag-manifest.ts"}
+        {"type": "artifact-exists", "path": "src/hooks/post-session-cleanup.sh"}
       ],
       "idempotent": true,
       "mode": "execute",
-      "level": 1
+      "level": 1,
+      "expandedFrom": "worktree-cleanup-automation"
     },
     "clutter-prevention-gates": {
       "id": "clutter-prevention-gates",
@@ -86,16 +166,20 @@
         "clutter-prevention-report.json"
       ],
       "consumes": [
-        "src/lib/enforcement/task-list-validator.ts",
+        "src/lib/enforcement/dag-manifest.ts",
         "src/lib/enforcement/design-doc-hook.sh",
+        "src/lib/enforcement/task-list-validator.ts",
         "src/lib/enforcement/worktree-cleanup.ts",
-        "src/lib/enforcement/dag-manifest.ts"
+        "src/hooks/post-session-cleanup.sh",
+        "tests/dag-manifest.test.ts",
+        "tests/design-doc-hook.test.ts",
+        "tests/task-list-validator.test.ts"
       ],
       "deps": [
-        "task-list-enforcement",
-        "design-doc-commitment",
-        "worktree-cleanup-automation",
-        "dag-documentation-requirement"
+        "dag-manifest-tests",
+        "design-doc-hook-tests",
+        "task-validator-tests",
+        "worktree-cleanup-hook"
       ],
       "validate": [
         {"type": "artifact-exists", "path": "clutter-prevention-report.json"}
