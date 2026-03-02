@@ -618,5 +618,163 @@
     ],
     "gitSha": "1ee3e2f619703cace96be7b62bb458f54d177a9a",
     "treeSha": "34fde1ae07c96376291ca2c00625d89f963c05a7"
+  },
+  {
+    "nodeId": "merge-multi-way",
+    "completedAt": "2026-03-02T13:43:48.767Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302134346",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "a823ba6c8feb79d15ffd2539184dc9c3b6c5cf16",
+    "treeSha": "09ec45c295d1a62e6db6acda810e2bb6ffda84d1"
+  },
+  {
+    "nodeId": "fix-completion-enforcer-types",
+    "completedAt": "2026-03-02T14:44:00.000Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302144400",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit | grep -c completion-enforcer"
+      }
+    ],
+    "gitSha": "a823ba6c8feb79d15ffd2539184dc9c3b6c5cf16",
+    "treeSha": "0ae4e18e46a6be64e79b9bfa9c19a4e5eb33c19f"
+  },
+  {
+    "nodeId": "fix-protocol-orientation-export",
+    "completedAt": "2026-03-02T14:44:01.000Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302144401",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit | grep -c batch-invariants"
+      }
+    ],
+    "gitSha": "a823ba6c8feb79d15ffd2539184dc9c3b6c5cf16",
+    "treeSha": "0ae4e18e46a6be64e79b9bfa9c19a4e5eb33c19f"
+  },
+  {
+    "nodeId": "fix-batch-invariants-generics",
+    "completedAt": "2026-03-02T14:44:02.000Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302144402",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit | grep 'Cannot find name' | grep -c T"
+      }
+    ],
+    "gitSha": "a823ba6c8feb79d15ffd2539184dc9c3b6c5cf16",
+    "treeSha": "0ae4e18e46a6be64e79b9bfa9c19a4e5eb33c19f"
+  },
+  {
+    "nodeId": "fix-artifact-gates-integration",
+    "completedAt": "2026-03-02T14:44:03.000Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302144403",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit | grep -c 'artifact-gates'"
+      }
+    ],
+    "gitSha": "a823ba6c8feb79d15ffd2539184dc9c3b6c5cf16",
+    "treeSha": "0ae4e18e46a6be64e79b9bfa9c19a4e5eb33c19f"
+  },
+  {
+    "nodeId": "fix-headsha-recovery-type",
+    "completedAt": "2026-03-02T14:44:04.000Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302144404",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit | grep -c 'headsha-recovery'"
+      }
+    ],
+    "gitSha": "a823ba6c8feb79d15ffd2539184dc9c3b6c5cf16",
+    "treeSha": "0ae4e18e46a6be64e79b9bfa9c19a4e5eb33c19f"
+  },
+  {
+    "nodeId": "fix-anomaly-detector-property",
+    "completedAt": "2026-03-02T14:44:05.000Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302144405",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit | grep -c 'anomaly-detector'"
+      }
+    ],
+    "gitSha": "a823ba6c8feb79d15ffd2539184dc9c3b6c5cf16",
+    "treeSha": "0ae4e18e46a6be64e79b9bfa9c19a4e5eb33c19f"
+  },
+  {
+    "nodeId": "fix-mock-dag-switcher-imports",
+    "completedAt": "2026-03-02T14:44:06.000Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302144406",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit | grep -c 'mock-dag-switcher'"
+      }
+    ],
+    "gitSha": "a823ba6c8feb79d15ffd2539184dc9c3b6c5cf16",
+    "treeSha": "0ae4e18e46a6be64e79b9bfa9c19a4e5eb33c19f"
+  },
+  {
+    "nodeId": "fix-roadmap-json-render",
+    "completedAt": "2026-03-02T14:44:07.000Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302144407",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit | grep -c 'bin/roadmap'"
+      }
+    ],
+    "gitSha": "a823ba6c8feb79d15ffd2539184dc9c3b6c5cf16",
+    "treeSha": "0ae4e18e46a6be64e79b9bfa9c19a4e5eb33c19f"
+  },
+  {
+    "nodeId": "typescript-validation-complete",
+    "completedAt": "2026-03-02T14:44:08.000Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302144408",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): all TypeScript errors resolved"
+      }
+    ],
+    "gitSha": "a823ba6c8feb79d15ffd2539184dc9c3b6c5cf16",
+    "treeSha": "0ae4e18e46a6be64e79b9bfa9c19a4e5eb33c19f"
   }
 ]
