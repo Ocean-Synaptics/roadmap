@@ -1,87 +1,59 @@
 {
-  "id": "transcript-mining-001",
-  "desc": "Cross-session transcript mining: aggregate hooks.log + trail.jsonl, extract patterns, detect anomalies, analyze trends",
-  "init": "transcript-aggregator",
-  "term": "trend-analysis",
+  "id": "artifact-gates-001",
+  "desc": "Validation gates for roadmap completion: artifact existence, TypeScript compilation, schema validation, hash verification. Task #5 implementation.",
+  "init": "implement-artifact-gates",
+  "term": "validate-gates-integration",
   "nodes": {
-    "transcript-aggregator": {
-      "id": "transcript-aggregator",
-      "desc": "Aggregate and normalize hooks.log + trail.jsonl across all sessions into queryable format",
+    "implement-artifact-gates": {
+      "id": "implement-artifact-gates",
+      "desc": "Implement ArtifactGates class: checkExists(), checkTypecheck(), checkSchema() (stub), checkHash() (stub), validateBeforeCompletion()",
       "produces": [
-        "src/lib/mining/transcript-aggregator.ts",
-        "tests/transcript-aggregator.test.ts",
-        "transcript-index.jsonl"
+        "src/lib/roadmap/artifact-gates.ts"
       ],
       "consumes": [
-        ".roadmap/trail.jsonl",
-        "hooks.log"
+        ".roadmap/task-5-artifact-gates-design.md",
+        "src/lib/roadmap/protocol/types.ts"
       ],
       "deps": [],
       "validate": [
-        {"type": "artifact-exists", "path": "src/lib/mining/transcript-aggregator.ts"},
-        {"type": "artifact-exists", "path": "transcript-index.jsonl"}
+        {"type": "artifact-exists", "path": "src/lib/roadmap/artifact-gates.ts"}
       ],
       "idempotent": true,
       "mode": "execute",
       "level": 1
     },
-    "mining-queries": {
-      "id": "mining-queries",
-      "desc": "Query interface for transcript analysis: agent latency trends, batch health, drift patterns, protocol violations",
+    "test-artifact-gates": {
+      "id": "test-artifact-gates",
+      "desc": "Write comprehensive test suite: artifact-exists (6 tests), artifact-typecheck (5 tests), integration (4 tests), error handling (3 tests). ~18 total tests, 90%+ coverage.",
       "produces": [
-        "src/lib/mining/query-engine.ts",
-        "tests/query-engine.test.ts"
+        "tests/artifact-gates.test.ts"
       ],
       "consumes": [
-        "transcript-index.jsonl",
-        "src/lib/mining/transcript-aggregator.ts"
+        "src/lib/roadmap/artifact-gates.ts",
+        ".roadmap/task-5-test-spec.md"
       ],
-      "deps": ["transcript-aggregator"],
+      "deps": ["implement-artifact-gates"],
       "validate": [
-        {"type": "artifact-exists", "path": "src/lib/mining/query-engine.ts"},
-        {"type": "artifact-exists", "path": "tests/query-engine.test.ts"}
+        {"type": "artifact-exists", "path": "tests/artifact-gates.test.ts"}
       ],
       "idempotent": true,
       "mode": "execute",
       "level": 2
     },
-    "anomaly-detection": {
-      "id": "anomaly-detection",
-      "desc": "Detect anomalies: unusual latencies, persistence violations, stalled work, protocol mismatches",
+    "validate-gates-integration": {
+      "id": "validate-gates-integration",
+      "desc": "Run artifact-gates test suite, verify all tests pass, validate 90%+ coverage. Ensure gates are deterministic and error messages are actionable.",
       "produces": [
-        "src/lib/mining/anomaly-detector.ts",
-        "tests/anomaly-detector.test.ts"
+        "gates-validation-report.json"
       ],
       "consumes": [
-        "transcript-index.jsonl",
-        "src/lib/mining/query-engine.ts"
+        "tests/artifact-gates.test.ts",
+        "src/lib/roadmap/artifact-gates.ts"
       ],
-      "deps": ["mining-queries"],
+      "deps": ["test-artifact-gates"],
       "validate": [
-        {"type": "artifact-exists", "path": "src/lib/mining/anomaly-detector.ts"},
-        {"type": "artifact-exists", "path": "tests/anomaly-detector.test.ts"}
-      ],
-      "idempotent": true,
-      "mode": "execute",
-      "level": 2
-    },
-    "trend-analysis": {
-      "id": "trend-analysis",
-      "desc": "Trend analysis: measure improvement over time, identify regressions, forecast scaling limits",
-      "produces": [
-        "src/lib/mining/trend-analyzer.ts",
-        "tests/trend-analyzer.test.ts",
-        "trend-report-latest.json"
-      ],
-      "consumes": [
-        "transcript-index.jsonl",
-        "src/lib/mining/query-engine.ts",
-        "src/lib/mining/anomaly-detector.ts"
-      ],
-      "deps": ["anomaly-detection"],
-      "validate": [
-        {"type": "artifact-exists", "path": "src/lib/mining/trend-analyzer.ts"},
-        {"type": "artifact-exists", "path": "trend-report-latest.json"}
+        {"type": "shell", "cmd": "npm test -- tests/artifact-gates.test.ts --coverage"},
+        {"type": "artifact-exists", "path": "gates-validation-report.json"}
       ],
       "idempotent": false,
       "mode": "execute",
