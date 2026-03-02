@@ -1,0 +1,94 @@
+{
+  "id": "scaling-optimization-001",
+  "desc": "Implement completion record sharding to eliminate lock contention and achieve 2-3x throughput for 50+ concurrent agents",
+  "init": "completion-sharding",
+  "term": "validate-50-agent-scaling",
+  "nodes": {
+    "completion-sharding": {
+      "id": "completion-sharding",
+      "desc": "Implement append-only JSONL completion sharding layer (per-agent completion records)",
+      "produces": [
+        "src/lib/roadmap/completion-sharding.ts",
+        "tests/completion-sharding.test.ts"
+      ],
+      "consumes": [
+        "optimization-roadmap.json"
+      ],
+      "deps": [],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "path": "src/lib/roadmap/completion-sharding.ts"
+        },
+        {
+          "type": "build-produces",
+          "path": "src/lib/roadmap/completion-sharding.ts"
+        }
+      ],
+      "idempotent": true,
+      "mode": "execute",
+      "level": 1
+    },
+    "merge-logic": {
+      "id": "merge-logic",
+      "desc": "Implement deterministic shard merge with sorted join for validation time consolidation",
+      "produces": [
+        "src/lib/roadmap/completion-merge.ts",
+        "tests/completion-merge.test.ts"
+      ],
+      "consumes": [
+        "src/lib/roadmap/completion-sharding.ts"
+      ],
+      "deps": [
+        "completion-sharding"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "path": "src/lib/roadmap/completion-merge.ts"
+        },
+        {
+          "type": "build-produces",
+          "path": "src/lib/roadmap/completion-merge.ts"
+        }
+      ],
+      "idempotent": true,
+      "mode": "execute",
+      "level": 2
+    },
+    "validate-50-agent-scaling": {
+      "id": "validate-50-agent-scaling",
+      "desc": "Integration tests: validate shard semantics, run 50-agent load test, confirm 2-3x throughput improvement",
+      "produces": [
+        "tests/completion-sharding-integration.test.ts",
+        "load-test-results-50-agents.json"
+      ],
+      "consumes": [
+        "src/lib/roadmap/completion-sharding.ts",
+        "src/lib/roadmap/completion-merge.ts",
+        "optimization-roadmap.json"
+      ],
+      "deps": [
+        "merge-logic"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "path": "tests/completion-sharding-integration.test.ts"
+        },
+        {
+          "type": "artifact-exists",
+          "path": "load-test-results-50-agents.json"
+        },
+        {
+          "type": "shell",
+          "command": "grep -q '\"throughputGain\".*[2-3]' load-test-results-50-agents.json",
+          "description": "Load test shows 2-3x throughput improvement"
+        }
+      ],
+      "idempotent": false,
+      "mode": "execute",
+      "level": 3
+    }
+  }
+}

@@ -1,0 +1,6 @@
+{
+  "id": "roadmap-hardening-001",
+  "init": "headsha-recovery",
+  "current": "headsha-recovery",
+  "headSha": "$(git rev-parse HEAD)"
+}

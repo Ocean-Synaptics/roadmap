@@ -218,5 +218,25 @@
     ],
     "gitSha": "08283bf85b5d7b78319454c9b8a764aefcac3676",
     "treeSha": "fcb38f8b2ce21a1f0d6d711143bc6d72fc38f024"
+  },
+  {
+    "nodeId": "trend-analysis",
+    "completedAt": "2026-03-02T12:07:37.660Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302120737",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/mining/trend-analyzer.ts"
+      },
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: trend-report-latest.json"
+      }
+    ],
+    "gitSha": "11f7e2a25d57b0d3342c216ce7dbd5727cefc970",
+    "treeSha": "f584ed22a609de4ead671b56b9455335644781dc"
   }
 ]
