@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { merge, define } from '../../protocol.ts';
 import type { Graph } from '../../protocol.ts';
+import { buildDAGDependencyGraph, groupDAGsIntoBatches } from './dag-dependency-resolver.ts';
 
 export interface DAGFile {
   path: string;
@@ -25,6 +26,8 @@ export interface MergeResult {
   connections: PhaseConnection[];
   sourceFiles: string[];
   timestamp: string;
+  executionOrder: string[];  // topologically sorted DAG IDs
+  executionBatches: string[][]; // DAGs that can run in parallel
 }
 
 export class ConsolidationError extends Error {
@@ -156,7 +159,8 @@ function findConnection(
 
 /**
  * Merge multiple DAGs into a single unified graph
- * Automatically detects phase boundaries and creates inter-DAG edges
+ * Uses topological sort to resolve inter-DAG dependencies correctly
+ * Enables interleaved execution (parallel nodes from different DAGs)
  */
 export function mergeMultiWay(dagFiles: DAGFile[]): MergeResult {
   if (dagFiles.length === 0) {
@@ -175,76 +179,128 @@ export function mergeMultiWay(dagFiles: DAGFile[]): MergeResult {
       connections: [],
       sourceFiles: [dag.name],
       timestamp: new Date().toISOString(),
+      executionOrder: [dag.content.id],
+      executionBatches: [[dag.content.id]],
     };
   }
 
-  // Multi-way merge: sequentially merge pairs
-  let currentMerged = dagFiles[0].content;
+  // Build dependency graph between DAGs
+  const dags = dagFiles.map(f => f.content);
+  const depGraph = buildDAGDependencyGraph(dags);
+
+  if (depGraph.hasCycle) {
+    throw new ConsolidationError(
+      'CIRCULAR_DEPENDENCY',
+      'Circular dependency detected between DAGs',
+      { dagIds: dags.map(d => d.id) }
+    );
+  }
+
+  // Get execution order and batches for parallel execution
+  const executionOrder = depGraph.order;
+  const executionBatches = groupDAGsIntoBatches(depGraph);
+
+  // Create map for quick DAG lookup
+  const dagMap = new Map<string, Graph<string>>();
+  for (const dag of dags) {
+    dagMap.set(dag.id, dag);
+  }
+
+  // Create map for DAG file names
+  const fileMap = new Map<string, string>();
+  for (const dagFile of dagFiles) {
+    fileMap.set(dagFile.content.id, dagFile.name);
+  }
+
+  // Merge in correct topological order
+  let currentMerged = dagMap.get(executionOrder[0])!;
   const connections: PhaseConnection[] = [];
   const phases: { [dagId: string]: string[] } = {};
-  const sourceFiles = [dagFiles[0].name];
+  const sourceFiles = [fileMap.get(currentMerged.id)!];
 
   phases[currentMerged.id] = Object.keys(currentMerged.nodes);
 
-  for (let i = 1; i < dagFiles.length; i++) {
-    const nextDAG = dagFiles[i];
-    sourceFiles.push(nextDAG.name);
-    phases[nextDAG.content.id] = Object.keys(nextDAG.content.nodes);
+  // Merge each subsequent DAG in topological order
+  for (let i = 1; i < executionOrder.length; i++) {
+    const nextDAGId = executionOrder[i];
+    const nextDAG = dagMap.get(nextDAGId)!;
 
-    // Detect connection
-    const connection = findConnection(currentMerged, nextDAG.content);
+    sourceFiles.push(fileMap.get(nextDAGId)!);
+    phases[nextDAG.id] = Object.keys(nextDAG.nodes);
 
-    if (connection.exists) {
-      // Create edge from currentMerged.term to nextDAG.init
-      connections.push({
-        from: currentMerged.id,
-        to: nextDAG.content.id,
-        reason: connection.reason,
-      });
+    // Find ALL artifacts that flow from currentMerged to nextDAG
+    const currentContract = depGraph.dags.get(currentMerged.id)!;
+    const nextContract = depGraph.dags.get(nextDAG.id)!;
 
-      // Perform merge: add edge between term and init
+    // Find overlapping artifacts (currentMerged produces, nextDAG consumes)
+    const overlappingArtifacts: string[] = [];
+    for (const artifact of currentContract.produces) {
+      if (nextContract.consumes.has(artifact)) {
+        overlappingArtifacts.push(artifact);
+      }
+    }
+
+    if (overlappingArtifacts.length > 0) {
+      // Create connection for each overlapping artifact
+      for (const artifact of overlappingArtifacts) {
+        connections.push({
+          from: currentMerged.id,
+          to: nextDAG.id,
+          reason: `artifact: ${artifact}`,
+        });
+      }
+
+      // Create merge connection: find best node pair
+      // Use terminal node of current → init node of next
       const termNode = currentMerged.nodes[currentMerged.term];
-      const initNode = nextDAG.content.nodes[nextDAG.content.init];
+      const initNode = nextDAG.nodes[nextDAG.init];
 
-      // Prepare merge connection specs
-      const artifact = termNode.produces && termNode.produces[0] ? termNode.produces[0] : '';
+      if (!termNode || !initNode) {
+        throw new ConsolidationError(
+          'MERGE_STRUCTURE_ERROR',
+          `Missing term or init node in merge`,
+          { current: currentMerged.id, next: nextDAG.id }
+        );
+      }
+
+      // Use all overlapping artifacts as the connection
       const connSpecs: Array<{ g1Node: string; g2Node: string; artifact: string }> = [
         {
           g1Node: termNode.id,
           g2Node: initNode.id,
-          artifact,
+          artifact: overlappingArtifacts[0], // Primary artifact for edge
         },
       ];
 
       try {
-        const merged = merge(currentMerged, nextDAG.content, connSpecs);
+        const merged = merge(currentMerged, nextDAG, connSpecs);
         currentMerged = merged;
       } catch (err) {
         throw new ConsolidationError(
           'MERGE_FAILED',
-          `Failed to merge ${currentMerged.id} and ${nextDAG.content.id}: ${err}`,
-          { sourceDAGs: [currentMerged.id, nextDAG.content.id] }
+          `Failed to merge ${currentMerged.id} and ${nextDAG.id}: ${err}`,
+          { sourceDAGs: [currentMerged.id, nextDAG.id], artifacts: overlappingArtifacts }
         );
       }
     } else {
-      // No direct connection, just merge graphs without edge
-      // This is less ideal but allows modular DAGs
+      // No direct artifact overlap, but nextDAG may depend on currentMerged through transitive deps
+      // Still merge, but without explicit edge (preserve modular structure)
       const connSpecs: Array<{ g1Node: string; g2Node: string; artifact: string }> = [
         {
           g1Node: currentMerged.term,
-          g2Node: nextDAG.content.init,
-          artifact: '',
+          g2Node: nextDAG.init,
+          artifact: '', // No artifact connection
         },
       ];
 
       try {
-        const merged = merge(currentMerged, nextDAG.content, connSpecs);
+        const merged = merge(currentMerged, nextDAG, connSpecs);
         currentMerged = merged;
       } catch (err) {
         throw new ConsolidationError(
           'MERGE_FAILED',
-          `Failed to merge ${currentMerged.id} and ${nextDAG.content.id}: ${err}`,
-          { sourceDAGs: [currentMerged.id, nextDAG.content.id] }
+          `Failed to merge ${currentMerged.id} and ${nextDAG.id}: ${err}`,
+          { sourceDAGs: [currentMerged.id, nextDAG.id] }
         );
       }
     }
@@ -267,6 +323,8 @@ export function mergeMultiWay(dagFiles: DAGFile[]): MergeResult {
     connections,
     sourceFiles,
     timestamp: new Date().toISOString(),
+    executionOrder,
+    executionBatches,
   };
 }
 

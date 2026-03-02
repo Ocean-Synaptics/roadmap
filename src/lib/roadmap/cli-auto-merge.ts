@@ -177,6 +177,8 @@ export async function ensureIndexExists(
     connections: [],
     sourceFiles: ['head.json'],
     timestamp: new Date().toISOString(),
+    executionOrder: [graph.id],
+    executionBatches: [[graph.id]],
   };
 
   // Build index from merge result
