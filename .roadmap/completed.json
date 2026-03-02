@@ -286,9 +286,9 @@
   },
   {
     "nodeId": "align-preflight-validator",
-    "completedAt": "2026-03-02T12:15:00.185Z",
+    "completedAt": "2026-03-02T12:16:08.291Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260302121500",
+    "checkpointId": "cp-20260302121608",
     "validationChecks": [
       {
         "rule": "artifact-exists",
@@ -296,14 +296,14 @@
         "evidence": "artifact exists: src/lib/roadmap/mocks/mock-preflight-validator.ts"
       }
     ],
-    "gitSha": "f4ffeae3c21d45e5fafaf7d2e87360db8d08e490",
-    "treeSha": "80a575c65b79b1aa4cb582ef384a08ca69711d40"
+    "gitSha": "1c7da1740c980bfd0183c3f36aea55bf2faab9eb",
+    "treeSha": "c138ba82305b390f3e0b39f240f59350087c2093"
   },
   {
     "nodeId": "align-headsha-recovery",
-    "completedAt": "2026-03-02T12:14:34.804Z",
+    "completedAt": "2026-03-02T12:16:08.115Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260302121434",
+    "checkpointId": "cp-20260302121608",
     "validationChecks": [
       {
         "rule": "artifact-exists",
@@ -311,14 +311,14 @@
         "evidence": "artifact exists: src/lib/roadmap/mocks/mock-headsha-recovery.ts"
       }
     ],
-    "gitSha": "c83a2425c6c2a9b1d796b1091af499b1d0493302",
-    "treeSha": "a9805a733634d5e2bc72bbb8c8e681489d6a418a"
+    "gitSha": "1c7da1740c980bfd0183c3f36aea55bf2faab9eb",
+    "treeSha": "c138ba82305b390f3e0b39f240f59350087c2093"
   },
   {
     "nodeId": "align-dag-switcher",
-    "completedAt": "2026-03-02T12:15:00.045Z",
+    "completedAt": "2026-03-02T12:16:07.924Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260302121500",
+    "checkpointId": "cp-20260302121607",
     "validationChecks": [
       {
         "rule": "artifact-exists",
@@ -326,14 +326,14 @@
         "evidence": "artifact exists: src/lib/roadmap/mocks/mock-dag-switcher.ts"
       }
     ],
-    "gitSha": "f4ffeae3c21d45e5fafaf7d2e87360db8d08e490",
-    "treeSha": "80a575c65b79b1aa4cb582ef384a08ca69711d40"
+    "gitSha": "1c7da1740c980bfd0183c3f36aea55bf2faab9eb",
+    "treeSha": "c138ba82305b390f3e0b39f240f59350087c2093"
   },
   {
     "nodeId": "align-trail-manager",
-    "completedAt": "2026-03-02T12:15:05.815Z",
+    "completedAt": "2026-03-02T12:16:08.475Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260302121505",
+    "checkpointId": "cp-20260302121608",
     "validationChecks": [
       {
         "rule": "artifact-exists",
@@ -341,7 +341,22 @@
         "evidence": "artifact exists: src/lib/roadmap/mocks/mock-trail-manager.ts"
       }
     ],
-    "gitSha": "c8888d56d518b96bd0bbf039a21a8010c928837e",
-    "treeSha": "2be890ca45935fdbb3d8bc2c55a9f27160294b1c"
+    "gitSha": "1c7da1740c980bfd0183c3f36aea55bf2faab9eb",
+    "treeSha": "c138ba82305b390f3e0b39f240f59350087c2093"
+  },
+  {
+    "nodeId": "harden-artifact-gates",
+    "completedAt": "2026-03-02T12:16:08.668Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302121608",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/roadmap/artifact-gates-integration.ts"
+      }
+    ],
+    "gitSha": "1c7da1740c980bfd0183c3f36aea55bf2faab9eb",
+    "treeSha": "c138ba82305b390f3e0b39f240f59350087c2093"
   }
 ]
