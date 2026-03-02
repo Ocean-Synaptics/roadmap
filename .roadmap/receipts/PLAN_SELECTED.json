@@ -1,5 +1,5 @@
 {
-  "receipt": "plan-select-p4.json",
-  "headSha": "e5302b3cc5d26fb5ce121afe6031ef6badfcb835e973aa5d259b433ff9847218",
-  "candidateId": "chatelet-p4"
+  "receipt": "plan-select-9efe6c70e819.json",
+  "headSha": "3710b25a1b0655cbe24e1bde0bb2108a3799b996c79b80a4f34888cf55551fdf",
+  "candidateId": "chatelet-init-marker"
 }

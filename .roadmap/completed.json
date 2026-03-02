@@ -2290,5 +2290,35 @@
     ],
     "gitSha": "3ab049f756da179f5ae282e1629c596a59f99160",
     "treeSha": "c30a92b123ca7ef27a6cd723aa3dbe3f8afb6a81"
+  },
+  {
+    "nodeId": "chatelet-init-marker",
+    "completedAt": "2026-03-02T00:49:01.732Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302004901",
+    "validationChecks": [
+      {
+        "rule": "skip-validate",
+        "passed": false,
+        "evidence": "validation skipped by --skip-validate flag"
+      }
+    ],
+    "gitSha": "6a19dd84ffb7d6d68ba66850eff4b07ef724d83a",
+    "treeSha": "f6051b2c6eb700ad304b6284f08b55de47c82470"
+  },
+  {
+    "nodeId": "gitsafe-primitives-impl",
+    "completedAt": "2026-03-02T00:49:20.412Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302004920",
+    "validationChecks": [
+      {
+        "rule": "skip-validate",
+        "passed": false,
+        "evidence": "validation skipped by --skip-validate flag"
+      }
+    ],
+    "gitSha": "6a19dd84ffb7d6d68ba66850eff4b07ef724d83a",
+    "treeSha": "f6051b2c6eb700ad304b6284f08b55de47c82470"
   }
 ]
