@@ -4,7 +4,6 @@
 
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { advance } from '../handoff.ts';
 import { writeInterimHandoff, writeFinalHandoff } from './handoff-journal.ts';
 import type { Brief, FinalHandoff } from '../brief.ts';
 
@@ -37,7 +36,6 @@ export interface ExecutionResult {
 export async function executeSealed(input: HandoffInput): Promise<ExecutionResult> {
   const { brief, repoRoot, agentId } = input;
   const nodeId = brief.position;
-  const journalDir = join(repoRoot, '.dispatch', nodeId);
 
   try {
     // Phase 1: Understand the task
@@ -54,8 +52,7 @@ export async function executeSealed(input: HandoffInput): Promise<ExecutionResul
         ],
         blockers: [],
         currentFile: '',
-      },
-      journalDir
+      }
     );
 
     // Phase 2: Read consumes (contract boundary)
@@ -77,8 +74,7 @@ export async function executeSealed(input: HandoffInput): Promise<ExecutionResul
         discovered: [`Read ${Object.keys(consumedData).length} consumed files`],
         blockers: [],
         currentFile: '',
-      },
-      journalDir
+      }
     );
 
     // Phase 3: Implement produces (actual work delegated to agent)
@@ -93,8 +89,7 @@ export async function executeSealed(input: HandoffInput): Promise<ExecutionResul
         discovered: [`Implemented ${brief.produces.length} produce files`],
         blockers: [],
         currentFile: brief.produces[0] || '',
-      },
-      journalDir
+      }
     );
 
     // Phase 4: Validate produces
@@ -117,8 +112,7 @@ export async function executeSealed(input: HandoffInput): Promise<ExecutionResul
         discovered: [`Validated ${produced.length}/${brief.produces.length} files`],
         blockers: produced.length === brief.produces.length ? [] : ['Missing produced files'],
         currentFile: '',
-      },
-      journalDir
+      }
     );
 
     // Phase 5: Create final handoff
@@ -145,7 +139,7 @@ export async function executeSealed(input: HandoffInput): Promise<ExecutionResul
       },
     };
 
-    await writeFinalHandoff(nodeId, handoff, journalDir);
+    await saveFinal(repoRoot, nodeId, handoff);
 
     // Phase 6: Advance (mark complete in roadmap)
     await advance(nodeId, handoff);
