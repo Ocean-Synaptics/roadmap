@@ -1,83 +1,105 @@
 // @module agent-dispatch
-// @exports HandoffJournal, Checkpoint, FinalHandoff
+// @exports writeInterimHandoff, writeFinalHandoff, loadJournal, loadFinal, journalDir, saveInterim, saveFinal, JournalEntry
 
-import * as fs from 'fs';
-import * as path from 'path';
+import { writeFileSync, readFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 
-export interface Checkpoint {
-  nodeId: string;
-  timestamp: number;
-  data: Record<string, unknown>;
+export interface JournalEntry {
+  timestamp: string;
+  progress: number;
+  discovered: string[];
+  blockers: string[];
+  currentFile: string;
 }
 
-export interface FinalHandoff {
-  summary: string;
-  keyDecisions: string[];
-  gotchas: string[];
-  timestamp: number;
+export interface NextNodeEntry {
+  consumes: string[];
+  ready: boolean;
+  blockers: string[];
+}
+
+export function journalDir(repoRoot: string): string {
+  return join(repoRoot, '.dispatch', 'handoffs');
+}
+
+function ensureJournalDir(repoRoot: string): void {
+  const dir = journalDir(repoRoot);
+  if (!existsSync(dir)) {
+    mkdirSync(dir, { recursive: true });
+  }
 }
 
 /**
- * Handoff journal: persists checkpoints and final handoffs across agent lifecycle.
- * Enables orchestrator to load checkpoint chain for next agent batch.
+ * Save interim handoff checkpoint during node execution.
  */
-export class HandoffJournal {
-  private journalRoot = '.dispatch/handoffs';
+export async function writeInterimHandoff(
+  repoRoot: string,
+  nodeId: string,
+  handoff: JournalEntry
+): Promise<void> {
+  ensureJournalDir(repoRoot);
+  const filePath = join(journalDir(repoRoot), `${nodeId}.interim.json`);
+  writeFileSync(filePath, JSON.stringify(handoff, null, 2));
+}
 
-  constructor() {
-    this.ensureJournalDir();
+/**
+ * Save final handoff summary at node completion.
+ */
+export async function writeFinalHandoff(
+  repoRoot: string,
+  nodeId: string,
+  handoff: unknown
+): Promise<void> {
+  ensureJournalDir(repoRoot);
+  const filePath = join(journalDir(repoRoot), 'final.handoff.json');
+  writeFileSync(filePath, JSON.stringify(handoff, null, 2));
+}
+
+/**
+ * Load all interim handoffs (checkpoint chain).
+ */
+export function loadJournal(repoRoot: string): JournalEntry[] {
+  const dir = journalDir(repoRoot);
+  if (!existsSync(dir)) {
+    return [];
   }
 
-  private ensureJournalDir(): void {
-    if (!fs.existsSync(this.journalRoot)) {
-      fs.mkdirSync(this.journalRoot, { recursive: true });
-    }
+  try {
+    const files = readdirSync(dir).filter((f: string) => f.endsWith('.interim.json'));
+    return files
+      .map((f: string) => {
+        const content = readFileSync(join(dir, f), 'utf-8');
+        return JSON.parse(content) as JournalEntry;
+      })
+      .sort((a: JournalEntry, b: JournalEntry) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+  } catch {
+    return [];
   }
+}
 
-  /**
-   * Save checkpoint for current node.
-   * Overwrites previous checkpoint for same nodeId (not appended).
-   */
-  saveCheckpoint(nodeId: string, checkpoint: Checkpoint): void {
-    const filePath = path.join(this.journalRoot, `${nodeId}.checkpoint.json`);
-    fs.writeFileSync(filePath, JSON.stringify(checkpoint, null, 2));
+/**
+ * Load final handoff if it exists.
+ */
+export function loadFinal(repoRoot: string): Record<string, unknown> | null {
+  const filePath = join(journalDir(repoRoot), 'final.handoff.json');
+  if (!existsSync(filePath)) {
+    return null;
   }
-
-  /**
-   * Record final handoff: summary for orchestrator.
-   */
-  finalHandoff(handoff: FinalHandoff): void {
-    const filePath = path.join(this.journalRoot, 'final.handoff.json');
-    fs.writeFileSync(filePath, JSON.stringify(handoff, null, 2));
+  try {
+    const content = readFileSync(filePath, 'utf-8');
+    return JSON.parse(content);
+  } catch {
+    return null;
   }
+}
 
-  /**
-   * Load checkpoint chain: all checkpoints in sequence.
-   * Returns array of checkpoints sorted by timestamp.
-   */
-  loadChain(): Checkpoint[] {
-    if (!fs.existsSync(this.journalRoot)) {
-      return [];
-    }
+/**
+ * Aliases for compatibility.
+ */
+export async function saveInterim(repoRoot: string, nodeId: string, data: JournalEntry): Promise<void> {
+  return writeInterimHandoff(repoRoot, nodeId, data);
+}
 
-    const files = fs.readdirSync(this.journalRoot).filter(f => f.endsWith('.checkpoint.json'));
-    const checkpoints: Checkpoint[] = files.map(f => {
-      const content = fs.readFileSync(path.join(this.journalRoot, f), 'utf-8');
-      return JSON.parse(content) as Checkpoint;
-    });
-
-    return checkpoints.sort((a, b) => a.timestamp - b.timestamp);
-  }
-
-  /**
-   * Load final handoff if exists.
-   */
-  loadFinalHandoff(): FinalHandoff | null {
-    const filePath = path.join(this.journalRoot, 'final.handoff.json');
-    if (!fs.existsSync(filePath)) {
-      return null;
-    }
-    const content = fs.readFileSync(filePath, 'utf-8');
-    return JSON.parse(content) as FinalHandoff;
-  }
+export async function saveFinal(repoRoot: string, nodeId: string, data: unknown): Promise<void> {
+  return writeFinalHandoff(repoRoot, nodeId, data);
 }

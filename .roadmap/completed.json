@@ -1,0 +1,17 @@
+[
+  {
+    "nodeId": "dispatch-init",
+    "completedAt": "2026-03-02T09:08:40.485Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302090840",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .dispatch/.gitkeep"
+      }
+    ],
+    "gitSha": "ea0378ebf580fc18cc00592cdd20a88072b2f0e4",
+    "treeSha": "947a6a64768536eebba5a2395ad2828360d41798"
+  }
+]
