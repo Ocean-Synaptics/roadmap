@@ -165,7 +165,7 @@ describe('KeepBudget Schema Validation (S2)', () => {
 
       const result = validateChatelet(invalidBudget);
       expect(result.passed).toBe(false);
-      expect(result.errors.some(e => e.includes('maxFiles'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('maxFiles'))).toBe(true);
     });
 
     it('should reject negative maxLineCount', () => {
@@ -188,7 +188,7 @@ describe('KeepBudget Schema Validation (S2)', () => {
 
       const result = validateChatelet(invalidBudget);
       expect(result.passed).toBe(false);
-      expect(result.errors.some(e => e.includes('maxLineCount'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('maxLineCount'))).toBe(true);
     });
 
     it('should warn when allowedDirs is missing or not an array', () => {
@@ -211,7 +211,7 @@ describe('KeepBudget Schema Validation (S2)', () => {
 
       const result = validateChatelet(invalidBudget);
       // Non-array allowedDirs will trigger the warning about empty allowedDirs
-      expect(result.warnings.some(w => w.includes('allowedDirs'))).toBe(true);
+      expect(result.warnings.some((w: string) => w.includes('allowedDirs'))).toBe(true);
     });
 
     it('should accept allowedDirs with valid string elements', () => {
@@ -256,7 +256,7 @@ describe('KeepBudget Schema Validation (S2)', () => {
 
       const result = validateChatelet(budget);
       expect(result.warnings.length).toBeGreaterThan(0);
-      expect(result.warnings.some(w => w.includes('allowedDirs'))).toBe(true);
+      expect(result.warnings.some((w: string) => w.includes('allowedDirs'))).toBe(true);
     });
 
     it('should reject missing packs section', () => {
@@ -275,7 +275,7 @@ describe('KeepBudget Schema Validation (S2)', () => {
 
       const result = validateChatelet(invalidBudget);
       expect(result.passed).toBe(false);
-      expect(result.errors.some(e => e.includes('packs'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('packs'))).toBe(true);
     });
 
     it('should accept numeric discoveryRoot as truthy value', () => {
