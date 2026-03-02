@@ -45,5 +45,21 @@
     ],
     "gitSha": "656c2e37f8a0b2c5d9e1f3a5b7c9d1e3f5a7b9c",
     "treeSha": "656c2e37f8a0b2c5d9e1f3a5b7c9d1e3f5a7b9c"
+  },
+  {
+    "nodeId": "synthesis-audit",
+    "completedAt": "2026-03-02T10:50:30.000Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302105030",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "path": ".roadmap/audit-synthesis.json",
+        "passed": true,
+        "evidence": "artifact exists: .roadmap/audit-synthesis.json"
+      }
+    ],
+    "gitSha": "5283ad4b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f",
+    "treeSha": "5283ad4b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f"
   }
 ]
