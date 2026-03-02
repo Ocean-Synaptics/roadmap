@@ -5,7 +5,7 @@
 
 import type { DispatchPlan, AgentAssignment } from './dispatch-coordinator.ts';
 import { AgentExecutor, executeSealed, type ExecutionResult } from './agent-executor.ts';
-import { loadHandoffChain, writeFinalHandoff } from './handoff-journal.ts';
+import { loadJournal, loadFinal, saveFinal } from './handoff-journal.ts';
 import type { FinalHandoff } from '../brief.ts';
 
 /**
@@ -164,13 +164,11 @@ export class Orchestrator {
     for (const assignment of assignments) {
       try {
         // Load handoff chain for this node
-        const chain = await loadHandoffChain(this.config.repoRoot, assignment.nodeId);
-        if (chain.length > 0) {
-          // Add final handoff (last entry in chain)
-          const finalHandoff = chain[chain.length - 1];
-          if ('summary' in finalHandoff) {
-            handoffs.push(finalHandoff as FinalHandoff);
-          }
+        const interim = loadJournal(this.config.repoRoot, assignment.nodeId);
+        const finalHandoff = loadFinal(this.config.repoRoot, assignment.nodeId);
+        if (interim.length > 0 && finalHandoff) {
+          // Add final handoff from journal
+          handoffs.push(finalHandoff);
         }
       } catch {
         // No handoff for this node — skip

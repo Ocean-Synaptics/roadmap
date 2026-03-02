@@ -1,7 +1,8 @@
 // @module agent-dispatch
 // @exports validateBriefSchema, BriefSchemaError, BriefValidationResult
 
-import { Brief, ValidationRule } from './brief-gate.ts';
+import type { Brief } from '../brief';
+import type { ValidationRule } from '../protocol/types';
 
 /**
  * Comprehensive brief schema validation error.

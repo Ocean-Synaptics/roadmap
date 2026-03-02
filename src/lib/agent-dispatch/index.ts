@@ -11,4 +11,5 @@ export { saveInterim, saveFinal, loadJournal, loadFinal, journalDir, HandoffJour
 export type { DispatchPlan, AgentAssignment } from './dispatch-coordinator';
 export type { HandoffInput, ExecutionResult, AgentExecutor } from './agent-executor';
 export type { BriefValidationResult, BriefValidationError } from './brief-gate';
-export type { HandoffChain, InterimHandoff } from './handoff-journal';
+export type { HandoffChain } from './handoff-journal';
+export type { InterimHandoff, FinalHandoff } from '../brief';
