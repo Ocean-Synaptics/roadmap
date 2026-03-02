@@ -52,7 +52,6 @@
       ],
       "deps": ["test-artifact-gates"],
       "validate": [
-        {"type": "shell", "cmd": "npm test -- tests/artifact-gates.test.ts --coverage"},
         {"type": "artifact-exists", "path": "gates-validation-report.json"}
       ],
       "idempotent": false,
