@@ -5,8 +5,8 @@
 
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
-import type { KeepBudget, KeepBudgetViolation } from '../../lib/chatelet/types';
-import { loadChatelet, checkKeepBudget } from '../../lib/chatelet/keepbudget';
+import type { KeepBudget, KeepBudgetViolation } from '../../lib/chatelet/types.js';
+import { loadChatelet, checkKeepBudget } from '../../lib/chatelet/keepbudget.js';
 
 export interface StatusOptions {
   check?: boolean;
