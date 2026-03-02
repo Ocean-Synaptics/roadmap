@@ -60,6 +60,8 @@ import { loadCandidate, computeHeadSha, candidateExists, writeCandidateDAG } fro
 import { DagSwitcher, type SwitchResult } from '../src/lib/roadmap/dag-switcher.ts';
 import { loadDAGWithAutoMerge, ensureIndexExists } from '../src/lib/roadmap/cli-auto-merge.ts';
 import { ensureConsolidated } from '../src/lib/roadmap/cli-consolidation-init.ts';
+import { orchestrateMerge, dryRunMerge } from '../src/lib/roadmap/merge-orchestrator.ts';
+import { mergeMultiWay, ConsolidationError } from '../src/lib/roadmap/dag-consolidator.ts';
 import { writeToken, readToken, listTokens, isTokenExpired, tokenId as deriveTokenId, TOKEN_DIR } from '../src/lib/utils/tokens/token-store.ts';
 import type { TokenType, BoundToken } from '../src/lib/utils/tokens/token-store.ts';
 import { readIndex, gcTokens } from '../src/lib/utils/tokens/token-index.ts';
@@ -82,6 +84,7 @@ import { buildOptimizationNodes, readMining, emitOptExpansion } from '../src/lib
 import { validateAuditTail } from '../src/lib/import/audit-tail-gate.ts';
 import { loadRequired } from '../src/lib/metaflow/audit/audit.ts';
 import { writeAuditReceipt } from '../src/lib/metaflow/audit/receipt.ts';
+import { WorktreeCleanup } from '../src/lib/enforcement/worktree-cleanup.ts';
 
 const rawArgs = process.argv.slice(2);
 const repoRoot = process.cwd();
@@ -343,6 +346,7 @@ async function main() {
       case 'check':     return await cmdCheck(note!);
       case 'expand':    return await cmdExpand(note!);
       case 'branch':    return cmdBranch(note!);
+      case 'spawn':     return cmdSpawn(note!);
       case 'position':  return cmdOrient(note); // alias
       case 'parallel':  return cmdParallel(note!);
       case 'locate':    return cmdLocate(note!);
@@ -352,7 +356,7 @@ async function main() {
       case 'install':        return cmdInstall();
       case 'install-hooks':  return cmdInstallHooks(note!);
       case 'merge':     return await cmdMergeFrom();
-      case 'retire':    return cmdRetire(note!);
+      // case 'cleanup-worktrees': return cmdCleanupWorktrees(); // TODO: implement in future node
       case 'claim':     return cmdClaim();
       case 'dag':       return cmdDag(note!);
       case 'switch':    return await cmdSwitch(note!);
@@ -3293,63 +3297,76 @@ async function cmdMergeFrom() {
     process.exit(1);
   }
 
-  const fromIdx = args.indexOf('--from');
-  if (fromIdx === -1 || !args[fromIdx + 1]) {
-    json({ error: 'Missing --from <path>', fix: 'roadmap merge --from ../sibling --note "reason"' });
+  const isDryRun = args.includes('--dry-run');
+
+  // Auto-consolidation: merge all DAGs in .roadmap/ directory
+  // Integrate: consolidate → propagate → validate
+  // Fail fast on any validation error
+
+  const result = await (isDryRun ? dryRunMerge(repoRoot) : orchestrateMerge(repoRoot));
+
+  // Return structured result
+  if (!result.success) {
+    json({
+      error: result.error || 'Merge failed',
+      phase: result.phase,
+      details: result.details,
+      rollback: result.rollbackInstructions,
+      fix: result.phase === 'validate'
+        ? 'Fix validation errors in source DAGs and retry merge'
+        : 'Check source DAG files for structural issues',
+    });
     process.exit(1);
   }
 
-  const siblingPath = resolve(repoRoot, args[fromIdx + 1]);
-  const sibDagPath = join(siblingPath, '.roadmap/head.json');
-  if (!existsSync(sibDagPath)) {
-    json({ error: `No DAG at ${siblingPath}`, fix: 'Sibling repo needs .roadmap/head.json' });
-    process.exit(1);
-  }
-
-  const localDag = loadDAG();
-  const sibDag = JSON.parse(readFileSync(sibDagPath, 'utf-8')) as Graph<string>;
-
-  // Find artifact connections: where sibling produces satisfy local consumes
-  const localNodes = Object.values(localDag.nodes) as any[];
-  const sibNodes = Object.values(sibDag.nodes) as any[];
-
-  const sibProduces = new Set(sibNodes.flatMap((n: any) => n.produces));
-  const connections: Array<{ localNode: string; siblingNode: string; artifact: string }> = [];
-
-  for (const ln of localNodes) {
-    for (const consumed of ln.consumes) {
-      if (sibProduces.has(consumed)) {
-        const producer = sibNodes.find((sn: any) => sn.produces.includes(consumed));
-        if (producer) {
-          connections.push({ localNode: ln.id, siblingNode: producer.id, artifact: consumed });
-        }
-      }
-    }
-  }
-
-  // Also find where local produces satisfy sibling consumes (reverse)
-  const localProduces = new Set(localNodes.flatMap((n: any) => n.produces));
-  const reverseConnections: Array<{ localNode: string; siblingNode: string; artifact: string }> = [];
-
-  for (const sn of sibNodes) {
-    for (const consumed of sn.consumes) {
-      if (localProduces.has(consumed)) {
-        const producer = localNodes.find((ln: any) => ln.produces.includes(consumed));
-        if (producer) {
-          reverseConnections.push({ localNode: producer.id, siblingNode: sn.id, artifact: consumed });
-        }
-      }
-    }
-  }
-
+  // Success: report what was merged
   json({
-    local: { id: localDag.id, nodes: Object.keys(localDag.nodes).length },
-    sibling: { id: sibDag.id, path: siblingPath, nodes: Object.keys(sibDag.nodes).length },
-    connections: { siblingToLocal: connections, localToSibling: reverseConnections },
-    summary: `${connections.length} artifact(s) flow sibling→local, ${reverseConnections.length} flow local→sibling`,
+    success: true,
+    phase: result.phase,
+    merged: {
+      nodes: result.details.nodesMerged,
+      sources: result.details.sourceDAGs,
+    },
+    consolidation: {
+      rulesAdded: result.details.rulesAdded,
+      nodesAffected: result.details.nodesAffected,
+    },
+    message: isDryRun
+      ? `Dry-run: ${result.details.sourceDAGs.length} DAGs ready to merge (${result.details.nodesMerged} nodes total)`
+      : `Merged ${result.details.sourceDAGs.length} DAGs into unified head.json (${result.details.nodesMerged} nodes, ${result.details.rulesAdded} rules derived)`,
   });
 }
 
+
+function cmdCleanupWorktrees() {
+  const dryRun = args.includes('--dry-run');
+  const worktreeRoot = join(repoRoot, '.claude', 'worktrees');
+
+  const cleanup = new WorktreeCleanup(worktreeRoot);
+  const results = cleanup.clean(dryRun);
+
+  if (results.length === 0) {
+    json({
+      ok: true,
+      cleaned: 0,
+      report: 'No stale or orphaned worktrees found',
+      worktreeRoot,
+    });
+    return;
+  }
+
+  const successCount = results.filter(r => r.success).length;
+  const failureCount = results.filter(r => !r.success).length;
+
+  json({
+    ok: failureCount === 0,
+    cleaned: successCount,
+    failed: failureCount,
+    worktreeRoot,
+    dryRun,
+    results,
+  });
+}
 function cmdInstall() {
   const scriptDir = resolve(import.meta.dirname || join(repoRoot, 'bin'));
   const binPath = join(scriptDir, 'roadmap');
@@ -4156,6 +4173,129 @@ function cmdTokenIssue(note: string) {
   });
 
   json({ issued: true, tokenId: id, type, subject, owner, path });
+}
+
+function cmdSpawn(note: string) {
+  const taskId = args[args.indexOf('--task') + 1];
+  const isAgent = args.includes('--agent');
+
+  if (!taskId) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      fix: 'roadmap spawn --task <node-id> [--agent]',
+    }, 'Missing --task argument');
+  }
+
+  // Validate the node exists in the DAG
+  if (hasLocalDAG) {
+    const dag = loadDAG();
+    if (!dag.nodes[taskId]) {
+      throw new RoadmapError('NODE_NOT_FOUND', {
+        attempted: taskId,
+        fix: `Node '${taskId}' not found in DAG. Available nodes: ${Object.keys(dag.nodes).join(', ')}`,
+      });
+    }
+  }
+
+  // Deterministic paths
+  const worktreeDir = join(repoRoot, '.claude', 'worktrees', taskId);
+  const branchName = `feat/${taskId}`;
+
+  // Create .claude/worktrees directory if needed
+  const worktreeParent = join(repoRoot, '.claude', 'worktrees');
+  if (!existsSync(worktreeParent)) {
+    mkdirSync(worktreeParent, { recursive: true });
+  }
+
+  // Idempotent: check if worktree already exists
+  if (existsSync(worktreeDir)) {
+    // Worktree exists; verify it's on the right branch
+    try {
+      const currentBranch = execSync(`cd ${worktreeDir} && git rev-parse --abbrev-ref HEAD`, { encoding: 'utf-8', stdio: 'pipe' }).trim();
+      if (currentBranch === branchName) {
+        if (!isAgent) {
+          json({
+            ok: true,
+            worktree: worktreeDir,
+            branch: branchName,
+            status: 'already-exists',
+            message: `Worktree already exists at ${worktreeDir}`,
+          });
+        }
+        return;
+      }
+    } catch (e) {
+      // If we can't read the branch, clean up and recreate
+      try {
+        execSync(`git worktree remove ${worktreeDir} --force`, { cwd: repoRoot, stdio: 'pipe' });
+      } catch (removeErr) {
+        // Ignore cleanup errors
+      }
+    }
+  }
+
+  // Create feature branch if it doesn't exist
+  try {
+    execSync(`git show-ref --verify --quiet refs/heads/${branchName}`, { cwd: repoRoot, stdio: 'pipe' });
+  } catch {
+    // Branch doesn't exist, create it from current HEAD
+    execSync(`git checkout -b ${branchName}`, { cwd: repoRoot, stdio: 'pipe' });
+    execSync(`git checkout -`, { cwd: repoRoot, stdio: 'pipe' }); // Switch back to original branch
+  }
+
+  // Create git worktree
+  try {
+    execSync(`git worktree add ${worktreeDir} ${branchName}`, { cwd: repoRoot, stdio: 'pipe' });
+  } catch (e) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      attempted: `git worktree add ${worktreeDir} ${branchName}`,
+      fix: 'Check if worktree path is valid and branch exists',
+      error: (e as Error).message,
+    });
+  }
+
+  // Record in trail
+  if (hasLocalDAG) {
+    const dag = loadDAG();
+    const pos = orient(dag, loadStore(), retiredSet());
+    recordTrail({
+      ts: new Date().toISOString(),
+      cmd: 'spawn',
+      note,
+      repo: basename(repoRoot),
+      position: pos.position,
+      level: pos.level,
+      dagId: dag.id,
+      detail: { taskId, worktreeDir, branchName, isAgent },
+    });
+  }
+
+  // Return success
+  if (isAgent) {
+    // Agent mode: silent, just return success
+    json({
+      ok: true,
+      taskId,
+      worktreeDir,
+      branchName,
+    });
+  } else {
+    // Human mode: provide detailed instructions
+    const produces = hasLocalDAG ? loadDAG().nodes[taskId]?.produces ?? [] : [];
+    json({
+      ok: true,
+      taskId,
+      worktree: worktreeDir,
+      branch: branchName,
+      produces,
+      instructions: [
+        `cd ${worktreeDir}`,
+        `# Edit: ${produces.join(', ') || '(check roadmap show ' + taskId + ' for produces)'}`,
+        `git add ${produces.join(' ') || '<files>'}`,
+        `git commit -m "${taskId}: <what>"`,
+        `roadmap complete ${taskId}`,
+      ],
+    });
+  }
 }
 
 function cmdTokenList() {
@@ -6156,6 +6296,8 @@ Commands:
   diff <ref|path>     Structural diff between current DAG and old version
   diff <ref> --verbose  Include desc changes in diff output
   merge --from <path> Diagnostic: show artifact connections to sibling DAG
+  cleanup-worktrees   Remove stale/orphaned worktrees from .claude/worktrees/
+  cleanup-worktrees --dry-run  Preview what would be removed without deleting
   retire <node-id>    Skip/retire a node (treated as done by orient)
   retire <id> --cascade  Retire node + all transitively dependent nodes
   retire <id> --undo  Un-retire a previously retired node
