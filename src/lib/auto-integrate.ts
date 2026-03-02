@@ -6,7 +6,7 @@
 import { readProjectMetadata } from './project-metadata.schema.ts';
 import { requireProjectMetadata } from './project-detector.ts';
 import { discoverBuildProcess } from './build-discoverer.ts';
-import { discoverDependencies } from './dependency-resolver.ts';
+import { discoverDependencies } from './utils/dependency-resolver.ts';
 import type { ProjectMetadata } from './project-metadata.schema.ts';
 
 export interface IntegrationPlan {

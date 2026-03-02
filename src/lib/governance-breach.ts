@@ -8,9 +8,9 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import type { GovernanceBreach, GovernanceBreachReceipt, EscapeEvent } from './escape-detector.ts';
 import { GOVERNANCE_BREACH_PREFIX } from './escape-detector.ts';
-import { checkKernelEnforcement } from './kernel-enforcement.ts';
-import { isPendingCertify } from './auto-intake.ts';
-import { AUDIT_DIR, ROADMAP_CLI_COMMANDS, isTranscriptSession } from './transcript-schema.ts';
+import { checkKernelEnforcement } from './config/kernel-enforcement.ts';
+import { isPendingCertify } from './intake/auto-intake.ts';
+import { AUDIT_DIR, ROADMAP_CLI_COMMANDS, isTranscriptSession } from './metaloop/transcript-schema.ts';
 
 /**
  * Check three breach conditions:

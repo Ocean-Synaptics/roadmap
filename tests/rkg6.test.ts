@@ -23,12 +23,12 @@ import {
   type EvidenceItem,
   type ExpansionReceipt,
   type ConvergenceIteration,
-} from '../src/lib/intent-expansion.ts';
+} from '../src/lib/intent/intent-expansion.ts';
 
 import {
   loadRateCard,
   computeRateCardHash,
-} from '../src/lib/rate-card.ts';
+} from '../src/lib/config/rate-card.ts';
 
 import type { IntentPolicy } from '../src/lib/kernel-config.ts';
 

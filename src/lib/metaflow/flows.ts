@@ -12,13 +12,13 @@ import {
   type FlowIndex,
   isFlow,
   isFlowIndex,
-} from "./flow-schema.ts";
+} from "./phases/flow-schema.js";
 
 export {
   type Flow,
   type FlowStep,
   type FlowValidateRule,
-} from "./flow-schema.ts";
+} from "./phases/flow-schema.js";
 
 const FLOWS_DIR = (root: string) => join(root, ".roadmap", "flows");
 const INDEX_FILE = (root: string) => join(FLOWS_DIR(root), "INDEX.json");
@@ -28,12 +28,13 @@ const FLOW_FILE = (root: string, id: string) =>
 // --- Error ---
 
 export class FlowLoadError extends Error {
-  constructor(
-    public readonly code: string,
-    message: string,
-    public readonly id?: string,
-  ) {
+  readonly code: string;
+  readonly id?: string;
+
+  constructor(code: string, message: string, id?: string) {
     super(message);
+    this.code = code;
+    this.id = id;
     this.name = "FlowLoadError";
   }
 }

@@ -17,50 +17,52 @@ import type { ConsumeSpec } from '../src/protocol.ts';
 import { fileExists } from '../src/predicates.ts';
 import { RoadmapError } from '../src/errors.ts';
 import { crossOrient } from '../src/lib/cross-orient.ts';
-import { CompletionStore } from '../src/lib/completion-context.ts';
-import { discoverDependencies, resolveSiblingPath } from '../src/lib/dependency-resolver.ts';
-import { loadClaims, saveClaims, isExpired, activeClaims, annotateWithClaims, assignBatch } from '../src/lib/claims.ts';
-import { parseTasksMd, tasksToDAG } from '../src/lib/speckit-import.ts';
-import { compileIR, parseIRFile, defaultConfig } from '../src/lib/spec-ir.ts';
-import type { SpecConfig, SpecIR, SpecIRTask, SpecInput } from '../src/lib/spec-ir.ts';
-import { enrichIntentGate } from '../src/lib/intent-gate-enrichment.ts';
-import { loadCompletions, getCompletedNodeIds } from '../src/lib/completion-tracker.ts';
-import { saveCompletionWithEvidence, loadCompletionsWithEvidence, hasPassingReceipt } from '../src/lib/completion-evidence.ts';
-import type { EvidenceRecord } from '../src/lib/completion-evidence.ts';
-import { buildSpawnPlan } from '../src/lib/spawn-plan.ts';
+import { CompletionStore } from '../src/lib/completion/completion-context.ts';
+import { discoverDependencies, resolveSiblingPath } from '../src/lib/utils/dependency-resolver.ts';
+import { loadClaims, saveClaims, isExpired, activeClaims, annotateWithClaims, assignBatch } from '../src/lib/claims/claims.ts';
+import { parseTasksMd, tasksToDAG } from '../src/lib/intake/speckit-import.ts';
+import { compileIR, parseIRFile, defaultConfig } from '../src/lib/intake/spec-ir.ts';
+import type { SpecConfig, SpecIR, SpecIRTask, SpecInput } from '../src/lib/intake/spec-ir.ts';
+import { enrichIntentGate } from '../src/lib/intent/intent-gate-enrichment.ts';
+import { loadCompletions, getCompletedNodeIds } from '../src/lib/completion/completion-tracker.ts';
+import { saveCompletionWithEvidence, loadCompletionsWithEvidence, hasPassingReceipt } from '../src/lib/evidence/completion-evidence.ts';
+import type { EvidenceRecord } from '../src/lib/evidence/completion-evidence.ts';
+import { buildSpawnPlan } from '../src/lib/recipes/spawn/spawn-plan.ts';
 import { buildScaffold } from '../src/lib/scaffold.ts';
-import { buildClusters } from '../src/lib/cluster.ts';
+import { buildClusters } from '../src/lib/utils/cluster/cluster.ts';
 import { buildSchedule } from '../src/lib/schedule.ts';
 import { propagateConstraints } from '../src/lib/propagate.ts';
 import { compilePrompts } from '../src/lib/compile-prompts.ts';
 import { compileBrief } from '../src/lib/compile-brief.ts';
-import { recordEvaluation, judgmentToRecord } from '../src/lib/intent-evaluator.ts';
+import { compileBriefWithSpecKit } from '../src/commands/compile-brief-sk.ts';
+import { recordEvaluation, judgmentToRecord } from '../src/lib/intent/intent-evaluator.ts';
 import { validateTerminalIntentGate, validateInitIntentGate, findInitBoundary } from '../src/lib/validate-dag.ts';
-import { writeSpecOrigin, writeSpecImportReceipt, requireSpecOriginForEdit } from '../src/lib/spec-origin.ts';
-import type { SpecOrigin, SpecImportReceipt } from '../src/lib/spec-origin.ts';
-import { scanIntake, importIntake, certifyIntake } from '../src/lib/intake.ts';
-import { runIntakeAbsorb } from '../src/lib/intake-cmd.ts';
-import { addPeer, removePeer, buildFederationView, federationStatus } from '../src/lib/federation.ts';
+import { writeSpecOrigin, writeSpecImportReceipt, requireSpecOriginForEdit } from '../src/lib/intake/spec-origin.ts';
+import type { SpecOrigin, SpecImportReceipt } from '../src/lib/intake/spec-origin.ts';
+import { scanIntake, importIntake, certifyIntake } from '../src/lib/intake/intake.ts';
+import { runIntakeAbsorb } from '../src/lib/intake/intake-cmd.ts';
+import { addPeer, removePeer, buildFederationView, federationStatus } from '../src/lib/utils/federation/federation.ts';
 import { buildPlanOverlay, writePlanOverlay, loadPlanOverlay, isOverlayValid } from '../src/lib/plan-overlay.ts';
-import { runOverlayFromIntake } from '../src/lib/overlay-cmd.ts';
-import { createDispatchPlan, applyDispatchPlan, loadDispatchPlan, dispatchStatus } from '../src/lib/dispatch.ts';
+import { runOverlayFromIntake } from '../src/lib/recipes/overlay/overlay-cmd.ts';
+import { createDispatchPlan, applyDispatchPlan, loadDispatchPlan, dispatchStatus } from '../src/lib/recipes/dispatch/dispatch.ts';
 import { buildGallery } from '../src/lib/gallery-templates/index.ts';
 import { listNodeReceipts, completionDoctor, completionCompact } from '../src/lib/receipts-ux.ts';
-import { certifyAutoIntake } from '../src/lib/auto-intake.ts';
+import { certifyAutoIntake } from '../src/lib/intake/auto-intake.ts';
 import { estimateCost } from '../src/lib/cost-estimator.ts';
 import { runEnvAudit } from '../src/lib/env-audit.ts';
-import { runAuditIngest } from '../src/lib/audit-ingest.ts';
-import { runAuditRecommend } from '../src/lib/audit-recommend.ts';
+import { runAuditIngest } from '../src/lib/audit/ingest.ts';
+import { runAuditRecommend } from '../src/lib/audit/recommend.ts';
 import { runProfile } from '../src/lib/profile-cmd.ts';
-import { runPatchStack } from '../src/lib/patch-stack-cmd.ts';
+import { runPatchStack } from '../src/lib/recipes/patch/patch-stack-cmd.ts';
 import { installAll, extractVersionHash, readPackageVersion, computeSkillHash } from '../src/lib/install-skills.ts';
+import { specKitInit, SPEC_KIT_INIT_HELP } from '../src/commands/spec-init.ts';
 import { loadCandidate, computeHeadSha, candidateExists, writeCandidateDAG } from '../src/lib/dag-candidate.ts';
-import { writeToken, readToken, listTokens, isTokenExpired, tokenId as deriveTokenId, TOKEN_DIR } from '../src/lib/token-store.ts';
-import type { TokenType, BoundToken } from '../src/lib/token-store.ts';
-import { readIndex, gcTokens } from '../src/lib/token-index.ts';
-import type { Graph } from '../src/protocol.ts';
+import { writeToken, readToken, listTokens, isTokenExpired, tokenId as deriveTokenId, TOKEN_DIR } from '../src/lib/utils/tokens/token-store.ts';
+import type { TokenType, BoundToken } from '../src/lib/utils/tokens/token-store.ts';
+import { readIndex, gcTokens } from '../src/lib/utils/tokens/token-index.ts';
+import type { Graph, Orientation } from '../src/protocol.ts';
 import type { SiblingStatus } from '../src/lib/cross-orient.ts';
-import type { OrientV1, OrientDag, OrientDagNode, OrientDagEdge, OrientBlockedNode } from '../src/lib/orient-schema.ts';
+import type { OrientV1, OrientDag, OrientDagNode, OrientDagEdge, OrientBlockedNode } from '../src/lib/core/orient-schema.ts';
 import { emit, emitError, parseOutputOpts, ErrorCode, type OutputFormat, type RenderV1 } from '../src/lib/cli-envelope.ts';
 import { render, renderDagLayers, type RenderOpts, type RenderModel, type RenderOutput, type DagLayer, type DagNode } from '../src/lib/render/index.ts';
 import { resolveWidth } from '../src/lib/render/layout.ts';
@@ -68,12 +70,12 @@ import { renderOrient, renderChart, renderPlanGallery, renderPlanSelect, renderP
 import type { OrientData, ChartData, GalleryData, PlanSelectData, PlanStatusData, DoctorData, ValidateData, TrailData, RemainingData } from '../src/lib/cli-human.ts';
 import { ensureRunDir, readMeta, writeMeta, runDir, type RunId, type RunMeta, generateRunId } from '../src/lib/metaflow/index.ts';
 import { isReceiptRequired } from '../src/lib/metaflow/command-registry.ts';
-import { SessionStore } from '../src/lib/metaflow/session-store.ts';
+import { SessionStore } from '../src/lib/metaflow/state/session-store.ts';
 import { buildQuestionBlock, recordAnswer, getAnswers } from '../src/lib/metaflow/ask.ts';
-import { InteractionReceiptWriter } from '../src/lib/metaflow/receipt-writer.ts';
-import { wrapSubcommand } from '../src/lib/metaflow/wrap.ts';
-import { mineRun, miningExists } from '../src/lib/metaflow/mine-run.ts';
-import { buildOptimizationNodes, readMining, emitOptExpansion } from '../src/lib/metaflow/opt-dag.ts';
+import { InteractionReceiptWriter } from '../src/lib/metaflow/execution/receipt-writer.ts';
+import { wrapSubcommand } from '../src/lib/metaflow/execution/wrap.ts';
+import { mineRun, miningExists } from '../src/lib/metaflow/phases/mine-run.ts';
+import { buildOptimizationNodes, readMining, emitOptExpansion } from '../src/lib/metaflow/phases/opt-dag.ts';
 import { validateAuditTail } from '../src/lib/import/audit-tail-gate.ts';
 import { loadRequired } from '../src/lib/metaflow/audit/audit.ts';
 import { writeAuditReceipt } from '../src/lib/metaflow/audit/receipt.ts';
@@ -88,6 +90,15 @@ function extractNote(argv: string[]): { note: string | undefined; positional: st
   const note = argv[idx + 1];
   const positional = [...argv.slice(0, idx), ...argv.slice(idx + 2)];
   return { note, positional };
+}
+
+// Flag alias resolver: maps short flags to long flags for consistent checking
+// Aliases: -j → --json, -q → --quiet, -g → --global, -d → --depth, --dryrun → --dry-run
+function hasFlag(flags: string[], haystack: string[]): boolean {
+  for (const flag of flags) {
+    if (haystack.includes(flag)) return true;
+  }
+  return false;
 }
 
 const { note: _note, positional: args } = extractNote(rawArgs);
@@ -127,6 +138,10 @@ function deriveEnvelopeCmd(): string {
     if (args[1] === 'complete') return 'mf.complete';
     return 'mf';
   }
+  if (cmd === 'internal') {
+    if (args[1] === 'execute-flow') return 'internal.execute-flow';
+    return 'internal';
+  }
   return cmd;
 }
 const _outputOpts = parseOutputOpts(rawArgs, deriveEnvelopeCmd());
@@ -157,7 +172,7 @@ if (_humanRenderers[_outputOpts.cmd]) {
 
 // Commands that don't require a note
 // Special case: orient/position with --check is note-exempt (silent polling)
-const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'trail', 'chart', 'install', 'dig', 'claim', 'diff', 'show', 'iter-id', 'explore', 'remaining', 'doctor', 'status', 'explain', 'receipts', 'artifacts', 'env-audit', 'completion']);
+const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'trail', 'chart', 'install', 'dig', 'claim', 'diff', 'show', 'iter-id', 'explore', 'remaining', 'doctor', 'status', 'explain', 'receipts', 'artifacts', 'env-audit', 'completion', 'spec-kit', 'internal']);
 const isOrientCheck = (cmd === 'orient' || cmd === 'position') && args.includes('--check');
 if (isOrientCheck) {
   NOTE_EXEMPT.add('orient');
@@ -177,6 +192,10 @@ if (cmd === 'dag' && args[1] === 'diff') {
 // plan status is read-only
 if (cmd === 'plan' && args[1] === 'status') {
   NOTE_EXEMPT.add('plan');
+}
+// compile-brief --help is read-only
+if (cmd === 'compile-brief' && args.includes('--help')) {
+  NOTE_EXEMPT.add('compile-brief');
 }
 
 interface TrailEntry {
@@ -328,6 +347,7 @@ async function main() {
       case 'federation': return cmdFederation(note!);
       case 'dispatch':  return await cmdDispatch(note!);
       case 'spec':      return cmdSpec(note!);
+      case 'spec-kit':  return cmdSpecKit(note);
       case 'init':      return cmdInit(note!);
       case 'report':    return await cmdReport(note!);
       case 'scaffold':  return await cmdScaffold(note!);
@@ -371,6 +391,7 @@ async function main() {
         return;
       case 'strategy':  return await cmdStrategy(note!);
       case 'mf':        return await cmdMf(note!);
+      case 'internal':  return await cmdInternal(note!);
       case 'help':
       case '--help':
       case '-h':        return cmdHelp();
@@ -404,7 +425,7 @@ async function cmdOrient(note: string | undefined) {
         position: 'untracked',
       });
     }
-    if (args.includes('--json')) {
+    if (hasFlag(['--json', '-j'], args)) {
       json({
         schema_version: 1,
         tool: { name: 'roadmap', version: readPackageVersion() },
@@ -696,12 +717,31 @@ async function cmdOrient(note: string | undefined) {
     ],
   };
 
+  // Build hints for workflow guidance
+  const hints: Array<{ text: string; example: string }> = [];
+  const position = result.position as string[];
+  const remaining = result.remaining as number;
+
+  if (position.length > 0) {
+    hints.push({
+      text: 'Next step: view details of current batch',
+      example: `roadmap show ${position[0]}`,
+    });
+  }
+
+  if (remaining > 0) {
+    hints.push({
+      text: 'View full progress',
+      example: 'roadmap chart',
+    });
+  }
+
   // --json: emit v1 machine envelope
   if (args.includes('--json')) {
     const v1 = buildOrientV1(dag, result, pos);
-    json(v1, orientRenderModel);
+    json(v1, orientRenderModel, { hints });
   } else {
-    json(result, orientRenderModel);
+    json(result, orientRenderModel, { hints });
   }
 }
 
@@ -828,7 +868,7 @@ async function cmdAdvance(note: string) {
   }
 
   if (!args.includes('--skip-plan-gate')) {
-    const { requirePlanGate } = await import('../src/lib/plan-gate.ts');
+    const { requirePlanGate } = await import('../src/lib/recipes/plan/plan-gate.ts');
     const gate = requirePlanGate(repoRoot);
     if (!gate.ok) { json({ error: gate.reason, fix: gate.fix }); process.exit(1); }
   }
@@ -1072,7 +1112,7 @@ async function cmdCheck(note: string) {
 
 async function cmdExpand(note: string) {
   if (!args.includes('--skip-plan-gate')) {
-    const { requirePlanGate } = await import('../src/lib/plan-gate.ts');
+    const { requirePlanGate } = await import('../src/lib/recipes/plan/plan-gate.ts');
     const gate = requirePlanGate(repoRoot);
     if (!gate.ok) { json({ error: gate.reason, fix: gate.fix }); process.exit(1); }
   }
@@ -1340,7 +1380,7 @@ function cmdParallel(note: string) {
 }
 
 function cmdTrail() {
-  const useGlobal = args.includes('--global');
+  const useGlobal = hasFlag(['--global', '-g'], args);
   const dir = useGlobal ? globalTrailDir : (hasLocalDAG ? localTrailDir : globalTrailDir);
   const trailPath = join(dir, 'trail.jsonl');
   const source = useGlobal ? 'global' : (hasLocalDAG ? 'local' : 'global');
@@ -1434,7 +1474,7 @@ function cmdTrail() {
 
 async function cmdChart() {
   if (!hasLocalDAG) {
-    console.log('📭 No roadmap in this repo. Run `roadmap install` to set up.');
+    json({ error: 'No roadmap in this repo. Run `roadmap install` to set up.' });
     return;
   }
 
@@ -1448,12 +1488,114 @@ async function cmdChart() {
   const now = new Date();
   const nodeIds = Object.keys(dag.nodes);
   const doneSet = new Set(pos.done);
+  const failedSet = new Set(completion.failingIds());
   const preGateSet = new Set(pos.preGate);
   const retired = retiredSet();
   const cpSet = showCritical ? new Set(criticalPath(dag)) : new Set<string>();
   const totalNodes = nodeIds.length;
   const doneCount = pos.done.length;
   const pct = Math.round((doneCount / totalNodes) * 100);
+
+  // Build structured chart data and render model unconditionally
+  const chartLayers: DagLayer[] = batches.map((batch, i) => ({
+    level: i,
+    nodes: batch.map((id): DagNode => {
+      const status: DagNode['status'] = retired.has(id) ? 'retired'
+        : doneSet.has(id) ? 'done'
+        : pos.position.includes(id) ? 'current'
+        : completion.hasFailing(id) ? 'fail'
+        : 'pending';
+      const node = dag.nodes[id as keyof typeof dag.nodes] as any;
+      return { id, status, desc: node?.desc };
+    }),
+  }));
+
+  const chartRenderModel: RenderModel = {
+    kind: 'chart',
+    title: `chart: ${dag.id}`,
+    nodes: [
+      { t: 'h1', s: `${dag.id} \u2014 ${dag.desc}` },
+      { t: 'bar', label: 'progress', cur: doneCount, total: totalNodes },
+      { t: 'kv', key: 'position', value: pos.position.join(', ') || '(complete)' },
+      { t: 'line' },
+      { t: 'dagLayers', layers: chartLayers },
+    ],
+  };
+
+  const chartData = { dagId: dag.id, done: doneCount, total: totalNodes, pct, position: pos.position, level: pos.level };
+
+  // Build hints for workflow guidance
+  const chartHints: Array<{ text: string; example: string }> = [];
+  if (pos.position.length > 0) {
+    chartHints.push({
+      text: 'View current batch details',
+      example: `roadmap show ${pos.position[0]}`,
+    });
+  }
+
+  // Route through JSON envelope
+  json(chartData, chartRenderModel, { hints: chartHints });
+
+  // Render human output if requested (separate from envelope)
+  if (_outputOpts.format === 'human') {
+    renderChartHuman({
+      dag,
+      showDeps,
+      showCritical,
+      pos,
+      batches,
+      claimStore,
+      now,
+      doneSet,
+      failedSet,
+      preGateSet,
+      retired,
+      cpSet,
+      doneCount,
+      totalNodes,
+      pct,
+      completion,
+    });
+  }
+}
+
+// Helper to render chart in human-readable format
+function renderChartHuman(opts: {
+  dag: any;
+  showDeps: boolean;
+  showCritical: boolean;
+  pos: any;
+  batches: string[][];
+  claimStore: any;
+  now: Date;
+  doneSet: Set<string>;
+  failedSet: Set<string>;
+  preGateSet: Set<string>;
+  retired: Set<string>;
+  cpSet: Set<string>;
+  doneCount: number;
+  totalNodes: number;
+  pct: number;
+  completion: any;
+}) {
+  const {
+    dag,
+    showDeps,
+    showCritical,
+    pos,
+    batches,
+    claimStore,
+    now,
+    doneSet,
+    failedSet,
+    preGateSet,
+    retired,
+    cpSet,
+    doneCount,
+    totalNodes,
+    pct,
+    completion,
+  } = opts;
 
   // Show dependency repos first if --deps
   if (showDeps && pos.deps.length) {
@@ -1574,35 +1716,6 @@ async function cmdChart() {
   }
 
   console.log('');
-
-  // When --json requested, also emit structured envelope with chart RenderModel
-  if (_outputOpts.format === 'json') {
-    const chartLayers: DagLayer[] = batches.map((batch, i) => ({
-      level: i,
-      nodes: batch.map((id): DagNode => {
-        const status: DagNode['status'] = retired.has(id) ? 'retired'
-          : doneSet.has(id) ? 'done'
-          : pos.position.includes(id) ? 'current'
-          : completion.hasFailing(id) ? 'fail'
-          : 'pending';
-        const node = dag.nodes[id as keyof typeof dag.nodes] as any;
-        return { id, status, desc: node?.desc };
-      }),
-    }));
-    const chartRenderModel: RenderModel = {
-      kind: 'chart',
-      title: `chart: ${dag.id}`,
-      nodes: [
-        { t: 'h1', s: `${dag.id} \u2014 ${dag.desc}` },
-        { t: 'bar', label: 'progress', cur: doneCount, total: totalNodes },
-        { t: 'kv', key: 'position', value: pos.position.join(', ') || '(complete)' },
-        { t: 'line' },
-        { t: 'dagLayers', layers: chartLayers },
-      ],
-    };
-    const chartData = { dagId: dag.id, done: doneCount, total: totalNodes, pct, position: pos.position, level: pos.level };
-    json(chartData, chartRenderModel);
-  }
 }
 
 function cmdDoctor() {
@@ -1945,7 +2058,7 @@ function cmdCompletionCompact() {
     process.exit(1);
   }
 
-  const dryRun = args.includes('--dry-run');
+  const dryRun = hasFlag(['--dry-run', '--dryrun'], args);
   const result = completionCompact(repoRoot, { dryRun });
   json(result);
 }
@@ -2582,7 +2695,7 @@ async function cmdComplete(note: string) {
   }
 
   if (!args.includes('--skip-plan-gate')) {
-    const { requirePlanGate } = await import('../src/lib/plan-gate.ts');
+    const { requirePlanGate } = await import('../src/lib/recipes/plan/plan-gate.ts');
     const gate = requirePlanGate(repoRoot);
     if (!gate.ok) { json({ error: gate.reason, fix: gate.fix }); process.exit(1); }
   }
@@ -2668,11 +2781,11 @@ async function cmdComplete(note: string) {
     const exploreRules = ((nodeSpec?.validate ?? []) as any[]).filter((r: any) => r.type === 'runtime-explore');
 
     if (exploreRules.length > 0) {
-      const { launchApp, runExploreScript, teardown: teardownApp } = await import('../src/lib/runtime-explore.ts');
+      const { launchApp, runExploreScript, teardown: teardownApp } = await import('../src/lib/exploration/runtime.ts');
       exploreResults = [];
 
       for (const rule of exploreRules) {
-        let handle: import('../src/lib/runtime-explore.ts').LaunchHandle | undefined;
+        let handle: import('../src/lib/exploration/runtime.ts').LaunchHandle | undefined;
         try {
           handle = await launchApp({
             command: rule.launch ?? 'npx electron .',
@@ -2736,7 +2849,7 @@ async function cmdComplete(note: string) {
       const shouldAutoExpand = expandOnFailRules.length > 0 && !intentJudgments;
 
       if (intentJudgments || shouldAutoExpand) {
-        const { extractIntentFailures, generateIntentExpansion, detectStall, buildEscalation } = await import('../src/lib/intent-expansion.ts');
+        const { extractIntentFailures, generateIntentExpansion, detectStall, buildEscalation } = await import('../src/lib/intent/intent-expansion.ts');
 
         // If auto-expanding, synthesize minimum judgment data (confidence 0 = needs work)
         const judgmentsToUse = intentJudgments ?? expandOnFailRules.map(r => ({
@@ -2955,6 +3068,10 @@ async function cmdComplete(note: string) {
       validatorResults.push({ id: vr.id, passed: vr.passed, exitCode: vr.exitCode, stdoutSha: vr.stdoutSha, stderrSha: vr.stderrSha, artifactPaths: vr.artifactPaths });
     }
   }
+
+  // Release claim on successful completion — prevents claimed-completed warnings
+  delete claimStore[nodeId];
+  saveClaims(repoRoot, claimStore);
 
   // Save completion with evidence to persistent tracking (receipt-authoritative)
   saveCompletionWithEvidence(repoRoot, nodeId, evidenceChecks, owner, checkpoint.id, validatorResults);
@@ -3535,7 +3652,7 @@ function cmdRetire(note: string) {
   const allNodes = Object.keys(dag.nodes);
 
   if (!allNodes.includes(nodeId)) {
-    json({ error: `Node "${nodeId}" not found in DAG`, available: allNodes.slice(0, 10) });
+    json({ error: `Node "${nodeId}" not found in DAG. Try "roadmap show" to list available nodes.`, available: allNodes.slice(0, 10) });
     process.exit(1);
   }
 
@@ -3615,7 +3732,7 @@ function cmdClaim() {
   const dag = loadDAG();
   const allNodes = Object.keys(dag.nodes);
   if (!allNodes.includes(nodeId)) {
-    json({ error: `Node "${nodeId}" not found in DAG`, available: allNodes.slice(0, 10) });
+    json({ error: `Node "${nodeId}" not found in DAG. Try "roadmap show" to list available nodes.`, available: allNodes.slice(0, 10) });
     process.exit(1);
   }
 
@@ -3737,7 +3854,14 @@ function cmdClaim() {
   };
   writeToken(repoRoot, claimToken);
 
-  json({ claimed: nodeId, owner, claimedAt, claimExpiry, ttlSeconds, tokenId: tokId });
+  const claimHints: Array<{ text: string; example: string }> = [
+    {
+      text: 'Complete this node when done',
+      example: `roadmap complete ${nodeId} --note "description"`,
+    },
+  ];
+
+  json({ claimed: nodeId, owner, claimedAt, claimExpiry, ttlSeconds, tokenId: tokId }, undefined, { hints: claimHints });
 }
 
 // --- dag: candidate operations (diff, accept, reject) ---
@@ -4641,6 +4765,71 @@ function cmdImportCompiled(note: string, irPath: string | undefined) {
   });
 }
 
+// --- spec-kit: workspace init + agent brief generation ---
+function cmdSpecKit(note: string) {
+  const sub = args[1];
+  if (sub === '--help' || sub === '-h' || args.includes('--help')) {
+    console.log(SPEC_KIT_INIT_HELP);
+    return;
+  }
+  switch (sub) {
+    case 'init': return cmdSpecKitInit(note);
+    default:
+      json({ error: `Unknown spec-kit subcommand: ${sub}`, fix: 'roadmap spec-kit init <dag-id> --intent "..." --note "..."' });
+      process.exit(1);
+  }
+}
+
+function cmdSpecKitInit(note: string) {
+  if (args.includes('--help') || args.includes('-h')) {
+    console.log(SPEC_KIT_INIT_HELP);
+    return;
+  }
+
+  // dag-id is positional: args = ['spec-kit', 'init', '<dag-id>']
+  const dagId = args[2];
+  if (!dagId || dagId.startsWith('--')) {
+    json({ error: 'Missing <dag-id>', fix: 'roadmap spec-kit init <dag-id> --intent "..." --note "..."' });
+    process.exit(1);
+  }
+
+  const intentIdx = args.indexOf('--intent');
+  const intent = intentIdx !== -1 ? args[intentIdx + 1] : undefined;
+  if (!intent) {
+    json({ error: 'Missing --intent', fix: 'roadmap spec-kit init <dag-id> --intent "..." --note "..."' });
+    process.exit(1);
+  }
+
+  // Get orientation if DAG exists
+  let orientation: Orientation | undefined;
+  if (hasLocalDAG) {
+    try {
+      orientation = orient(loadDAG(), loadStore(), retiredSet()) as Orientation;
+    } catch { /* untracked — use default */ }
+  }
+
+  const result = specKitInit({ dagId, intent, repoRoot, orientation });
+
+  recordTrail({
+    ts: new Date().toISOString(), cmd: 'spec-kit.init', note,
+    repo: basename(repoRoot), position: orientation?.position ?? ['untracked'], level: orientation?.level ?? 0, dagId,
+  });
+
+  console.log(result.brief.markdown);
+
+  json({
+    initialized: true,
+    dagId,
+    specFile: result.specFile,
+    briefFile: result.briefFile,
+    nextSteps: [
+      `Edit ${result.specFile} — fill in domain concepts, scenarios, constraints`,
+      `Run: roadmap spec generate --note "generate spec from pre-spec"`,
+      `Run: roadmap spec compile --note "compile IR"`,
+    ],
+  });
+}
+
 // --- spec: front-end for spec generation pipeline ---
 // FR-SPEC-001: roadmap owns the spec interface; spec-kit is a pluggable backend.
 function cmdSpec(note: string) {
@@ -5114,7 +5303,7 @@ async function cmdScaffold(note: string) {
   }
   const dag = loadDAG();
   const buildCheck = args.includes('--build-check');
-  const dryRun = args.includes('--dry-run');
+  const dryRun = hasFlag(['--dry-run', '--dryrun'], args);
   const result = await buildScaffold(dag, repoRoot, { buildCheck, dryRun });
 
   recordTrail({
@@ -5585,12 +5774,14 @@ async function cmdMf(note: string) {
         json({ cmd: 'mf.opt', runId: oRunId, nodes: optNodes, emitted: false });
       }
 
-      if (optNodes.length === 0) {
-        process.stderr.write('(no optimizations — run is clean)\n');
-      } else {
-        process.stderr.write(`Optimization nodes (${optNodes.length}):\n`);
-        for (const n of optNodes) {
-          process.stderr.write(`  ${n.id}: ${n.desc}\n    rationale: ${n.rationale}\n`);
+      if (_outputOpts.format === 'human') {
+        if (optNodes.length === 0) {
+          process.stderr.write('(no optimizations — run is clean)\n');
+        } else {
+          process.stderr.write(`Optimization nodes (${optNodes.length}):\n`);
+          for (const n of optNodes) {
+            process.stderr.write(`  ${n.id}: ${n.desc}\n    rationale: ${n.rationale}\n`);
+          }
         }
       }
 
@@ -5603,7 +5794,9 @@ async function cmdMf(note: string) {
       const aRequired = args.includes('--required');
       const { cmdMfAudit } = await import('../src/lib/metaflow/audit/cli.ts');
       const auditResult = cmdMfAudit(aRunId, { required: aRequired, base: repoRoot });
-      process.stderr.write(auditResult.render + '\n');
+      if (_outputOpts.format === 'human') {
+        process.stderr.write(auditResult.render + '\n');
+      }
       json(auditResult.data);
       recordTrail({ ts: new Date().toISOString(), cmd: 'mf.audit', note, repo: basename(repoRoot), position: ['mf-audit'], level: 5 });
       break;
@@ -5617,9 +5810,48 @@ async function cmdMf(note: string) {
       const dagId = loadDAG?.()?.id ?? 'unknown';
       const { cmdAuditTailEmit } = await import('../src/lib/metaflow/audit/cli.ts');
       const tailResult = cmdAuditTailEmit(dagId, repoRoot);
-      process.stderr.write(tailResult.render + '\n');
+      if (_outputOpts.format === 'human') {
+        process.stderr.write(tailResult.render + '\n');
+      }
       json(tailResult.data);
       recordTrail({ ts: new Date().toISOString(), cmd: 'mf.audit-tail', note, repo: basename(repoRoot), position: ['mf-audit-tail'], level: 5 });
+      break;
+    }
+    case 'optimizer-loop': {
+      // Parse options
+      const maxIterIdx = args.indexOf('--max-iters');
+      const maxIters = maxIterIdx !== -1 && args[maxIterIdx + 1]
+        ? parseInt(args[maxIterIdx + 1], 10)
+        : 8;
+
+      // Build flows if needed
+      try {
+        const { writeOptimizationsFlows } = await import('../src/lib/metaflow/optimizer/flow-builder.ts');
+        writeOptimizationsFlows(repoRoot);
+      } catch (e) {
+        console.error('Failed to generate flows:', e);
+        // Continue anyway; flows might already exist
+      }
+
+      // Run the loop
+      const { runOptimizerLoop } = await import('../src/lib/metaflow/optimizer/runner.ts');
+      const result = await runOptimizerLoop(repoRoot, { maxIters, note });
+
+      json({
+        cmd: 'mf.optimizer-loop',
+        completed: result.completed,
+        iterationsRun: result.iterationsRun,
+        report: result.report,
+      });
+
+      recordTrail({
+        ts: new Date().toISOString(),
+        cmd: 'mf.optimizer-loop',
+        note,
+        repo: basename(repoRoot),
+        position: ['optimizer-loop'],
+        level: 0,
+      });
       break;
     }
     default:
@@ -5629,6 +5861,159 @@ async function cmdMf(note: string) {
 
   // Receipt enforcement — when --mf-run is active and command requires a receipt
   enforceReceipt();
+}
+
+// --- internal: flow execution and step handlers ---
+
+async function cmdInternal(note: string) {
+  const sub = args[1];
+  switch (sub) {
+    case 'execute-flow': {
+      return await cmdInternalExecuteFlow(note);
+    }
+    case 'write-targets': {
+      return await cmdInternalWriteTargets(note);
+    }
+    case 'measure-iteration': {
+      return await cmdInternalMeasureIteration(note);
+    }
+    case 'check-targets': {
+      return await cmdInternalCheckTargets(note);
+    }
+    case 'implement-proposal': {
+      return await cmdInternalImplementProposal(note);
+    }
+    default:
+      json({ error: `Unknown internal subcommand: ${sub}`, fix: 'roadmap internal <write-targets|measure-iteration|check-targets|implement-proposal|execute-flow>' });
+      process.exit(1);
+  }
+}
+
+async function cmdInternalExecuteFlow(note: string) {
+  const flowIdIdx = args.indexOf('--flow-id');
+  const flowId = flowIdIdx !== -1 ? args[flowIdIdx + 1] : undefined;
+  if (!flowId) {
+    json({ error: 'Missing --flow-id <id>' });
+    process.exit(1);
+  }
+
+  const { executeFlow } = await import('../src/lib/metaflow/phases/execute-flow.ts');
+  try {
+    const report = await executeFlow(repoRoot, flowId);
+    json(report);
+    recordTrail({
+      ts: new Date().toISOString(), cmd: 'internal.execute-flow', note, repo: basename(repoRoot),
+      detail: { flowId, passed: report.passed, stepsRun: report.steps.length },
+    });
+    if (!report.passed) process.exit(1);
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    json({ error: `execute-flow failed: ${msg}` });
+    process.exit(1);
+  }
+}
+
+async function cmdInternalWriteTargets(note: string) {
+  const { writeTargets } = await import('../src/lib/metaflow/optimizer/targets.ts');
+  const targetsPath = join(repoRoot, '.roadmap/metaflow-optimizer/targets.json');
+  try {
+    writeTargets(targetsPath);
+    json({ ok: true, msg: 'Targets written', path: targetsPath });
+    recordTrail({
+      ts: new Date().toISOString(), cmd: 'internal.write-targets', note, repo: basename(repoRoot),
+      detail: { targetsPath },
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    json({ error: `write-targets failed: ${msg}` });
+    process.exit(1);
+  }
+}
+
+async function cmdInternalMeasureIteration(note: string) {
+  const iterIdx = args.indexOf('--iter');
+  const iterN = iterIdx !== -1 ? parseInt(args[iterIdx + 1], 10) : undefined;
+  if (!iterN || isNaN(iterN)) {
+    json({ error: 'Missing --iter <N>' });
+    process.exit(1);
+  }
+
+  const { measureIteration } = await import('../src/lib/metaflow/optimizer/measure.ts');
+  const { writeMetrics, writeTargetsAchieved } = await import('../src/lib/metaflow/optimizer/measure.ts');
+  const { checkTargets } = await import('../src/lib/metaflow/optimizer/targets.ts');
+
+  try {
+    const metrics = await measureIteration(iterN, repoRoot);
+    const metricsPath = join(repoRoot, `.roadmap/metaflow-optimizer/iter-${iterN}/metrics.json`);
+    writeMetrics(metricsPath, metrics);
+
+    const { met } = checkTargets(metrics);
+    if (met) {
+      const sentinelPath = join(repoRoot, '.roadmap/metaflow-optimizer/targets-achieved.json');
+      writeTargetsAchieved(sentinelPath);
+    }
+
+    json({ ok: true, metrics, targetsAchieved: met });
+    recordTrail({
+      ts: new Date().toISOString(), cmd: 'internal.measure-iteration', note, repo: basename(repoRoot),
+      detail: { iterN, targetsAchieved: met },
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    json({ error: `measure-iteration failed: ${msg}` });
+    process.exit(1);
+  }
+}
+
+async function cmdInternalCheckTargets(note: string) {
+  const metricsPath = join(repoRoot, '.roadmap/metaflow-optimizer/iter-8/metrics.json');
+  const { checkTargets } = await import('../src/lib/metaflow/optimizer/targets.ts');
+
+  try {
+    const metrics = JSON.parse(readFileSync(metricsPath, 'utf8'));
+    const result = checkTargets(metrics);
+    const gateResultPath = join(repoRoot, '.roadmap/metaflow-optimizer/optimizer-gate.json');
+    mkdirSync(dirname(gateResultPath), { recursive: true });
+    writeFileSync(gateResultPath, JSON.stringify(result, null, 2));
+
+    json({ ok: true, ...result });
+    recordTrail({
+      ts: new Date().toISOString(), cmd: 'internal.check-targets', note, repo: basename(repoRoot),
+      detail: { targetsMet: result.met, gapCount: result.gaps.length },
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    json({ error: `check-targets failed: ${msg}` });
+    process.exit(1);
+  }
+}
+
+async function cmdInternalImplementProposal(note: string) {
+  const iterIdx = args.indexOf('--iter');
+  const iterN = iterIdx !== -1 ? parseInt(args[iterIdx + 1], 10) : undefined;
+  if (!iterN || isNaN(iterN)) {
+    json({ error: 'Missing --iter <N>' });
+    process.exit(1);
+  }
+
+  const { implement } = await import('../src/lib/metaflow/optimizer/implement.ts');
+  const { writeImplementation } = await import('../src/lib/metaflow/optimizer/implement.ts');
+
+  try {
+    const result = await implement(iterN, repoRoot);
+    const implPath = join(repoRoot, `.roadmap/metaflow-optimizer/iter-${iterN}/impl.json`);
+    writeImplementation(implPath, result);
+
+    json({ ok: true, impl: result });
+    recordTrail({
+      ts: new Date().toISOString(), cmd: 'internal.implement-proposal', note, repo: basename(repoRoot),
+      detail: { iterN, strategy: result.strategy, filesModified: result.filesModified.length },
+    });
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    json({ error: `implement-proposal failed: ${msg}` });
+    process.exit(1);
+  }
 }
 
 function enforceReceipt(): void {
@@ -5731,7 +6116,7 @@ Commands:
   explore --api         Show explore API surface (observation + interaction helpers)
   explore --api --json  Machine-readable API surface for agent context injection
   explore --run <script> [--launch <cmd>] [--port N] [--keep-alive]  Run explore script with managed lifecycle
-  compile-brief --node <id> [--env path]  Generate agent-ready work brief from node spec + environment
+  compile-brief --node <id> [--env path]  Generate agent-ready work brief from node spec + environment + spec-kit context
   compile-prompts --node <id> [--env path] Generate agent prompts from DAG nodes
   plan overlay --from-intake <id>  Write candidate nodes to .roadmap/overlays/ (no head.json mutation)
   gate merge [--target <branch>]  Local merge gate: verify required receipts before merge
@@ -5745,8 +6130,11 @@ Commands:
 
 Global flags (FR-CLI-001):
   --human             Human-readable formatted output instead of JSON
-  --json              Force JSON output (overrides --human)
-  --quiet             Suppress non-fatal output
+  --json, -j          Force JSON output (overrides --human)
+  --quiet, -q         Suppress non-fatal output
+  --global, -g        Access global trail (~/.roadmap/trail.jsonl)
+  --dry-run, --dryrun Show what would happen without executing
+  --depth, -d         Dependency traversal depth
 
 All commands (except help/trail/chart/install/dig/claim/diff/show/orient/explore) require --note "reason".
   orient --check is note-exempt for swarm agents that reorient without trail pollution.
@@ -5815,17 +6203,31 @@ Notes:
   Bad:  --note "session start"
   Good: --note "auth module — adding JWT refresh token rotation"
 
-Examples:
+Example workflows:
+
+  # Example 1: Start a new phase
   roadmap orient --note "auth module — investigating token expiry bug"
-  roadmap orient --assign --owners w1,w2,w3 --ttl 900 --note "dispatch L12 — api,db,cache workers"
+  roadmap show init
+  roadmap advance --note "ready to start auth phase"
+
+  # Example 2: Execute a parallel batch
+  roadmap orient --note "batch execution"
   roadmap claim auth-impl --owner worker-1 --ttl 600
-  roadmap claim auth-impl --renew --ttl 600
-  roadmap claim --list
-  roadmap advance --note "L12 complete — auth, db-migration, cache-layer artifacts verified"
+  roadmap claim db-migration --owner worker-2 --ttl 600
+  roadmap complete auth-impl --note "tokens implemented"
+  roadmap complete db-migration --note "migration done"
   roadmap chart
-  roadmap chart --deps
-  roadmap validate auth-impl --note "pre-advance check on auth artifacts"
-  roadmap retire phase-5-term --cascade --note "descoped — moving auth to external service"
+
+  # Example 3: Debug and iterate
+  roadmap validate --note "check current state"
+  roadmap show auth-impl
+  roadmap retire auth-impl --cascade --note "reworking approach" --undo
+  roadmap advance --note "L12 artifacts verified"
+
+Additional examples:
+  roadmap orient --assign --owners w1,w2,w3 --ttl 900 --note "dispatch L12 — api,db,cache workers"
+  roadmap orient --check
+  roadmap chart --critical-path
   roadmap trail --global --last 5
   roadmap trail --archived --read 2026-02-26
   roadmap dig docs/API.md --restore`);
@@ -5835,7 +6237,7 @@ Examples:
 
 function cmdPropagate(note: string) {
   const dag = loadDAG();
-  const dryRun = args.includes('--dry-run');
+  const dryRun = hasFlag(['--dry-run', '--dryrun'], args);
   const fromIdx = args.indexOf('--from');
   const from = fromIdx !== -1 ? args[fromIdx + 1] : undefined;
   const depthIdx = args.indexOf('--depth');
@@ -5989,9 +6391,9 @@ async function cmdExplore() {
     const buildCommand = buildIdx !== -1 ? args[buildIdx + 1] : undefined;
     const keepAlive = args.includes('--keep-alive');
 
-    const { launchApp, runExploreScript, teardown: teardownApp } = await import('../src/lib/runtime-explore.ts');
+    const { launchApp, runExploreScript, teardown: teardownApp } = await import('../src/lib/exploration/runtime.ts');
 
-    let handle: import('../src/lib/runtime-explore.ts').LaunchHandle | undefined;
+    let handle: import('../src/lib/exploration/runtime.ts').LaunchHandle | undefined;
 
     try {
       // Launch app if command provided
@@ -6109,7 +6511,7 @@ async function cmdPlanStatus() {
     process.exit(1);
   }
 
-  const { requirePlanGate } = await import('../src/lib/plan-gate.ts');
+  const { requirePlanGate } = await import('../src/lib/recipes/plan/plan-gate.ts');
   const { readPointer, computeHeadSha } = await import('../src/lib/plan-selection.ts');
   const { loadPlanSelectReceipt } = await import('../src/lib/plan-selection.ts');
   const gate = requirePlanGate(repoRoot);
@@ -6588,9 +6990,9 @@ function loadDAG(): Graph<string> {
   if (!existsSync(headPath)) {
     throw new RoadmapError('NODE_NOT_FOUND', {
       attempted: headPath,
-      fix: 'Initialize roadmap: create .roadmap/head.json',
+      fix: 'Initialize roadmap: create .roadmap/head.json. See roadmap help for examples.',
       entry: 'roadmap orient',
-    }, 'No roadmap found at .roadmap/head.json');
+    }, 'No .roadmap/head.json found. Use "roadmap orient" to initialize, or see "roadmap help" for examples.');
   }
   return JSON.parse(readFileSync(headPath, 'utf-8'));
 }
@@ -6608,7 +7010,7 @@ function cmdGate(note: string) {
   const targetIdx = args.indexOf('--target');
   const target = targetIdx !== -1 ? args[targetIdx + 1] : undefined;
 
-  const { runMergeGate } = require('../src/lib/merge-gate-cmd.ts') as typeof import('../src/lib/merge-gate-cmd.ts');
+  const { runMergeGate } = require('../src/lib/recipes/merge/merge-gate-cmd.ts') as typeof import('../src/lib/recipes/merge/merge-gate-cmd.ts');
   const result = runMergeGate({ repoRoot, target });
 
   recordTrail({
@@ -6623,7 +7025,11 @@ function cmdGate(note: string) {
   if (!result.pass) process.exit(1);
 }
 
-function json(obj: unknown, renderModel?: RenderModel) {
+interface JsonOpts {
+  hints?: Array<{ text: string; example: string }>;
+}
+
+function json(obj: unknown, renderModel?: RenderModel, jsonOpts?: JsonOpts) {
   const hasError = typeof obj === 'object' && obj !== null && 'error' in obj;
 
   // Build render output + RenderV1 envelope field
@@ -6634,12 +7040,24 @@ function json(obj: unknown, renderModel?: RenderModel) {
       format: _renderOpts.tty ? 'ansi' : 'plain',
       mime: 'text/x-roadmap-ui',
       title: renderModel.title,
-      body: renderOutput.plain,
     };
-    process.stderr.write((renderOutput.ansi ?? renderOutput.plain) + '\n');
-  } else if (!_outputOpts.quiet) {
-    // Minimal stderr render for commands without a RenderModel
-    process.stderr.write(`\u2501\u2501 ${_outputOpts.cmd} \u2501\u2501\n${JSON.stringify(obj, null, 2).slice(0, 500)}\n`);
+    if (jsonOpts?.hints && jsonOpts.hints.length > 0) {
+      renderV1.hints = jsonOpts.hints;
+    }
+    // Only write human rendering to stderr if --human format requested
+    if (_outputOpts.format === 'human') {
+      process.stderr.write((renderOutput.ansi ?? renderOutput.plain) + '\n');
+    }
+  }
+
+  // Include hints in render even if no renderModel provided (e.g., for claim command)
+  if (!renderV1 && jsonOpts?.hints && jsonOpts.hints.length > 0) {
+    renderV1 = {
+      format: 'plain',
+      mime: 'text/x-roadmap-ui',
+      title: _outputOpts.cmd,
+      hints: jsonOpts.hints,
+    };
   }
 
   const emitOpts = { ..._outputOpts, render: renderV1 };
@@ -6756,6 +7174,12 @@ function cmdCompilePrompts(note: string) {
 
 // --- compile-brief: generate agent-ready work briefs from node specs + environment ---
 function cmdCompileBrief(note: string) {
+  if (args.includes('--help')) {
+    console.log('compile-brief --node <id> [--env path] [--json]  Generate agent-ready work brief from node spec + environment + spec-kit context');
+    console.log('');
+    console.log('When .roadmap/spec/<dag-id>-spec.md exists, spec-kit agent brief is appended automatically.');
+    process.exit(0);
+  }
   if (!hasLocalDAG) {
     json({ error: 'No roadmap in this repo.' });
     process.exit(1);
@@ -6786,18 +7210,30 @@ function cmdCompileBrief(note: string) {
     process.exit(1);
   }
 
+  // Check for spec-kit context
+  const specFile = join(repoRoot, '.roadmap', 'spec', `${dag.id}-spec.md`);
+  const hasSpecKit = existsSync(specFile);
+  let outputMarkdown = brief.markdown;
+  let specKitResult: ReturnType<typeof compileBriefWithSpecKit> | undefined;
+
+  if (hasSpecKit) {
+    const orientation = orientWithState(dag);
+    specKitResult = compileBriefWithSpecKit(brief, dag.id, repoRoot, orientation);
+    outputMarkdown = specKitResult.merged;
+  }
+
   recordTrail({
     ts: new Date().toISOString(), cmd: 'compile-brief', note,
     repo: basename(repoRoot), position: [nodeId], level: -1, dagId: dag.id,
-    detail: { nodeId, produces: brief.whatYouProduce.length, consumes: brief.whatYouConsume.length },
+    detail: { nodeId, produces: brief.whatYouProduce.length, consumes: brief.whatYouConsume.length, specKit: hasSpecKit },
   });
 
   // Output markdown by default
   const asJson = args.includes('--json');
   if (asJson) {
-    json(brief);
+    json(specKitResult ? { ...brief, specKit: specKitResult.specKit, markdown: outputMarkdown } : brief);
   } else {
-    console.log(brief.markdown);
+    console.log(outputMarkdown);
   }
 }
 

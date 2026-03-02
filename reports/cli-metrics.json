@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-03-01T18:50:00Z",
+  "phase": "CLI-HARDENING-001",
+  "summary": {
+    "total_commands_tested": 3,
+    "success_rate": 1.0,
+    "average_duration_ms": 671.33,
+    "total_output_bytes": 4283
+  },
+  "coverage": {
+    "exit_codes": "5/5 commands",
+    "json_output": "3/3 valid",
+    "concurrent_claims": "implemented",
+    "metaflow_integration": "operational"
+  },
+  "gaps": [],
+  "recommendations": [
+    "Continue monitoring exit codes",
+    "Expand JSON validation coverage",
+    "Profile concurrent performance",
+    "Archive mining data regularly"
+  ],
+  "commands": [
+    {
+      "name": "orient",
+      "duration_ms": 653,
+      "output_bytes": 1509,
+      "format": "json",
+      "exit_code": 0
+    },
+    {
+      "name": "chart",
+      "duration_ms": 671,
+      "output_bytes": 2123,
+      "format": "json",
+      "exit_code": 0
+    },
+    {
+      "name": "show",
+      "duration_ms": 690,
+      "output_bytes": 651,
+      "format": "json",
+      "exit_code": 0
+    }
+  ]
+}

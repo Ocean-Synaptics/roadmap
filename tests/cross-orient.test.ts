@@ -3,7 +3,7 @@ import { join, resolve } from 'node:path';
 import { mkdirSync, writeFileSync, rmSync, existsSync } from 'node:fs';
 import { crossOrient } from '../src/lib/cross-orient.ts';
 import { define, graph, CompletionStore } from '../src/protocol.ts';
-import { discoverDependencies, resolveSiblingPath, orderByDependencies, buildDepGraph } from '../src/lib/dependency-resolver.ts';
+import { discoverDependencies, resolveSiblingPath, orderByDependencies, buildDepGraph } from '../src/lib/utils/dependency-resolver.ts';
 import type { DependencySpec } from '../src/lib/project-metadata.schema.ts';
 
 const root = process.cwd();

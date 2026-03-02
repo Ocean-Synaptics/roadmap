@@ -6,8 +6,8 @@ import { readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { ProfileReport, NodeProfile, EfficiencyWarning } from './profile-schema.ts';
 import { DEFAULT_PROFILE_CONFIG, PROFILE_REPORT_PATH, computeParallelismUtilization } from './profile-schema.ts';
-import type { TranscriptSession } from './transcript-schema.ts';
-import { AUDIT_DIR, isTranscriptSession } from './transcript-schema.ts';
+import type { TranscriptSession } from './metaloop/transcript-schema.ts';
+import { AUDIT_DIR, isTranscriptSession } from './metaloop/transcript-schema.ts';
 
 export interface ProfileOptions {
   repoRoot: string;

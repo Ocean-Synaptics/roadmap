@@ -1,5 +1,5 @@
 // @module cli-envelope
-// @exports emit, emitError, parseOutputOpts, CliEnvelope, CliError, OutputOpts, OutputFormat, ErrorCode, SCHEMA_VERSION, RenderV1, RenderSection
+// @exports emit, emitError, parseOutputOpts, CliEnvelope, CliError, OutputOpts, OutputFormat, ErrorCode, SCHEMA_VERSION, RenderV1, RenderSection, Hint
 // @entry roadmap/cli-envelope
 
 import { readFileSync } from 'node:fs';
@@ -15,12 +15,16 @@ export interface RenderSection {
   body: string;
 }
 
+export interface Hint {
+  text: string;
+  example: string;
+}
+
 export interface RenderV1 {
   format: 'ansi' | 'plain';
   mime: 'text/x-roadmap-ui';
   title: string;
-  body: string;
-  sections?: RenderSection[];
+  hints?: Hint[];
 }
 
 export interface CliEnvelope<T = unknown> {

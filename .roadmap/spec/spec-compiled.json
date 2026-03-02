@@ -1,0 +1,402 @@
+{
+  "schema_version": 1,
+  "engine": {
+    "name": "spec-kit",
+    "version": null,
+    "config_hash": "db34c6876beb663b34db194066d0d7029973e59c2c3c333b0dc85be126597529"
+  },
+  "dag_id": "cli-quality-improvements",
+  "inputs": [
+    {
+      "path": ".specify/pre-spec.md",
+      "sha256": "ec25b590ecb7fa9d8b837c91652fa6db3857c416f31ca62d02d94c8b9e0d4320",
+      "role": "pre-spec"
+    },
+    {
+      "path": ".specify/specs/cli-quality-improvements/spec.md",
+      "sha256": "667caae3146f60857e2c8691612743ba99e2cad0a699640647bf97d536615531",
+      "role": "spec"
+    },
+    {
+      "path": ".specify/specs/cli-quality-improvements/tasks.md",
+      "sha256": "be031ebb1789488322cd1c2e6223358addd27c62b7e06a0b0f1262d81c57a194",
+      "role": "tasks"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "design-hints-rendering",
+      "desc": "Design workflow hints strategy for orient output",
+      "priority": 0,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "design-error-classifier",
+      "desc": "Classify errors (permission|invalid-args|logic|system)",
+      "priority": 0,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "update-help-assign-next-ready",
+      "desc": "Add help examples for --assign, --next, --ready",
+      "priority": 0,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "implement-orient-next-step",
+      "desc": "Add \"Next step: roadmap show <nodeId>\" block to orient",
+      "priority": 1,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "implement-error-recovery",
+      "desc": "Add recovery hints to claim/orient/validate errors",
+      "priority": 1,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "implement-help-examples",
+      "desc": "Add swarm dispatch examples to help text",
+      "priority": 1,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "test-workflow-hints",
+      "desc": "Test hint-follow rate >= 80% in workflows",
+      "priority": 2,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "test-error-recovery",
+      "desc": "Test all error classes handled with recovery hints",
+      "priority": 2,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "test-swarm-dispatch",
+      "desc": "Test 3-agent swarm dispatch with --assign claims",
+      "priority": 2,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "mining-abandon-rate",
+      "desc": "Mine 50+ workflows, verify abandon-rate < 60%",
+      "priority": 3,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "mining-error-recovery",
+      "desc": "Mine 50 error scenarios, verify retry-rate >= 80%",
+      "priority": 3,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "mining-parallel-adoption",
+      "desc": "Mine 20+ swarms, verify --assign adoption >= 20%",
+      "priority": 3,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "design-pattern-classifier",
+      "desc": "Design success/failure pattern classifier",
+      "priority": 0,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "design-latency-profile",
+      "desc": "Profile validate command to identify slowest path",
+      "priority": 0,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "design-scripting-examples",
+      "desc": "Design scripting examples for -j, -q flags",
+      "priority": 0,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "implement-pattern-analyzer",
+      "desc": "Implement pattern ranking by success-rate",
+      "priority": 1,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "implement-cache-layer",
+      "desc": "Add 30s TTL cache to validate results",
+      "priority": 1,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "implement-scripting-help",
+      "desc": "Add scripting examples to help text",
+      "priority": 1,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "test-pattern-analysis",
+      "desc": "Test 100+ sequences classified correctly",
+      "priority": 2,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "test-latency-optimization",
+      "desc": "Test validate P50 < 250ms with cache + parallel",
+      "priority": 2,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "test-scripting-adoption",
+      "desc": "Test CI scenario with shell loop calling orient -j",
+      "priority": 2,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "mining-pattern-success-rates",
+      "desc": "Generate pattern-success-rate.json from 100+ sequences",
+      "priority": 3,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "mining-latency-benchmarks",
+      "desc": "Benchmark latency with/without cache, report 3× improvement",
+      "priority": 3,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "mining-scripting-adoption",
+      "desc": "Mine 30+ scripting scenarios, verify adoption >= 30%",
+      "priority": 3,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "instrument-cache-metrics",
+      "desc": "Add hit/miss rate instrumentation to token cache",
+      "priority": 0,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "design-negative-tests",
+      "desc": "Design negative test scenarios (edge cases, errors)",
+      "priority": 0,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "document-cross-repo-flags",
+      "desc": "Document --repo, --global, --deps, --depth with examples",
+      "priority": 0,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "benchmark-cache-io",
+      "desc": "Measure cache hit rate, verify >= 95%",
+      "priority": 1,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "implement-negative-tests",
+      "desc": "Implement 16+ negative test cases",
+      "priority": 1,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "test-cross-repo-visibility",
+      "desc": "Test cross-repo chart, trail with filters",
+      "priority": 1,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "report-cache-metrics",
+      "desc": "Generate cache performance report",
+      "priority": 2,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "measure-test-coverage",
+      "desc": "Measure code coverage, target 80%+ error handlers",
+      "priority": 2,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "validate-docs-examples",
+      "desc": "Verify all cross-repo examples work end-to-end",
+      "priority": 2,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "mining-cache-validation",
+      "desc": "Verify 396→1 file scan reduction in real usage",
+      "priority": 3,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "mining-test-effectiveness",
+      "desc": "Test that negative tests catch 80%+ of edge cases",
+      "priority": 3,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "mining-cross-repo-adoption",
+      "desc": "Measure cross-repo flag adoption in real workflows",
+      "priority": 3,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    },
+    {
+      "id": "synthesis-report",
+      "desc": "Aggregate all metrics, verify all gates pass",
+      "priority": 4,
+      "depends": [],
+      "produces": [],
+      "consumes": [],
+      "mode": "execute",
+      "validate": []
+    }
+  ],
+  "metadata": {
+    "generated": "2026-03-01T23:11:13.404Z",
+    "compile_hash": "6d12bac0ad48340f5b3d7fb29a8581be1f2d1ee56cc2eb77edd06d4747301073"
+  }
+}

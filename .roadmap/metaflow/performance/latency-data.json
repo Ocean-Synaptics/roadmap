@@ -1,0 +1,20 @@
+{
+  "timestamp": "2026-03-01T20:27:17.202Z",
+  "metric": "latency",
+  "source": "mining-aggregates",
+  "sampleCount": 3,
+  "samples": [
+    {
+      "cmd": "orient",
+      "ms": 653
+    },
+    {
+      "cmd": "chart",
+      "ms": 671
+    },
+    {
+      "cmd": "show-init",
+      "ms": 690
+    }
+  ]
+}

@@ -3,9 +3,9 @@
 // @types -
 // @entry roadmap
 
-import { listTokens, writeToken, isTokenExpired, tokenId } from '../token-store.ts';
-import type { BoundToken } from '../token-store.ts';
-import type { ActiveStrategy } from './schema.js';
+import { listTokens, writeToken, isTokenExpired, tokenId } from '../utils/tokens/token-store.ts';
+import type { BoundToken } from '../utils/tokens/token-store.ts';
+import type { ActiveStrategy } from './schema.ts';
 
 const HINT_TOKENS = [
   'hallucinate',

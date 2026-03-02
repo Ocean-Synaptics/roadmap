@@ -7,12 +7,12 @@ import { tmpdir } from 'node:os';
 
 import { runArgvValidator, isArgvRule, isArgvCommand, toArgv, shellescape } from '../lib/validator-argv.ts';
 import type { ArgvValidationRule } from '../lib/validator-argv.ts';
-import { makeWorkerIndex } from '../lib/git-index.ts';
+import { makeWorkerIndex } from '../lib/utils/git/git-index.ts';
 import { getHookScope, assertStagedScope, StagedOnlyFlag } from '../lib/hook-scope.ts';
-import { applyOverlay, writeOverlay, loadOverlay } from '../lib/strategy-overlay.ts';
-import type { StrategyOverlay } from '../lib/strategy-overlay.ts';
-import { writeDispatchReceipt, loadDispatchReceipt, validateDispatchFreshness } from '../lib/dispatch-receipt.ts';
-import type { DispatchReceipt } from '../lib/dispatch-receipt.ts';
+import { applyOverlay, writeOverlay, loadOverlay } from '../lib/strategies/strategy-overlay.ts';
+import type { StrategyOverlay } from '../lib/strategies/strategy-overlay.ts';
+import { writeDispatchReceipt, loadDispatchReceipt, validateDispatchFreshness } from '../lib/recipes/dispatch/dispatch-receipt.ts';
+import type { DispatchReceipt } from '../lib/recipes/dispatch/dispatch-receipt.ts';
 import { loadCache, saveCache, getCached, setCached } from '../lib/verify-cache.ts';
 import type { VerifyCache, CacheEntry } from '../lib/verify-cache.ts';
 

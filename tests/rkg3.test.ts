@@ -6,14 +6,14 @@ import { existsSync } from 'node:fs';
 
 import { isArgvCommand, toArgv } from '../src/lib/validator-argv.js';
 import { runValidator } from '../src/lib/validator-runner.js';
-import { makeWorkerIndex } from '../src/lib/git-index.js';
+import { makeWorkerIndex } from '../src/lib/utils/git/git-index.js';
 import { assertStagedScope, getHookScope } from '../src/lib/hook-scope.js';
 import { applyOverlay } from '../src/lib/strategy-overlay.js';
 import type { StrategyOverlay } from '../src/lib/strategy-overlay.js';
 import { getCached, setCached, loadCache } from '../src/lib/verify-cache.js';
 import type { CacheEntry, VerifyCache } from '../src/lib/verify-cache.js';
-import { validateDispatchFreshness } from '../src/lib/dispatch-receipt.js';
-import type { DispatchReceipt } from '../src/lib/dispatch-receipt.js';
+import { validateDispatchFreshness } from '../src/lib/recipes/dispatch/dispatch-receipt.js';
+import type { DispatchReceipt } from '../src/lib/recipes/dispatch/dispatch-receipt.js';
 
 function makeTmpDir(): string {
   return mkdtempSync(join(tmpdir(), 'rkg3-test-'));

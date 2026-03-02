@@ -3,7 +3,7 @@
 // @types FrictionResult, FrictionClassification, FrictionMetrics
 // @entry roadmap
 
-import type { TranscriptSession } from './transcript-schema.ts';
+import type { TranscriptSession } from './metaloop/transcript-schema.ts';
 
 export interface FrictionMetrics {
   toolEntropy: number;

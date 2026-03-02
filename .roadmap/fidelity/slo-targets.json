@@ -1,0 +1,73 @@
+{
+  "schema_version": 1,
+  "generated": "2026-03-01T18:00:00Z",
+  "iteration": "fr-custodial-iter-002",
+  "slos": [
+    {
+      "metric": "command_latency_p99",
+      "target": 1000,
+      "unit": "ms",
+      "severity": "high",
+      "enforced": true
+    },
+    {
+      "metric": "validation_success_rate",
+      "target": 0.98,
+      "unit": "fraction",
+      "severity": "critical",
+      "enforced": true
+    },
+    {
+      "metric": "state_coherence",
+      "target": 0.995,
+      "unit": "fraction",
+      "severity": "critical",
+      "enforced": true
+    },
+    {
+      "metric": "error_recovery_rate",
+      "target": 0.95,
+      "unit": "fraction",
+      "severity": "high",
+      "enforced": true
+    },
+    {
+      "metric": "concurrent_race_detections",
+      "target": 0,
+      "unit": "count",
+      "severity": "critical",
+      "enforced": true
+    },
+    {
+      "metric": "deadlock_detections",
+      "target": 0,
+      "unit": "count",
+      "severity": "critical",
+      "enforced": true
+    },
+    {
+      "metric": "artifact_validator_reliability",
+      "target": 0.99,
+      "unit": "fraction",
+      "severity": "high",
+      "note": "artifact-exists validator has known issues, target for iter3"
+    }
+  ],
+  "error_budgets": [
+    {
+      "metric": "validation_failures",
+      "budget": 0.02,
+      "window": "hourly"
+    },
+    {
+      "metric": "state_inconsistencies",
+      "budget": 0.005,
+      "window": "daily"
+    },
+    {
+      "metric": "recovery_failures",
+      "budget": 0.05,
+      "window": "daily"
+    }
+  ]
+}
