@@ -356,6 +356,7 @@ async function main() {
       case 'install':        return cmdInstall();
       case 'install-hooks':  return cmdInstallHooks(note!);
       case 'merge':     return await cmdMergeFrom();
+      case 'merge-batch': return await cmdMergeBatch(note!);
       // case 'cleanup-worktrees': return cmdCleanupWorktrees(); // TODO: implement in future node
       case 'claim':     return cmdClaim();
       case 'dag':       return cmdDag(note!);
@@ -3338,6 +3339,181 @@ async function cmdMergeFrom() {
       : `Merged ${result.details.sourceDAGs.length} DAGs into unified head.json (${result.details.nodesMerged} nodes, ${result.details.rulesAdded} rules derived)`,
   });
 }
+
+async function cmdMergeBatch(note: string) {
+  if (!hasLocalDAG) {
+    json({ error: 'No local DAG', fix: 'Run from a repo with .roadmap/head.json' });
+    process.exit(1);
+  }
+
+  const fromIdx = args.indexOf('--from');
+  if (fromIdx === -1 || !args[fromIdx + 1]) {
+    json({ error: 'Missing --from <branches>', fix: 'roadmap merge-batch --from feat/branch1,feat/branch2 --note "reason"' });
+    process.exit(1);
+  }
+
+  const branchesStr = args[fromIdx + 1];
+  const branches = branchesStr.split(',').map(b => b.trim()).filter(Boolean);
+
+  if (branches.length === 0) {
+    json({ error: 'No branches specified', fix: 'roadmap merge-batch --from feat/branch1,feat/branch2 --note "reason"' });
+    process.exit(1);
+  }
+
+  const dryRun = args.includes('--dry-run');
+
+  try {
+    let currentBranch: string;
+    try {
+      currentBranch = execSync('git rev-parse --abbrev-ref HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
+    } catch {
+      currentBranch = 'main';
+    }
+
+    const allDAGFiles: Array<{ branch: string; path: string; name: string; content: Graph<string> }> = [];
+
+    for (const branch of branches) {
+      try {
+        execSync(`git show-ref --verify --quiet refs/heads/${branch}`, { cwd: repoRoot, stdio: 'pipe' });
+      } catch {
+        json({ error: `Branch not found: ${branch}`, fix: `Check branch name: git branch -a` });
+        process.exit(1);
+      }
+
+      try {
+        execSync(`git checkout ${branch} --quiet`, { cwd: repoRoot });
+      } catch (err) {
+        json({ error: `Failed to checkout ${branch}`, fix: 'Ensure working directory is clean' });
+        process.exit(1);
+      }
+
+      const roadmapDir = join(repoRoot, '.roadmap');
+      if (!existsSync(roadmapDir)) {
+        json({ error: `No .roadmap directory on branch ${branch}`, fix: 'All branches must have .roadmap/ directory' });
+        process.exit(1);
+      }
+
+      const files = readdirSync(roadmapDir);
+      for (const file of files) {
+        if (file === 'head.json' || file === 'head-index.json' || file === 'git-state.json' || file === 'hook-config.json' || file === 'iter.json' || file === 'recovery-state.json' || file === 'PLAN_SELECTED.json' || file === 'strategy.json' || file === 'rates.json' || file === 'spec-origin.json' || file === 'migration-receipt.json' || file === 'retired.json' || file === 'test-head.json' || file.endsWith('.backup.json') || file.startsWith('.')) {
+          continue;
+        }
+
+        if (!file.endsWith('.json')) continue;
+
+        const filePath = join(roadmapDir, file);
+        try {
+          const content = JSON.parse(readFileSync(filePath, 'utf8'));
+
+          if (content && typeof content === 'object' && 'id' in content && 'desc' in content && 'init' in content && 'term' in content && 'nodes' in content && typeof content.nodes === 'object') {
+            allDAGFiles.push({ branch, path: filePath, name: file, content });
+          }
+        } catch {
+          continue;
+        }
+      }
+    }
+
+    try {
+      execSync(`git checkout ${currentBranch} --quiet`, { cwd: repoRoot });
+    } catch {
+      // Non-fatal
+    }
+
+    if (allDAGFiles.length === 0) {
+      json({ error: 'No DAG files found in any branch', fix: 'Branches must contain .roadmap/*.json files (not head.json)' });
+      process.exit(1);
+    }
+
+    const dagFiles = allDAGFiles.map(df => ({ path: df.path, name: df.name, content: df.content }));
+
+    let mergedDAG: Graph<string>;
+    try {
+      const mergeResult = mergeMultiWay(dagFiles);
+      mergedDAG = mergeResult.merged;
+    } catch (err) {
+      const errorMsg = err instanceof ConsolidationError ? err.message : (err instanceof Error ? err.message : String(err));
+      json({ error: `Merge failed: ${errorMsg}`, fix: 'Fix DAG issues in source branches and retry', details: { branches: branches, mergeError: errorMsg } });
+      process.exit(1);
+    }
+
+    const validationErrors: string[] = [];
+
+    try {
+      define(mergedDAG);
+    } catch (err) {
+      validationErrors.push(`Structure: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    try {
+      const errors = verify(mergedDAG);
+      if (errors.length > 0) {
+        validationErrors.push(`Contracts: ${errors.map((e: any) => e.message || String(e)).join('; ')}`);
+      }
+    } catch (err) {
+      validationErrors.push(`Verification: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    try {
+      const checkResult = check(mergedDAG);
+      if (checkResult.orphans.length > 0) {
+        validationErrors.push(`Connectivity: ${checkResult.orphans.join(', ')}`);
+      }
+    } catch (err) {
+      validationErrors.push(`Check: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    if (validationErrors.length > 0) {
+      json({ error: `Validation failed: ${validationErrors[0]}`, fix: 'Fix DAG structure in source branches and retry', details: { validationErrors } });
+      process.exit(1);
+    }
+
+    (mergedDAG as any).consolidatedFrom = branches;
+
+    if (!dryRun) {
+      const headPath = join(repoRoot, '.roadmap', 'head.json');
+      writeFileSync(headPath, JSON.stringify(mergedDAG, null, 2) + '\n');
+
+      try {
+        execSync('git add .roadmap/head.json', { cwd: repoRoot });
+        execSync(`git commit -m "merge-orchestrator-command: Consolidate DAGs from branches: ${branches.join(', ')}"`, { cwd: repoRoot });
+      } catch (err) {
+        json({ error: 'Failed to commit merged DAG', fix: 'Check git status and manually commit if needed', details: { error: err instanceof Error ? err.message : String(err) } });
+        process.exit(1);
+      }
+
+      const mergedBranches: string[] = [];
+      const failedBranches: string[] = [];
+
+      for (const branch of branches) {
+        try {
+          execSync(`git merge ${branch} --ff-only`, { cwd: repoRoot, stdio: 'pipe' });
+          mergedBranches.push(branch);
+        } catch {
+          try {
+            execSync(`git merge ${branch} --squash`, { cwd: repoRoot, stdio: 'pipe' });
+            execSync(`git commit -m "merge-orchestrator-command: Merge ${branch} into main"`, { cwd: repoRoot });
+            mergedBranches.push(branch);
+          } catch {
+            failedBranches.push(branch);
+          }
+        }
+      }
+
+      recordTrail({ ts: new Date().toISOString(), cmd: 'merge-batch', note, repo: basename(repoRoot), detail: { branches: branches.length, merged: mergedBranches.length, failed: failedBranches.length, nodesMerged: Object.keys(mergedDAG.nodes).length } });
+
+      json({ ok: failedBranches.length === 0, merged: mergedBranches, failed: failedBranches, summary: `Merged ${mergedBranches.length}/${branches.length} branch(es). Unified head.json: ${Object.keys(mergedDAG.nodes).length} nodes` });
+    } else {
+      recordTrail({ ts: new Date().toISOString(), cmd: 'merge-batch', note, repo: basename(repoRoot), detail: { branches: branches.length, dryRun: true, nodesMerged: Object.keys(mergedDAG.nodes).length } });
+
+      json({ ok: true, dryRun: true, branches: branches.length, summary: `[DRY-RUN] Would merge ${branches.length} branch(es). Result: ${Object.keys(mergedDAG.nodes).length} nodes`, merged: mergedDAG });
+    }
+  } catch (err) {
+    json({ error: err instanceof Error ? err.message : String(err), fix: 'Check branch names and DAG validity' });
+    process.exit(1);
+  }
+}
+
 
 
 function cmdCleanupWorktrees() {
