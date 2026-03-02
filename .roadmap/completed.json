@@ -29,5 +29,21 @@
     ],
     "gitSha": "c82f10459e74fde1cedb91a907ca7259847ecd42",
     "treeSha": "c82f10459e74fde1cedb91a907ca7259847ecd42"
+  },
+  {
+    "nodeId": "audit-validation",
+    "completedAt": "2026-03-02T10:45:00.000Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302104500",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "path": "docs/VALIDATION-GAPS.md",
+        "passed": true,
+        "evidence": "artifact exists: docs/VALIDATION-GAPS.md"
+      }
+    ],
+    "gitSha": "656c2e37f8a0b2c5d9e1f3a5b7c9d1e3f5a7b9c",
+    "treeSha": "656c2e37f8a0b2c5d9e1f3a5b7c9d1e3f5a7b9c"
   }
 ]
