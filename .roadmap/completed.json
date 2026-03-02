@@ -1870,5 +1870,35 @@
     ],
     "gitSha": "f56afe726cdaed161718e439d51acba82c9ac04a",
     "treeSha": "d5367be36a3b5450ca019f0a692379b7cb0c22b0"
+  },
+  {
+    "nodeId": "p2-performance-hardening",
+    "completedAt": "2026-03-01T23:59:57.528Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260301235957",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .roadmap/metaflow/performance/p2-optimization-report.json"
+      }
+    ],
+    "gitSha": "bade118df42022dd727b8598d99f153e38454554",
+    "treeSha": "ce5a7209c6794780e313aabc43c349167ad06943"
+  },
+  {
+    "nodeId": "p2-state-coherence",
+    "completedAt": "2026-03-02T00:00:05.875Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302000005",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .roadmap/metaflow/coherence/p2-coherence-report.json"
+      }
+    ],
+    "gitSha": "bade118df42022dd727b8598d99f153e38454554",
+    "treeSha": "ce5a7209c6794780e313aabc43c349167ad06943"
   }
 ]
