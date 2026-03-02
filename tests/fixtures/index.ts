@@ -1,6 +1,17 @@
 // Shared test fixtures
 // Centralized location for all mock data + sample DAGs
 
+// Re-export test infrastructure
+export { TestRepo, type TestRepoConfig, type GitCommit } from './test-repo-factory.ts';
+export {
+  createAlignedState,
+  createStaleState,
+  createMultiCycleState,
+  createMalformedState,
+  getFixtureName,
+} from './state-builders.ts';
+
+// Sample data
 export const sampleDAG = {
   id: 'test-dag',
   init: 'init',
