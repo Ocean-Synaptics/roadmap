@@ -1990,5 +1990,20 @@
     ],
     "gitSha": "4f4e1b922fc90da9a301f34e599ab364a9ea58ff",
     "treeSha": "55b8431cfaa7def4d138cbb3890a75a6a291d0f7"
+  },
+  {
+    "nodeId": "p3-integration",
+    "completedAt": "2026-03-02T00:04:00.782Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302000400",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: .roadmap/metaflow/p3-integration-check.json"
+      }
+    ],
+    "gitSha": "64691f74416b6456af12647a172d605873ecad5c",
+    "treeSha": "da347292b54a7b42f2d13b8e6b7177259e758c28"
   }
 ]
