@@ -906,5 +906,28 @@
     ],
     "gitSha": "1430425348f0ac4787005b8872eb57b07cae77e7",
     "treeSha": "3d5735c9a242ae32fd8186c9e20febb0e9583211"
+  },
+  {
+    "nodeId": "onboarding-documentation",
+    "completedAt": "2026-03-02T14:34:59.082Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302143459",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -q 'git worktree add' .claude/CLAUDE.md"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:grep -q 'git worktree add' .claude/CLAUDE.md",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "1f70c7101cb803a8c0046914938909c5bc235b2a",
+    "treeSha": "59022501f036c7f8d531bb83bad2b6d90dc55967"
   }
 ]
