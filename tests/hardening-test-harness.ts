@@ -184,6 +184,25 @@ export class MockTrailManager implements MockComponent {
     }
   }
 
+  appendEntry(entry: Record<string, any>): { appended: boolean; entriesCount: number } {
+    if (!this.fixture) throw new Error('Fixture not initialized');
+    try {
+      const trailDir = join(this.fixture.roadmapDir);
+      if (!existsSync(trailDir)) mkdirSync(trailDir, { recursive: true });
+      const trailPath = this.fixture.trailPath;
+      const line = JSON.stringify(entry) + '\n';
+      const fs = require('fs');
+      fs.appendFileSync(trailPath, line);
+      return { appended: true, entriesCount: this.countEntries() };
+    } catch (e) {
+      return { appended: false, entriesCount: this.countEntries() };
+    }
+  }
+
+  autoCommit(): { committed: boolean; reason?: string; entriesAdded?: number; trailSha?: string; headSha?: string; message?: string } {
+    return this.commit();
+  }
+
   private countEntries(): number {
     if (!this.fixture || !existsSync(this.fixture.trailPath)) return 0;
     const content = readFileSync(this.fixture.trailPath, 'utf-8');
@@ -295,6 +314,51 @@ export class MockPreflightValidator implements MockComponent {
     };
   }
 
+  checkGitState(): { coherent: boolean; errors: string[]; lastCommit?: string; timestamp: string } {
+    if (!this.fixture) throw new Error('Fixture not initialized');
+    const errors: string[] = [];
+    if (!existsSync(this.fixture.gitStatePath)) errors.push('git-state.json missing');
+    if (!existsSync(this.fixture.headJsonPath)) errors.push('head.json missing');
+
+    let lastCommit: string | undefined;
+    try {
+      const gitState = JSON.parse(readFileSync(this.fixture.gitStatePath, 'utf-8'));
+      lastCommit = gitState.lastCommit;
+    } catch (e) {
+      errors.push('git-state.json invalid JSON');
+    }
+
+    return {
+      coherent: errors.length === 0,
+      errors,
+      lastCommit,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  validate(artifacts: string[]): { valid: boolean; errors: string[]; missing: string[]; existing: string[]; timestamp: string } {
+    if (!this.fixture) throw new Error('Fixture not initialized');
+    const missing: string[] = [];
+    const existing: string[] = [];
+
+    for (const artifact of artifacts) {
+      const fullPath = join(this.fixture.repoRoot, artifact);
+      if (existsSync(fullPath)) {
+        existing.push(artifact);
+      } else {
+        missing.push(artifact);
+      }
+    }
+
+    return {
+      valid: missing.length === 0,
+      errors: missing.length > 0 ? [`Missing artifacts: ${missing.join(', ')}`] : [],
+      missing,
+      existing,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
   runAll(): { stateCoherence: any; artifacts: any; schema: any; typecheck: any; allValid: boolean; timestamp: string } {
     const stateCoherence = this.validateStateCoherence();
     const artifacts = this.validateArtifacts();
@@ -382,6 +446,86 @@ export class MockDAGSwitcher implements MockComponent {
   getCurrentDAG(): string | null {
     return this.currentDAGId;
   }
+
+  getCurrentDAGId(): string {
+    return this.currentDAGId;
+  }
+
+  switchDAG(dagId: string): { success: boolean; previousDag?: string; newDag?: string; error?: string } {
+    if (!this.fixture) throw new Error('Fixture not initialized');
+
+    // Allow switching to the current DAG (no-op)
+    if (dagId === this.currentDAGId) {
+      return {
+        success: true,
+        previousDag: this.currentDAGId,
+        newDag: dagId,
+      };
+    }
+
+    const dagFile = join(this.fixture.roadmapDir, `head.${dagId}.json`);
+    if (!existsSync(dagFile)) {
+      return {
+        success: false,
+        error: `DAG file not found: ${dagFile}`,
+      };
+    }
+
+    try {
+      const content = readFileSync(dagFile, 'utf-8');
+      const previousDag = this.currentDAGId;
+
+      // Backup current head.json
+      const backupPath = join(this.fixture.roadmapDir, `head.backup.${previousDag}.json`);
+      if (existsSync(this.fixture.headJsonPath)) {
+        const currentContent = readFileSync(this.fixture.headJsonPath, 'utf-8');
+        writeFileSync(backupPath, currentContent);
+      }
+
+      // Write new DAG
+      writeFileSync(this.fixture.headJsonPath, content);
+      this.currentDAGId = dagId;
+
+      return {
+        success: true,
+        previousDag,
+        newDag: dagId,
+      };
+    } catch (err) {
+      return {
+        success: false,
+        error: String(err),
+      };
+    }
+  }
+
+  validateDAGStructure(dagId: string): { valid: boolean; errors: string[] } {
+    if (!this.fixture) throw new Error('Fixture not initialized');
+    const errors: string[] = [];
+    const dagFile = join(this.fixture.roadmapDir, `head.${dagId}.json`);
+
+    if (!existsSync(dagFile) && dagId !== this.currentDAGId) {
+      errors.push(`DAG file not found: ${dagFile}`);
+      return { valid: false, errors };
+    }
+
+    try {
+      const filePath = dagId === this.currentDAGId ? this.fixture.headJsonPath : dagFile;
+      if (!existsSync(filePath)) {
+        errors.push(`head.json not found`);
+        return { valid: false, errors };
+      }
+
+      const dag = JSON.parse(readFileSync(filePath, 'utf-8'));
+      if (!dag.id) errors.push('DAG missing id field');
+      if (!dag.nodes) errors.push('DAG missing nodes object');
+      if (typeof dag.nodes !== 'object') errors.push('nodes must be an object');
+    } catch (e) {
+      errors.push(`Invalid DAG structure: ${e}`);
+    }
+
+    return { valid: errors.length === 0, errors };
+  }
 }
 
 export class MockArtifactGates implements MockComponent {
@@ -424,6 +568,17 @@ export class MockArtifactGates implements MockComponent {
     return {
       passed: errors.length === 0,
       errors,
+      timestamp: new Date().toISOString(),
+    };
+  }
+
+  gateCompletion(produces: string[]): { allowed: boolean; blockedBy: string[]; timestamp: string } {
+    if (!this.fixture) throw new Error('Fixture not initialized');
+    const missing = produces.filter(path => !existsSync(join(this.fixture!.repoRoot, path)));
+
+    return {
+      allowed: missing.length === 0,
+      blockedBy: missing,
       timestamp: new Date().toISOString(),
     };
   }
@@ -562,11 +717,42 @@ export function createTestFixture(name: string = 'harness-test'): TestFixture {
   const headJsonPath = join(roadmapDir, 'head.json');
   writeFileSync(headJsonPath, JSON.stringify(headJson, null, 2));
 
+  // Create alternative DAG file for switching tests
+  const altDagJson = {
+    id: 'test-dag-002',
+    desc: 'Alternative Test DAG',
+    init: 'node-x',
+    term: 'node-y',
+    nodes: {
+      'node-x': {
+        id: 'node-x',
+        produces: ['src/x.ts'],
+        consumes: [],
+        deps: [],
+        validate: [{ type: 'artifact-exists' }],
+      },
+      'node-y': {
+        id: 'node-y',
+        produces: [],
+        consumes: ['src/x.ts'],
+        deps: ['node-x'],
+        validate: [{ type: 'artifact-exists' }],
+      },
+    },
+  };
+  writeFileSync(join(roadmapDir, 'head.test-dag-002.json'), JSON.stringify(altDagJson, null, 2));
+
   // Create initial git-state.json
   const gitStatePath = join(roadmapDir, 'git-state.json');
   execSync('git add -A', { cwd: repoRoot, stdio: 'ignore' });
   execSync('git commit -m "init"', { cwd: repoRoot, stdio: 'ignore' });
-  const sha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
+  let sha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
+  writeFileSync(gitStatePath, JSON.stringify({ lastCommit: sha, timestamp: new Date().toISOString() }, null, 2));
+
+  // Commit the git-state.json and alternative DAG
+  execSync('git add -A', { cwd: repoRoot, stdio: 'ignore' });
+  execSync('git commit -m "add roadmap state"', { cwd: repoRoot, stdio: 'ignore' });
+  sha = execSync('git rev-parse HEAD', { cwd: repoRoot, encoding: 'utf-8' }).trim();
   writeFileSync(gitStatePath, JSON.stringify({ lastCommit: sha, timestamp: new Date().toISOString() }, null, 2));
 
   const trailPath = join(roadmapDir, 'trail.jsonl');
@@ -699,15 +885,13 @@ export class HardeningTestOrchestrator {
 
         case 'dag-switch':
           const { dagId } = step.config;
-          // switch() is async, so we need to handle it
-          void this.components.dagSwitch.switch(dagId).then(switchResult => {
-            if (!switchResult.success) {
-              result.passed = false;
-              result.error = switchResult.error;
-            }
-            result.output = switchResult;
-          });
-          result.output = { initiated: true, dagId };
+          // Use synchronous switchDAG method
+          const switchResult = this.components.dagSwitch.switchDAG(dagId);
+          if (!switchResult.success) {
+            result.passed = false;
+            result.error = switchResult.error;
+          }
+          result.output = switchResult;
           break;
 
         case 'validate':

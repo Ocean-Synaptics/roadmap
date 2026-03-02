@@ -186,17 +186,22 @@
   },
   {
     "nodeId": "mining-queries",
-    "completedAt": "2026-03-02T11:36:44.807Z",
+    "completedAt": "2026-03-02T11:59:26.707Z",
     "owner": "griffin",
-    "checkpointId": "cp-20260302113644",
+    "checkpointId": "cp-20260302115926",
     "validationChecks": [
       {
-        "rule": "skip-validate",
-        "passed": false,
-        "evidence": "validation skipped by --skip-validate flag"
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/mining/query-engine.ts"
+      },
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: tests/query-engine.test.ts"
       }
     ],
-    "gitSha": "28a9786b046093720e11d49f89466a73741056e9",
-    "treeSha": "dcdad9f8e5a9ec7f99100fdb665785e647e2771f"
+    "gitSha": "a006379af7ed1d6ae2aada9bacf31991db374c83",
+    "treeSha": "05e6300e77ff94f7a38f624386a562165436ea02"
   }
 ]
