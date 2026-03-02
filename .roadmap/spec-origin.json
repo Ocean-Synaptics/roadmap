@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "engine": "spec-kit",
   "version": "0.0.0",
-  "compile_hash": "37a1fea1dea68ffdee7c65a0d98ed854c5848c22f9c7cf554a6092b37d0179ba",
-  "spec_sha": "bec3a62ba9309ab7cb579b40f9acda25024cd6f75c1f27fafdcb01528a2a8dfe",
-  "importedAt": "2026-03-02T00:46:32.531Z",
-  "dagId": "fr-chatelet-001"
+  "compile_hash": "0395aa9a6aa29b40934dfc6f97de0909c6e99a811447e6aa6e7d710fe6788778",
+  "spec_sha": "5baea3b09577409d8a14d0d4a3f5fd81caf433ada44b5adf5e17084b0f8a76e5",
+  "importedAt": "2026-03-02T09:02:34.670Z",
+  "dagId": "metadata-cleanup-001"
 }
