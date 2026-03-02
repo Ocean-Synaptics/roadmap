@@ -1,105 +1,223 @@
 // @module agent-dispatch
-// @exports writeInterimHandoff, writeFinalHandoff, loadJournal, loadFinal, journalDir, saveInterim, saveFinal, JournalEntry
+// @exports HandoffJournal, writeInterimHandoff, writeFinalHandoff, loadJournal, loadFinal, journalDir, saveInterim, saveFinal
+// @types JournalEntry, HandoffChain
+// @entry roadmap/agent
 
 import { writeFileSync, readFileSync, mkdirSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
+import type { InterimHandoff, FinalHandoff } from '../brief.ts';
 
-export interface JournalEntry {
-  timestamp: string;
-  progress: number;
-  discovered: string[];
-  blockers: string[];
-  currentFile: string;
+/**
+ * Journal entry for checkpoint storage (alias for InterimHandoff)
+ */
+export type JournalEntry = InterimHandoff;
+
+/**
+ * Handoff chain: interim checkpoints + final handoff
+ */
+export interface HandoffChain {
+  nodeId: string;
+  interims: InterimHandoff[];
+  final: FinalHandoff | null;
+  lastCheckpointTime?: string;
+  totalCheckpoints: number;
 }
 
-export interface NextNodeEntry {
-  consumes: string[];
-  ready: boolean;
-  blockers: string[];
+/**
+ * Handoff journal: manages interim checkpoints and final handoffs for agent continuity
+ */
+export class HandoffJournal {
+  private repoRoot: string;
+  private baseDir: string;
+
+  constructor(repoRoot: string) {
+    this.repoRoot = repoRoot;
+    this.baseDir = join(repoRoot, '.dispatch', 'handoffs');
+  }
+
+  /**
+   * Ensure journal directory exists
+   */
+  private ensureDir(): void {
+    if (!existsSync(this.baseDir)) {
+      mkdirSync(this.baseDir, { recursive: true });
+    }
+  }
+
+  /**
+   * Save interim handoff checkpoint during node execution
+   * Multiple checkpoints are saved with timestamps for continuity
+   */
+  async writeInterim(nodeId: string, handoff: InterimHandoff): Promise<void> {
+    this.ensureDir();
+
+    // Validate interim handoff
+    if (!handoff.timestamp) {
+      handoff.timestamp = new Date().toISOString();
+    }
+    if (handoff.progress < 0 || handoff.progress > 1) {
+      throw new Error(`Invalid progress: ${handoff.progress} (must be 0.0–1.0)`);
+    }
+
+    // Write with timestamp in filename for chronological ordering
+    const timestamp = handoff.timestamp.replace(/[:.]/g, '-').slice(0, -5); // Compact ISO: YYYY-MM-DDTHH-MM-SS
+    const filePath = join(this.baseDir, `${nodeId}-interim-${timestamp}.json`);
+    writeFileSync(filePath, JSON.stringify(handoff, null, 2));
+  }
+
+  /**
+   * Save final handoff summary at node completion
+   * Marks the end of work for this node, next agent reads this
+   */
+  async writeFinal(nodeId: string, handoff: FinalHandoff): Promise<void> {
+    this.ensureDir();
+
+    // Validate final handoff
+    if (!handoff.timestamp) {
+      handoff.timestamp = new Date().toISOString();
+    }
+    if (handoff.summary && handoff.summary.length > 100) {
+      throw new Error(`Summary too long: ${handoff.summary.length} > 100 chars`);
+    }
+
+    const filePath = join(this.baseDir, `${nodeId}.json`);
+    writeFileSync(filePath, JSON.stringify(handoff, null, 2));
+  }
+
+  /**
+   * Load entire handoff chain for a node (all interims + final)
+   */
+  async loadChain(nodeId: string): Promise<HandoffChain> {
+    const interims = this.loadInterims(nodeId);
+    const final = this.loadFinal(nodeId);
+
+    return {
+      nodeId,
+      interims,
+      final,
+      lastCheckpointTime: interims.length > 0 ? interims[interims.length - 1].timestamp : final?.timestamp,
+      totalCheckpoints: interims.length + (final ? 1 : 0),
+    };
+  }
+
+  /**
+   * Load all interim checkpoints for a node (chronological order)
+   */
+  loadInterims(nodeId: string): InterimHandoff[] {
+    if (!existsSync(this.baseDir)) {
+      return [];
+    }
+
+    try {
+      const files = readdirSync(this.baseDir)
+        .filter((f: string) => f.startsWith(`${nodeId}-interim-`) && f.endsWith('.json'))
+        .sort(); // Chronological order by timestamp in filename
+
+      return files.map((f: string) => {
+        const content = readFileSync(join(this.baseDir, f), 'utf-8');
+        return JSON.parse(content) as InterimHandoff;
+      });
+    } catch {
+      return [];
+    }
+  }
+
+  /**
+   * Load final handoff if it exists (next agent's starting point)
+   */
+  loadFinal(nodeId: string): FinalHandoff | null {
+    const filePath = join(this.baseDir, `${nodeId}.json`);
+    if (!existsSync(filePath)) {
+      return null;
+    }
+    try {
+      const content = readFileSync(filePath, 'utf-8');
+      return JSON.parse(content) as FinalHandoff;
+    } catch {
+      return null;
+    }
+  }
+
+  /**
+   * Clear all checkpoints for a node (idempotent cleanup)
+   */
+  clearNode(nodeId: string): void {
+    if (!existsSync(this.baseDir)) {
+      return;
+    }
+
+    try {
+      const files = readdirSync(this.baseDir)
+        .filter((f: string) => f.startsWith(`${nodeId}-`) || f === `${nodeId}.json`);
+
+      for (const f of files) {
+        const filePath = join(this.baseDir, f);
+        try {
+          require('node:fs').unlinkSync(filePath);
+        } catch {
+          // Ignore delete failures
+        }
+      }
+    } catch {
+      // Ignore read failures
+    }
+  }
 }
 
+/**
+ * Get journal directory path
+ */
 export function journalDir(repoRoot: string): string {
   return join(repoRoot, '.dispatch', 'handoffs');
 }
 
-function ensureJournalDir(repoRoot: string): void {
-  const dir = journalDir(repoRoot);
-  if (!existsSync(dir)) {
-    mkdirSync(dir, { recursive: true });
-  }
-}
-
 /**
- * Save interim handoff checkpoint during node execution.
+ * Save interim handoff checkpoint (standalone function)
  */
 export async function writeInterimHandoff(
   repoRoot: string,
   nodeId: string,
-  handoff: JournalEntry
+  handoff: InterimHandoff
 ): Promise<void> {
-  ensureJournalDir(repoRoot);
-  const filePath = join(journalDir(repoRoot), `${nodeId}.interim.json`);
-  writeFileSync(filePath, JSON.stringify(handoff, null, 2));
+  const journal = new HandoffJournal(repoRoot);
+  return journal.writeInterim(nodeId, handoff);
 }
 
 /**
- * Save final handoff summary at node completion.
+ * Save final handoff summary (standalone function)
  */
 export async function writeFinalHandoff(
   repoRoot: string,
   nodeId: string,
-  handoff: unknown
+  handoff: FinalHandoff
 ): Promise<void> {
-  ensureJournalDir(repoRoot);
-  const filePath = join(journalDir(repoRoot), 'final.handoff.json');
-  writeFileSync(filePath, JSON.stringify(handoff, null, 2));
+  const journal = new HandoffJournal(repoRoot);
+  return journal.writeFinal(nodeId, handoff);
 }
 
 /**
- * Load all interim handoffs (checkpoint chain).
+ * Load all interim handoffs (checkpoint chain) for a node
  */
-export function loadJournal(repoRoot: string): JournalEntry[] {
-  const dir = journalDir(repoRoot);
-  if (!existsSync(dir)) {
-    return [];
-  }
-
-  try {
-    const files = readdirSync(dir).filter((f: string) => f.endsWith('.interim.json'));
-    return files
-      .map((f: string) => {
-        const content = readFileSync(join(dir, f), 'utf-8');
-        return JSON.parse(content) as JournalEntry;
-      })
-      .sort((a: JournalEntry, b: JournalEntry) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
-  } catch {
-    return [];
-  }
+export function loadJournal(repoRoot: string, nodeId: string): InterimHandoff[] {
+  const journal = new HandoffJournal(repoRoot);
+  return journal.loadInterims(nodeId);
 }
 
 /**
- * Load final handoff if it exists.
+ * Load final handoff if it exists
  */
-export function loadFinal(repoRoot: string): Record<string, unknown> | null {
-  const filePath = join(journalDir(repoRoot), 'final.handoff.json');
-  if (!existsSync(filePath)) {
-    return null;
-  }
-  try {
-    const content = readFileSync(filePath, 'utf-8');
-    return JSON.parse(content);
-  } catch {
-    return null;
-  }
+export function loadFinal(repoRoot: string, nodeId: string): FinalHandoff | null {
+  const journal = new HandoffJournal(repoRoot);
+  return journal.loadFinal(nodeId);
 }
 
 /**
- * Aliases for compatibility.
+ * Compatibility aliases
  */
-export async function saveInterim(repoRoot: string, nodeId: string, data: JournalEntry): Promise<void> {
+export async function saveInterim(repoRoot: string, nodeId: string, data: InterimHandoff): Promise<void> {
   return writeInterimHandoff(repoRoot, nodeId, data);
 }
 
-export async function saveFinal(repoRoot: string, nodeId: string, data: unknown): Promise<void> {
+export async function saveFinal(repoRoot: string, nodeId: string, data: FinalHandoff): Promise<void> {
   return writeFinalHandoff(repoRoot, nodeId, data);
 }
