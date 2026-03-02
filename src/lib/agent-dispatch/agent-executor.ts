@@ -2,7 +2,7 @@
 // @exports executeSealed
 // @types HandoffInput, ExecutionResult
 
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { writeInterimHandoff, writeFinalHandoff } from './handoff-journal.ts';
 import type { Brief, FinalHandoff } from '../brief.ts';
@@ -23,39 +23,31 @@ export interface ExecutionResult {
 /**
  * Execute node with sealed brief (no DAG access)
  *
- * Given: sealed Brief (no DAG)
- * When: agent receives brief via dispatch
- * Then: execute node: read consumes, produce artifacts, validate, handoff
- *
  * Contract:
  * - Agent can ONLY read Brief.consumes
  * - Agent MUST produce all Brief.produces
- * - Agent MUST pass all Brief.validate rules before advance
  * - Agent returns FinalHandoff with next blockers for successor
  */
 export async function executeSealed(input: HandoffInput): Promise<ExecutionResult> {
-  const { brief, repoRoot, agentId } = input;
+  const { brief, repoRoot } = input;
   const nodeId = brief.position;
+  const jDir = join(repoRoot, '.dispatch', nodeId);
 
   try {
-    // Phase 1: Understand the task
-    await writeInterimHandoff(
-      nodeId,
-      {
-        timestamp: new Date().toISOString(),
-        progress: 0.15,
-        discovered: [
-          `Node: ${nodeId}`,
-          `Mode: ${brief.mode}`,
-          `Produces: ${brief.produces.length} files`,
-          `Consumes: ${brief.consumes.length} files`,
-        ],
-        blockers: [],
-        currentFile: '',
-      }
-    );
+    await writeInterimHandoff(nodeId, {
+      timestamp: new Date().toISOString(),
+      progress: 0.15,
+      discovered: [
+        `Node: ${nodeId}`,
+        `Mode: ${brief.mode}`,
+        `Produces: ${brief.produces.length} files`,
+        `Consumes: ${brief.consumes.length} files`,
+      ],
+      blockers: [],
+      currentFile: '',
+    }, jDir);
 
-    // Phase 2: Read consumes (contract boundary)
+    // Read consumes (contract boundary)
     const consumedData: Record<string, string> = {};
     for (const file of brief.consumes) {
       const path = join(repoRoot, file);
@@ -66,33 +58,23 @@ export async function executeSealed(input: HandoffInput): Promise<ExecutionResul
       }
     }
 
-    await writeInterimHandoff(
-      nodeId,
-      {
-        timestamp: new Date().toISOString(),
-        progress: 0.3,
-        discovered: [`Read ${Object.keys(consumedData).length} consumed files`],
-        blockers: [],
-        currentFile: '',
-      }
-    );
+    await writeInterimHandoff(nodeId, {
+      timestamp: new Date().toISOString(),
+      progress: 0.3,
+      discovered: [`Read ${Object.keys(consumedData).length} consumed files`],
+      blockers: [],
+      currentFile: '',
+    }, jDir);
 
-    // Phase 3: Implement produces (actual work delegated to agent)
-    // Agent's main work happens here - this is where the actual implementation goes
-    // The agent spawned from this harness will implement the node-specific logic
+    await writeInterimHandoff(nodeId, {
+      timestamp: new Date().toISOString(),
+      progress: 0.7,
+      discovered: [`Implemented ${brief.produces.length} produce files`],
+      blockers: [],
+      currentFile: brief.produces[0] || '',
+    }, jDir);
 
-    await writeInterimHandoff(
-      nodeId,
-      {
-        timestamp: new Date().toISOString(),
-        progress: 0.7,
-        discovered: [`Implemented ${brief.produces.length} produce files`],
-        blockers: [],
-        currentFile: brief.produces[0] || '',
-      }
-    );
-
-    // Phase 4: Validate produces
+    // Validate produces exist
     const produced: string[] = [];
     for (const file of brief.produces) {
       const path = join(repoRoot, file);
@@ -100,33 +82,29 @@ export async function executeSealed(input: HandoffInput): Promise<ExecutionResul
         readFileSync(path, 'utf-8');
         produced.push(file);
       } catch {
-        // File doesn't exist yet - agent still needs to create it
+        // File doesn't exist yet
       }
     }
 
-    await writeInterimHandoff(
-      nodeId,
-      {
-        timestamp: new Date().toISOString(),
-        progress: 0.85,
-        discovered: [`Validated ${produced.length}/${brief.produces.length} files`],
-        blockers: produced.length === brief.produces.length ? [] : ['Missing produced files'],
-        currentFile: '',
-      }
-    );
+    await writeInterimHandoff(nodeId, {
+      timestamp: new Date().toISOString(),
+      progress: 0.85,
+      discovered: [`Validated ${produced.length}/${brief.produces.length} files`],
+      blockers: produced.length === brief.produces.length ? [] : ['Missing produced files'],
+      currentFile: '',
+    }, jDir);
 
-    // Phase 5: Create final handoff
+    // Final handoff
     const handoff: FinalHandoff = {
       timestamp: new Date().toISOString(),
       progress: 1.0,
       discovered: [
         `Completed ${nodeId}`,
         `Produced: ${brief.produces.join(', ')}`,
-        `Validated: all rules passed`,
       ],
       blockers: [],
       currentFile: '',
-      summary: `${brief.description}`,
+      summary: brief.description,
       keyDecisions: [
         'Pattern: ' + brief.pattern,
         'Mode: ' + brief.mode,
@@ -139,16 +117,9 @@ export async function executeSealed(input: HandoffInput): Promise<ExecutionResul
       },
     };
 
-    await saveFinal(repoRoot, nodeId, handoff);
+    await writeFinalHandoff(nodeId, handoff, jDir);
 
-    // Phase 6: Advance (mark complete in roadmap)
-    await advance(nodeId, handoff);
-
-    return {
-      nodeId,
-      success: true,
-      handoff,
-    };
+    return { nodeId, success: true, handoff };
   } catch (error) {
     const err = error as Error;
     return {
