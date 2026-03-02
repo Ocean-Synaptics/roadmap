@@ -2,7 +2,7 @@
 // @exports computeDispatch
 // @types DispatchAssignment
 
-import { writeFileSync, readFileSync } from 'node:fs';
+import { writeFileSync, readFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { getBrief } from '../brief.ts';
 import { validateBrief } from './brief-gate.ts';
@@ -98,11 +98,7 @@ export async function computeDispatch(
   };
 
   const dispatchDir = join(repoRoot, '.dispatch');
-  try {
-    require('node:fs').mkdirSync(dispatchDir, { recursive: true });
-  } catch {
-    // Already exists
-  }
+  mkdirSync(dispatchDir, { recursive: true });
 
   writeFileSync(
     join(dispatchDir, 'plan.json'),

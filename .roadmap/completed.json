@@ -3034,5 +3034,65 @@
     ],
     "gitSha": "d320ef99d21e4d4d9cd1efab1f7b9566317dc23f",
     "treeSha": "235208b69789c151dd1a6267f7ea0dec9926bac3"
+  },
+  {
+    "nodeId": "brief-gate-impl",
+    "completedAt": "2026-03-02T08:35:23.334Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302083520",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx vitest run tests/agent-dispatch.test.ts"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      },
+      {
+        "id": "shell:npx vitest run tests/agent-dispatch.test.ts",
+        "passed": true,
+        "exitCode": 0,
+        "stdoutSha": "cffc3c02203658b1ba011228e36a59b6aee0d8ed3b5adebf2742ab244f890e6f",
+        "artifactPaths": [
+          "/home/griffin/src/roadmap/.roadmap/artifacts/brief-gate-impl/mm8xbol6-wvoy3l/stdout.txt"
+        ]
+      }
+    ],
+    "gitSha": "3257a4328cc0c1a61bc351d37cca597e84dbe4a0",
+    "treeSha": "739af0155f179e797d33f3c7d3c4c573ac9cf090"
+  },
+  {
+    "nodeId": "handoff-journal-impl",
+    "completedAt": "2026-03-02T08:35:26.248Z",
+    "owner": "w1",
+    "checkpointId": "cp-20260302083524",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
+      }
+    ],
+    "validatorResults": [
+      {
+        "id": "shell:npx tsc --noEmit",
+        "passed": true,
+        "exitCode": 0,
+        "artifactPaths": []
+      }
+    ],
+    "gitSha": "3257a4328cc0c1a61bc351d37cca597e84dbe4a0",
+    "treeSha": "739af0155f179e797d33f3c7d3c4c573ac9cf090"
   }
 ]
