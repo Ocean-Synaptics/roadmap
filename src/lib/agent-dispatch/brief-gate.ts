@@ -1,73 +1,94 @@
-// @module brief-gate
-// @exports validateBrief
-// @types BriefValidation
+// @module agent-dispatch
+// @exports validateBrief, Brief, BriefValidationError
 
-import type { Brief } from '../brief.ts';
+/**
+ * Sealed brief contract.
+ * Agents receive only this slice of the DAG — no introspection into full execution graph.
+ */
+export interface Brief {
+  position: string;           // Current node-id
+  produces: string[];         // Files to create
+  consumes: string[];         // Files to read
+  description: string;        // What to implement
+  idempotent: boolean;        // Whether safe to re-run
+  validate: ValidationRule[]; // How to verify completion
+}
 
-export interface BriefValidation {
-  valid: boolean;
-  errors: string[];
-  warnings?: string[];
+export interface ValidationRule {
+  type: 'artifact-exists' | 'shell' | 'spec-conformance';
+  [key: string]: unknown;
+}
+
+export class BriefValidationError extends Error {
+  constructor(
+    public readonly code: string,
+    message: string,
+    public readonly context?: Record<string, unknown>
+  ) {
+    super(message);
+    this.name = 'BriefValidationError';
+  }
 }
 
 /**
- * Validate brief contract before dispatch
- *
- * Given: brief before dispatch
- * When: coordinator validates contract
- * Then: return validation result
+ * Validate brief contract before agent dispatch.
+ * Throws BriefValidationError if brief is malformed or incomplete.
  */
-export function validateBrief(
-  brief: Brief,
-  consumes: { file: string; available: boolean }[]
-): BriefValidation {
-  const errors: string[] = [];
-  const warnings: string[] = [];
-
-  // Rule 1: produces non-empty
-  if (!brief.produces || brief.produces.length === 0) {
-    errors.push('produces cannot be empty');
+export function validateBrief(brief: unknown): asserts brief is Brief {
+  if (!brief || typeof brief !== 'object') {
+    throw new BriefValidationError('BRIEF_NOT_OBJECT', 'Brief must be an object');
   }
 
-  // Rule 2: consumes available from predecessors
-  for (const { file, available } of consumes) {
-    if (!available) {
-      warnings.push(`consumed file ${file} may not be available yet`);
+  const b = brief as Record<string, unknown>;
+
+  // Required fields
+  const required = ['position', 'produces', 'consumes', 'description', 'idempotent', 'validate'];
+  for (const field of required) {
+    if (!(field in b)) {
+      throw new BriefValidationError('MISSING_FIELD', `Brief missing required field: ${field}`, { field });
     }
   }
 
-  // Rule 3: description present and ≤150 chars
-  if (!brief.description) {
-    errors.push('description is required');
-  } else if (brief.description.length > 150) {
-    errors.push(`description too long (${brief.description.length} > 150 chars)`);
+  // Type checks
+  if (typeof b.position !== 'string') {
+    throw new BriefValidationError('INVALID_POSITION', 'position must be string', { got: typeof b.position });
   }
 
-  // Rule 4: pattern present and ≤150 chars
-  if (!brief.pattern) {
-    errors.push('pattern is required');
-  } else if (brief.pattern.length > 150) {
-    errors.push(`pattern too long (${brief.pattern.length} > 150 chars)`);
+  if (!Array.isArray(b.produces)) {
+    throw new BriefValidationError('INVALID_PRODUCES', 'produces must be array', { got: typeof b.produces });
   }
 
-  // Rule 5: mode is 'execute' or 'plan'
-  if (brief.mode !== 'execute' && brief.mode !== 'plan') {
-    errors.push(`invalid mode: ${brief.mode}`);
+  if (!Array.isArray(b.consumes)) {
+    throw new BriefValidationError('INVALID_CONSUMES', 'consumes must be array', { got: typeof b.consumes });
   }
 
-  // Rule 6: handoffJournal available for chain
-  if (!brief.handoffJournal || brief.handoffJournal.length === 0) {
-    // No prior handoffs is OK for first node
+  if (typeof b.description !== 'string') {
+    throw new BriefValidationError('INVALID_DESCRIPTION', 'description must be string', { got: typeof b.description });
   }
 
-  // Rule 7: warn when produces exist but no consumes context (building in isolation)
-  if (brief.produces.length > 0 && consumes.length === 0 && (!brief.consumes || brief.consumes.length === 0)) {
-    warnings.push('no consumed inputs — agent builds without predecessor context');
+  if (typeof b.idempotent !== 'boolean') {
+    throw new BriefValidationError('INVALID_IDEMPOTENT', 'idempotent must be boolean', { got: typeof b.idempotent });
   }
 
-  return {
-    valid: errors.length === 0,
-    errors,
-    warnings: warnings.length > 0 ? warnings : undefined,
-  };
+  if (!Array.isArray(b.validate)) {
+    throw new BriefValidationError('INVALID_VALIDATE', 'validate must be array', { got: typeof b.validate });
+  }
+
+  // Validate produce/consume lists
+  if (b.produces.length === 0) {
+    throw new BriefValidationError('EMPTY_PRODUCES', 'produces list cannot be empty');
+  }
+
+  if (!b.produces.every(p => typeof p === 'string')) {
+    throw new BriefValidationError('INVALID_PRODUCE_PATH', 'All produces must be strings');
+  }
+
+  if (!b.consumes.every(c => typeof c === 'string')) {
+    throw new BriefValidationError('INVALID_CONSUME_PATH', 'All consumes must be strings');
+  }
+
+  // Validate rules
+  if (!b.validate.every((r: unknown) => r && typeof r === 'object' && 'type' in (r as object))) {
+    throw new BriefValidationError('INVALID_RULE', 'All validate rules must have type field');
+  }
 }
