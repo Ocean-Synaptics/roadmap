@@ -498,5 +498,50 @@
     ],
     "gitSha": "c22f1fb7febce93797363c990ed198102b5ba2a5",
     "treeSha": "98b07595adbb2744ae72f4fcbc864d7096fdb98a"
+  },
+  {
+    "nodeId": "dag-manifest-tests",
+    "completedAt": "2026-03-02T12:38:36.357Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302123836",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: tests/dag-manifest.test.ts"
+      }
+    ],
+    "gitSha": "b5112620e031b5e1dee0c407a5814ff9eb15ceff",
+    "treeSha": "68e3c54ef0f732adc09f75838dd6c2ba308d0103"
+  },
+  {
+    "nodeId": "design-doc-hook-tests",
+    "completedAt": "2026-03-02T12:38:36.555Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302123836",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: tests/design-doc-hook.test.ts"
+      }
+    ],
+    "gitSha": "b5112620e031b5e1dee0c407a5814ff9eb15ceff",
+    "treeSha": "68e3c54ef0f732adc09f75838dd6c2ba308d0103"
+  },
+  {
+    "nodeId": "task-validator-tests",
+    "completedAt": "2026-03-02T12:38:36.746Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302123836",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: tests/task-list-validator.test.ts"
+      }
+    ],
+    "gitSha": "b5112620e031b5e1dee0c407a5814ff9eb15ceff",
+    "treeSha": "68e3c54ef0f732adc09f75838dd6c2ba308d0103"
   }
 ]
