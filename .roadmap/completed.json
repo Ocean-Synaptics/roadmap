@@ -358,5 +358,25 @@
     ],
     "gitSha": "1c7da1740c980bfd0183c3f36aea55bf2faab9eb",
     "treeSha": "c138ba82305b390f3e0b39f240f59350087c2093"
+  },
+  {
+    "nodeId": "integration-hardening-suite",
+    "completedAt": "2026-03-02T12:16:24.988Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302121624",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: hardening-integration-report.json"
+      },
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: tests/hardening-integration.test.ts"
+      }
+    ],
+    "gitSha": "c7a5547ea9043e9efcd53066339a08f5ec3a6203",
+    "treeSha": "9fde1fe62ab015bb040490b9beea9f6b3d1b4e5f"
   }
 ]
