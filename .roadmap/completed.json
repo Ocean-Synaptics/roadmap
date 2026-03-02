@@ -543,5 +543,20 @@
     ],
     "gitSha": "b5112620e031b5e1dee0c407a5814ff9eb15ceff",
     "treeSha": "68e3c54ef0f732adc09f75838dd6c2ba308d0103"
+  },
+  {
+    "nodeId": "worktree-cleanup-hook",
+    "completedAt": "2026-03-02T12:39:23.168Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302123923",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/hooks/post-session-cleanup.sh"
+      }
+    ],
+    "gitSha": "61c1a788c0c2fa4a3e41c9067918335060ce0db9",
+    "treeSha": "f562db131ca6c9ffcee83e27436c2b2f40aab9e4"
   }
 ]
