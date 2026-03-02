@@ -3,7 +3,7 @@
 // Completion record ↔ produces file consistency enforcement
 
 import type { Graph } from '../protocol/types';
-import type { CompletionRecordWithEvidence } from './completion-evidence';
+import type { CompletionRecordWithEvidence as CompletionRecord } from './completion-evidence';
 
 /**
  * Validation gate: completion record exists and has passing checks if produces files exist.
