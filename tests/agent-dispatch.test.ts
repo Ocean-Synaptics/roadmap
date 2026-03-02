@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateBrief } from '../src/lib/agent-dispatch/brief-gate.ts';
+import { BriefGate, validateBrief, isSealedBrief } from '../src/lib/agent-dispatch/brief-gate.ts';
 import { writeInterimHandoff, writeFinalHandoff, loadHandoffChain, loadFinal } from '../src/lib/agent-dispatch/handoff-journal.ts';
 import type { Brief, InterimHandoff, FinalHandoff } from '../src/lib/brief.ts';
 import { mkdtemp, rm } from 'node:fs/promises';
@@ -8,45 +8,53 @@ import { join } from 'node:path';
 
 describe('agent-dispatch', () => {
   describe('validateBrief', () => {
-    it('should reject brief with empty produces', () => {
-      const brief: Partial<Brief> = {
-        position: 'test',
-        produces: [],
-        consumes: [],
-        description: 'Test',
-        pattern: 'test pattern',
-        mode: 'execute',
+    const validBrief: Brief = {
+      position: 'test',
+      produces: ['src/test.ts'],
+      consumes: [],
+      description: 'Test node',
+      pattern: 'implement and validate',
+      mode: 'execute',
+      handoffJournal: [],
+      remaining: 5,
+    };
+
+    it('should reject brief with invalid artifact paths', () => {
+      const brief: Brief = {
+        ...validBrief,
+        produces: ['invalid-node-id'],
       };
-      const validation = validateBrief(brief as Brief, []);
-      expect(validation.valid).toBe(false);
-      expect(validation.errors).toContain('produces cannot be empty');
+      const result = validateBrief(brief);
+      expect(result.passed).toBe(false);
+      expect(result.errors.some(e => e.code === 'INVALID_ARTIFACT_REFERENCE')).toBe(true);
     });
 
     it('should accept valid brief', () => {
-      const brief: Partial<Brief> = {
-        position: 'test',
-        produces: ['file.ts'],
-        consumes: [],
-        description: 'Test node',
-        pattern: 'implement and validate',
-        mode: 'execute',
-      };
-      const validation = validateBrief(brief as Brief, []);
-      expect(validation.valid).toBe(true);
-      expect(validation.errors.length).toBe(0);
+      const result = validateBrief(validBrief);
+      expect(result.passed).toBe(true);
+      expect(result.errors.length).toBe(0);
     });
 
-    it('should warn on missing validators', () => {
-      const brief: Partial<Brief> = {
-        position: 'test',
-        produces: ['file.ts'],
-        consumes: [],
-        description: 'Test node',
-        pattern: 'test',
-        mode: 'execute',
+    it('should detect DAG leakage', () => {
+      const brief = { ...validBrief, deps: ['some-dep'] } as any;
+      const result = validateBrief(brief);
+      expect(result.passed).toBe(false);
+      expect(result.errors.some(e => e.code === 'DAG_LEAKAGE_DEPS')).toBe(true);
+    });
+
+    it('should validate artifact paths in consumes', () => {
+      const brief: Brief = {
+        ...validBrief,
+        consumes: ['src/lib/brief.ts', '.roadmap/head.json'],
       };
-      const validation = validateBrief(brief as Brief, []);
-      expect(validation.warnings).toBeDefined();
+      const result = validateBrief(brief);
+      expect(result.passed).toBe(true);
+    });
+
+    it('should type-guard sealed briefs', () => {
+      expect(isSealedBrief(validBrief)).toBe(true);
+      expect(isSealedBrief({ position: 'test' })).toBe(false);
+      expect(isSealedBrief(null)).toBe(false);
     });
   });
 
