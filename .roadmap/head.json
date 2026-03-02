@@ -1,192 +1,180 @@
 {
-  "id": "enforcement-hardening-001",
-  "desc": "Enforce invariants to prevent clutter: task list hygiene, design doc commitment, worktree cleanup, DAG documentation.",
-  "init": "dag-manifest-impl",
-  "term": "clutter-prevention-gates",
+  "id": "dispatch-system-001",
+  "desc": "Sealed brief orchestration: agents receive only consumes/produces slice, no DAG introspection. Phase 1 of next mining run.",
+  "init": "dispatch-init",
+  "term": "dispatch-system-complete",
   "nodes": {
-    "dag-manifest-impl": {
-      "id": "dag-manifest-impl",
-      "desc": "Implement dag-manifest.ts — scan .roadmap/head.*.json, validate documentation, enforce pre-commit.",
+    "dispatch-init": {
+      "id": "dispatch-init",
+      "desc": "Initialize dispatch-system phase: directory structure, type definitions, contracts",
       "produces": [
-        "src/lib/enforcement/dag-manifest.ts"
+        ".dispatch/.gitkeep",
+        "src/lib/agent-dispatch/README.md"
       ],
-      "consumes": [
-        ".roadmap/head.json"
-      ],
+      "consumes": [],
       "deps": [],
       "validate": [
-        {"type": "artifact-exists", "path": "src/lib/enforcement/dag-manifest.ts"}
+        {
+          "type": "artifact-exists",
+          "path": ".dispatch/.gitkeep"
+        }
       ],
-      "idempotent": true,
-      "mode": "execute",
-      "level": 0,
-      "expandedFrom": "dag-documentation-requirement"
+      "idempotent": true
     },
-    "dag-manifest-tests": {
-      "id": "dag-manifest-tests",
-      "desc": "Test dag-manifest.ts — unit + integration tests for orphan detection, validation rules.",
+    "brief-gate-impl": {
+      "id": "brief-gate-impl",
+      "desc": "Implement and test brief gate: validates brief contract before dispatch",
       "produces": [
-        "tests/dag-manifest.test.ts"
+        "src/lib/agent-dispatch/brief-gate.ts"
       ],
       "consumes": [
-        "src/lib/enforcement/dag-manifest.ts"
+        "src/lib/brief.ts",
+        "src/protocol.ts"
       ],
       "deps": [
-        "dag-manifest-impl"
+        "dispatch-init"
       ],
       "validate": [
-        {"type": "artifact-exists", "path": "tests/dag-manifest.test.ts"}
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        },
+        {
+          "type": "shell",
+          "command": "npx vitest run tests/agent-dispatch.test.ts"
+        }
       ],
-      "idempotent": true,
-      "mode": "execute",
-      "level": 1,
-      "expandedFrom": "dag-documentation-requirement"
+      "idempotent": true
     },
-    "design-doc-hook-impl": {
-      "id": "design-doc-hook-impl",
-      "desc": "Implement design-doc-hook.sh — pre-commit enforcement for design docs during phase transitions.",
+    "dispatch-coordinator-impl": {
+      "id": "dispatch-coordinator-impl",
+      "desc": "Implement dispatch coordinator: compute batch → assign agents → generate sealed briefs",
       "produces": [
-        "src/lib/enforcement/design-doc-hook.sh"
+        "src/lib/agent-dispatch/dispatch-coordinator.ts"
       ],
       "consumes": [
-        ".roadmap/task-5-artifact-gates-design.md"
-      ],
-      "deps": [],
-      "validate": [
-        {"type": "artifact-exists", "path": "src/lib/enforcement/design-doc-hook.sh"}
-      ],
-      "idempotent": true,
-      "mode": "execute",
-      "level": 0,
-      "expandedFrom": "design-doc-commitment"
-    },
-    "design-doc-hook-tests": {
-      "id": "design-doc-hook-tests",
-      "desc": "Test design-doc-hook.sh — validate enforcement logic, test bypass scenarios.",
-      "produces": [
-        "tests/design-doc-hook.test.ts"
-      ],
-      "consumes": [
-        "src/lib/enforcement/design-doc-hook.sh"
+        "src/lib/brief.ts",
+        "src/lib/agent-dispatch/brief-gate.ts",
+        ".dispatch/plan.json"
       ],
       "deps": [
-        "design-doc-hook-impl"
+        "brief-gate-impl"
       ],
       "validate": [
-        {"type": "artifact-exists", "path": "tests/design-doc-hook.test.ts"}
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
       ],
-      "idempotent": true,
-      "mode": "execute",
-      "level": 1,
-      "expandedFrom": "design-doc-commitment"
+      "idempotent": true
     },
-    "task-validator-impl": {
-      "id": "task-validator-impl",
-      "desc": "Implement task-list-validator.ts — enforce no stale tasks, flag in_progress > 48h, require evidence on completion.",
+    "agent-executor-impl": {
+      "id": "agent-executor-impl",
+      "desc": "Implement sealed agent executor: read brief (no DAG), execute, checkpoint progress, final handoff",
       "produces": [
-        "src/lib/enforcement/task-list-validator.ts"
+        "src/lib/agent-dispatch/agent-executor.ts"
       ],
       "consumes": [
-        ".claude/CLAUDE.md",
-        "tasks/"
-      ],
-      "deps": [],
-      "validate": [
-        {"type": "artifact-exists", "path": "src/lib/enforcement/task-list-validator.ts"}
-      ],
-      "idempotent": true,
-      "mode": "execute",
-      "level": 0,
-      "expandedFrom": "task-list-enforcement"
-    },
-    "task-validator-tests": {
-      "id": "task-validator-tests",
-      "desc": "Test task-list-validator.ts — stale detection, evidence validation, edge cases.",
-      "produces": [
-        "tests/task-list-validator.test.ts"
-      ],
-      "consumes": [
-        "src/lib/enforcement/task-list-validator.ts"
+        "src/lib/brief.ts",
+        "src/lib/handoff.ts",
+        "src/lib/agent-dispatch/handoff-journal.ts"
       ],
       "deps": [
-        "task-validator-impl"
+        "dispatch-coordinator-impl"
       ],
       "validate": [
-        {"type": "artifact-exists", "path": "tests/task-list-validator.test.ts"}
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
       ],
-      "idempotent": true,
-      "mode": "execute",
-      "level": 1,
-      "expandedFrom": "task-list-enforcement"
+      "idempotent": true
     },
-    "worktree-cleanup-impl": {
-      "id": "worktree-cleanup-impl",
-      "desc": "Implement worktree-cleanup.ts — git worktree prune, orphan detection, dead agent branch cleanup.",
+    "handoff-journal-impl": {
+      "id": "handoff-journal-impl",
+      "desc": "Implement handoff journal: store interim checkpoints, final handoffs, load chain for next agent",
       "produces": [
-        "src/lib/enforcement/worktree-cleanup.ts"
+        "src/lib/agent-dispatch/handoff-journal.ts"
       ],
       "consumes": [
-        ".claude/worktrees/"
-      ],
-      "deps": [],
-      "validate": [
-        {"type": "artifact-exists", "path": "src/lib/enforcement/worktree-cleanup.ts"}
-      ],
-      "idempotent": true,
-      "mode": "execute",
-      "level": 0,
-      "expandedFrom": "worktree-cleanup-automation"
-    },
-    "worktree-cleanup-hook": {
-      "id": "worktree-cleanup-hook",
-      "desc": "Implement post-session-cleanup.sh — invoke worktree cleanup on session end.",
-      "produces": [
-        "src/hooks/post-session-cleanup.sh"
-      ],
-      "consumes": [
-        "src/lib/enforcement/worktree-cleanup.ts"
+        "src/lib/brief.ts"
       ],
       "deps": [
-        "worktree-cleanup-impl"
+        "dispatch-init"
       ],
       "validate": [
-        {"type": "artifact-exists", "path": "src/hooks/post-session-cleanup.sh"}
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
       ],
-      "idempotent": true,
-      "mode": "execute",
-      "level": 1,
-      "expandedFrom": "worktree-cleanup-automation"
+      "idempotent": true
     },
-    "clutter-prevention-gates": {
-      "id": "clutter-prevention-gates",
-      "desc": "Integrate all 4 enforcement rules into pre-commit + post-session hooks. Validate: no stale tasks, no untracked design docs, no orphaned worktrees, no undocumented DAGs.",
+    "orchestrator-harness": {
+      "id": "orchestrator-harness",
+      "desc": "Implement orchestrator harness: read dispatch plan, spawn sealed agents per brief, coordinate completions",
       "produces": [
-        "src/lib/enforcement/index.ts",
-        "tests/enforcement-integration.test.ts",
-        "clutter-prevention-report.json"
+        "src/lib/agent-dispatch/orchestrator.ts"
       ],
       "consumes": [
-        "src/lib/enforcement/dag-manifest.ts",
-        "src/lib/enforcement/design-doc-hook.sh",
-        "src/lib/enforcement/task-list-validator.ts",
-        "src/lib/enforcement/worktree-cleanup.ts",
-        "src/hooks/post-session-cleanup.sh",
-        "tests/dag-manifest.test.ts",
-        "tests/design-doc-hook.test.ts",
-        "tests/task-list-validator.test.ts"
+        "src/lib/agent-dispatch/dispatch-coordinator.ts",
+        "src/lib/agent-dispatch/agent-executor.ts"
       ],
       "deps": [
-        "dag-manifest-tests",
-        "design-doc-hook-tests",
-        "task-validator-tests",
-        "worktree-cleanup-hook"
+        "agent-executor-impl",
+        "handoff-journal-impl"
       ],
       "validate": [
-        {"type": "artifact-exists", "path": "clutter-prevention-report.json"}
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
       ],
-      "idempotent": true,
-      "mode": "execute",
-      "level": 2
+      "idempotent": true
+    },
+    "dispatch-system-tests": {
+      "id": "dispatch-system-tests",
+      "desc": "Integration tests: orchestrator → dispatch → sealed agents → handoffs → batch advance",
+      "produces": [
+        "tests/dispatch-system.integration.test.ts"
+      ],
+      "consumes": [
+        "tests/agent-dispatch.test.ts",
+        "src/lib/agent-dispatch/index.ts"
+      ],
+      "deps": [
+        "orchestrator-harness"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        },
+        {
+          "type": "shell",
+          "command": "npx vitest run tests/dispatch-system 2>&1 | grep -q 'passed'"
+        }
+      ],
+      "idempotent": true
+    },
+    "dispatch-system-complete": {
+      "id": "dispatch-system-complete",
+      "desc": "Dispatch system complete: sealed briefs, orchestration, handoff flow validated",
+      "produces": [
+        ".dispatch/system-ready.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "dispatch-system-tests"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "path": ".dispatch/system-ready.json"
+        }
+      ],
+      "idempotent": false
     }
-  }
+  },
+  "baseSha": "177f697ace1124c44066d9465527a24084c66edb"
 }

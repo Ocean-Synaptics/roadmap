@@ -1,17 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { join } from 'node:path';
-import { EnforcementSuite } from '../src/lib/enforcement/index';
+import { enforceClutterPrevention } from '../src/lib/enforcement/index';
 
-describe('EnforcementSuite — Integration Tests', () => {
+describe('enforceClutterPrevention — Integration Tests', () => {
   let tempDir: string;
-  let suite: EnforcementSuite;
 
   beforeEach(() => {
     tempDir = mkdtempSync(join('/tmp', 'enforcement-'));
     mkdirSync(join(tempDir, 'tasks'), { recursive: true });
     mkdirSync(join(tempDir, '.roadmap'), { recursive: true });
-    suite = new EnforcementSuite(tempDir);
   });
 
   afterEach(() => {
@@ -19,212 +17,299 @@ describe('EnforcementSuite — Integration Tests', () => {
   });
 
   describe('clean state', () => {
-    it('should pass validation with no tasks, DAGs, or worktrees', () => {
-      const result = suite.validate();
-      expect(result.passed).toBe(true);
-      expect(result.taskValidation.passed).toBe(true);
-      expect(result.dagValidation.passed).toBe(true);
-      expect(result.worktreeValidation.passed).toBe(true);
+    it('should pass enforcement with no tasks, DAGs, or worktrees', () => {
+      const report = enforceClutterPrevention(tempDir);
+      expect(report.allPassed).toBe(true);
+      expect(report.violations).toHaveLength(0);
     });
 
-    it('should report all validations passed', () => {
-      const report = suite.report();
-      expect(report).toContain('✅ PASS');
-      expect(report).toContain('✅ Task list valid');
-      expect(report).toContain('✅ All DAGs documented');
-      expect(report).toContain('✅ No stale or orphaned worktrees');
+    it('should report summary for clean state', () => {
+      const report = enforceClutterPrevention(tempDir);
+      expect(report.summary).toContain('passed');
+    });
+
+    it('should list all four rules', () => {
+      const report = enforceClutterPrevention(tempDir);
+      expect(report.rules).toHaveLength(4);
+      expect(report.rules.map((r) => r.name)).toEqual([
+        'dag-documentation',
+        'design-doc-commitment',
+        'task-list-hygiene',
+        'worktree-cleanup',
+      ]);
     });
   });
 
   describe('task validation integration', () => {
-    it('should detect invalid tasks in full suite validation', () => {
+    it('should detect invalid tasks', () => {
       writeFileSync(
         join(tempDir, 'tasks', 'bad.json'),
         JSON.stringify({ id: 'bad', status: 'invalid' })
       );
 
-      const result = suite.validate();
-      expect(result.passed).toBe(false);
-      expect(result.taskValidation.passed).toBe(false);
-      expect(result.taskValidation.invalidStatusCount).toBe(1);
+      const report = enforceClutterPrevention(tempDir);
+      expect(report.allPassed).toBe(false);
+
+      const taskRule = report.rules.find((r) => r.name === 'task-list-hygiene');
+      expect(taskRule?.passed).toBe(false);
+      expect(taskRule?.violations.length).toBeGreaterThan(0);
     });
 
-    it('should detect stale tasks', () => {
+    it('should detect stale in_progress tasks', () => {
       const now = Date.now();
       writeFileSync(
         join(tempDir, 'tasks', 'stale.json'),
         JSON.stringify({
           id: 'stale',
           status: 'in_progress',
-          updatedAt: new Date(now - 100 * 60 * 60 * 1000).toISOString(), // 100 hours
+          updatedAt: new Date(now - 100 * 60 * 60 * 1000).toISOString(),
         })
       );
 
-      const result = suite.validate();
-      expect(result.passed).toBe(false);
-      expect(result.taskValidation.staleCount).toBeGreaterThan(0);
+      const report = enforceClutterPrevention(tempDir);
+      expect(report.allPassed).toBe(false);
     });
 
     it('should detect completed tasks missing evidence', () => {
       writeFileSync(
-        join(tempDir, 'tasks', 'incomplete.json'),
+        join(tempDir, 'tasks', 'no-evidence.json'),
         JSON.stringify({
-          id: 'incomplete',
+          id: 'no-evidence',
           status: 'completed',
-          // Missing evidence field
         })
       );
 
-      const result = suite.validate();
-      expect(result.passed).toBe(false);
-      expect(result.taskValidation.missingEvidenceCount).toBeGreaterThan(0);
+      const report = enforceClutterPrevention(tempDir);
+      expect(report.allPassed).toBe(false);
+
+      const violations = report.violations.filter((v) => v.rule === 'task-list-hygiene');
+      expect(violations.length).toBeGreaterThan(0);
     });
   });
 
   describe('DAG validation integration', () => {
-    it('should detect undocumented DAGs', () => {
-      // Create a DAG directory without accompanying spec
-      mkdirSync(join(tempDir, '.roadmap', 'undocumented-dag'), { recursive: true });
+    it('should detect invalid DAG structure', () => {
       writeFileSync(
-        join(tempDir, '.roadmap', 'undocumented-dag', 'head.json'),
-        JSON.stringify({ id: 'undocumented', nodes: {} })
+        join(tempDir, '.roadmap', 'head.bad.json'),
+        JSON.stringify({ id: 'bad', desc: 'Missing fields' })
       );
 
-      const result = suite.validate();
-      expect(result.dagValidation.passed).toBe(false);
-      expect(result.dagValidation.undocumentedCount).toBeGreaterThan(0);
+      const report = enforceClutterPrevention(tempDir);
+      expect(report.allPassed).toBe(false);
+
+      const dagRule = report.rules.find((r) => r.name === 'dag-documentation');
+      expect(dagRule?.passed).toBe(false);
+    });
+
+    it('should detect missing DAG documentation', () => {
+      const validDag = {
+        id: 'test-dag',
+        desc: 'Test',
+        init: 'start',
+        term: 'end',
+        nodes: {
+          start: { id: 'start', desc: 'Start' },
+          end: { id: 'end', desc: 'End' },
+        },
+      };
+
+      // Create head.missing-doc.json without design doc
+      writeFileSync(
+        join(tempDir, '.roadmap', 'head.missing-doc.json'),
+        JSON.stringify(validDag)
+      );
+
+      const report = enforceClutterPrevention(tempDir);
+      // Should report missing design doc gap
+      const dagRule = report.rules.find((r) => r.name === 'dag-documentation');
+      expect(dagRule?.violations.some((v) => v.message.includes('design documentation'))).toBe(
+        true
+      );
+    });
+
+    it('should detect orphaned DAGs', () => {
+      const activeDag = {
+        id: 'active-dag',
+        desc: 'Active',
+        init: 'start',
+        term: 'end',
+        nodes: {
+          start: { id: 'start', desc: 'Start' },
+          end: { id: 'end', desc: 'End' },
+        },
+      };
+
+      const orphanedDag = {
+        id: 'old-dag',
+        desc: 'Old',
+        init: 'start',
+        term: 'end',
+        nodes: {
+          start: { id: 'start', desc: 'Start' },
+          end: { id: 'end', desc: 'End' },
+        },
+      };
+
+      // Set active head
+      writeFileSync(
+        join(tempDir, '.roadmap', 'head.json'),
+        JSON.stringify(activeDag)
+      );
+
+      // Create orphaned head.*.json
+      writeFileSync(
+        join(tempDir, '.roadmap', 'head.old.json'),
+        JSON.stringify(orphanedDag)
+      );
+
+      const report = enforceClutterPrevention(tempDir);
+      const dagRule = report.rules.find((r) => r.name === 'dag-documentation');
+      expect(dagRule?.violations.some((v) => v.message.includes('orphaned'))).toBe(true);
     });
   });
 
   describe('combined enforcement', () => {
-    it('should report multiple validation failures', () => {
-      // Create multiple issues
+    it('should report multiple violations across rules', () => {
       // Invalid task
       writeFileSync(
         join(tempDir, 'tasks', 'bad.json'),
         JSON.stringify({ id: 'bad', status: 'invalid' })
       );
 
-      // Missing evidence
+      // Invalid DAG
       writeFileSync(
-        join(tempDir, 'tasks', 'incomplete.json'),
-        JSON.stringify({
-          id: 'incomplete',
-          status: 'completed',
-        })
+        join(tempDir, '.roadmap', 'head.bad.json'),
+        JSON.stringify({ id: 'bad', desc: 'Incomplete' })
       );
 
-      const result = suite.validate();
-      expect(result.passed).toBe(false);
-
-      // Should detect all issues
-      expect(result.taskValidation.passed).toBe(false);
-      expect(result.taskValidation.invalidStatusCount).toBeGreaterThan(0);
-      expect(result.taskValidation.missingEvidenceCount).toBeGreaterThan(0);
+      const report = enforceClutterPrevention(tempDir);
+      expect(report.allPassed).toBe(false);
+      expect(report.violations.length).toBeGreaterThan(1);
     });
 
     it('should pass when all four gates are clean', () => {
-      // Create valid task
+      const validDag = {
+        id: 'test-dag',
+        desc: 'Test DAG',
+        init: 'start',
+        term: 'end',
+        nodes: {
+          start: { id: 'start', desc: 'Start' },
+          end: { id: 'end', desc: 'End' },
+        },
+      };
+
       writeFileSync(
-        join(tempDir, 'tasks', 'valid.json'),
+        join(tempDir, '.roadmap', 'head.json'),
+        JSON.stringify(validDag)
+      );
+
+      // Create design doc
+      writeFileSync(
+        join(tempDir, '.roadmap', 'test-dag-design.md'),
+        '# Design Doc for test-dag\n'
+      );
+
+      // Valid task
+      writeFileSync(
+        join(tempDir, 'tasks', 'task1.json'),
         JSON.stringify({
-          id: 'valid',
-          status: 'in_progress',
-          updatedAt: new Date().toISOString(),
-        })
-      );
-
-      const result = suite.validate();
-      expect(result.passed).toBe(true);
-      expect(result.taskValidation.passed).toBe(true);
-      expect(result.dagValidation.passed).toBe(true);
-      expect(result.worktreeValidation.passed).toBe(true);
-    });
-  });
-
-  describe('report generation', () => {
-    it('should generate readable report for pass state', () => {
-      const report = suite.report();
-      expect(report).toContain('Clutter Prevention Enforcement Report');
-      expect(report).toContain('✅ PASS');
-    });
-
-    it('should generate detailed report for fail state', () => {
-      writeFileSync(
-        join(tempDir, 'tasks', 'bad.json'),
-        JSON.stringify({ id: 'bad', status: 'invalid' })
-      );
-
-      const report = suite.report();
-      expect(report).toContain('❌ FAIL');
-      expect(report).toContain('Task List Hygiene');
-    });
-
-    it('should show DAG status in report', () => {
-      const report = suite.report();
-      expect(report).toContain('DAG Documentation');
-    });
-
-    it('should show worktree status in report', () => {
-      const report = suite.report();
-      expect(report).toContain('Worktree Cleanup');
-    });
-  });
-
-  describe('enforcement gate boundaries', () => {
-    it('should isolate task validation failures from DAG validation', () => {
-      writeFileSync(
-        join(tempDir, 'tasks', 'bad.json'),
-        JSON.stringify({ id: 'bad', status: 'invalid' })
-      );
-
-      const result = suite.validate();
-      expect(result.taskValidation.passed).toBe(false);
-      expect(result.dagValidation.passed).toBe(true); // DAG validation should still pass
-      expect(result.passed).toBe(false); // Overall should fail
-    });
-
-    it('should isolate DAG validation failures from task validation', () => {
-      // Create valid task
-      writeFileSync(
-        join(tempDir, 'tasks', 'valid.json'),
-        JSON.stringify({
-          id: 'valid',
+          id: 'task1',
           status: 'pending',
         })
       );
 
-      // Create undocumented DAG
-      mkdirSync(join(tempDir, '.roadmap', 'undocumented'), { recursive: true });
+      const report = enforceClutterPrevention(tempDir);
+      expect(report.allPassed).toBe(true);
+      expect(report.violations).toHaveLength(0);
+    });
+  });
+
+  describe('violation reporting', () => {
+    it('should include remediation guidance in violations', () => {
       writeFileSync(
-        join(tempDir, '.roadmap', 'undocumented', 'head.json'),
-        JSON.stringify({ id: 'undocumented', nodes: {} })
+        join(tempDir, 'tasks', 'bad.json'),
+        JSON.stringify({ id: 'bad-task', status: 'invalid' })
       );
 
-      const result = suite.validate();
-      expect(result.taskValidation.passed).toBe(true); // Task validation should pass
-      expect(result.dagValidation.passed).toBe(false); // DAG validation should fail
-      expect(result.passed).toBe(false); // Overall should fail
+      const report = enforceClutterPrevention(tempDir);
+      const violation = report.violations[0];
+      expect(violation.remediation).toBeTruthy();
+    });
+
+    it('should categorize violations by severity', () => {
+      writeFileSync(
+        join(tempDir, '.roadmap', 'head.orphan.json'),
+        JSON.stringify({
+          id: 'orphaned',
+          desc: 'Orphaned DAG',
+          init: 'a',
+          term: 'z',
+          nodes: { a: { id: 'a', desc: 'A' }, z: { id: 'z', desc: 'Z' } },
+        })
+      );
+
+      writeFileSync(
+        join(tempDir, '.roadmap', 'head.json'),
+        JSON.stringify({
+          id: 'active',
+          desc: 'Active',
+          init: 'a',
+          term: 'z',
+          nodes: { a: { id: 'a', desc: 'A' }, z: { id: 'z', desc: 'Z' } },
+        })
+      );
+
+      const report = enforceClutterPrevention(tempDir);
+      expect(report.violations.some((v) => v.severity === 'warning')).toBe(true);
+    });
+  });
+
+  describe('rule isolation', () => {
+    it('should isolate task failures from other rules', () => {
+      writeFileSync(
+        join(tempDir, 'tasks', 'bad.json'),
+        JSON.stringify({ id: 'bad', status: 'invalid' })
+      );
+
+      const report = enforceClutterPrevention(tempDir);
+      const dagRule = report.rules.find((r) => r.name === 'dag-documentation');
+      const taskRule = report.rules.find((r) => r.name === 'task-list-hygiene');
+
+      expect(dagRule?.passed).toBe(true);
+      expect(taskRule?.passed).toBe(false);
+      expect(report.allPassed).toBe(false);
+    });
+
+    it('should isolate DAG failures from other rules', () => {
+      writeFileSync(
+        join(tempDir, '.roadmap', 'head.invalid.json'),
+        JSON.stringify({ id: 'bad', desc: 'No init/term' })
+      );
+
+      const report = enforceClutterPrevention(tempDir);
+      const dagRule = report.rules.find((r) => r.name === 'dag-documentation');
+      const taskRule = report.rules.find((r) => r.name === 'task-list-hygiene');
+
+      expect(dagRule?.passed).toBe(false);
+      expect(taskRule?.passed).toBe(true);
+      expect(report.allPassed).toBe(false);
     });
   });
 
   describe('idempotency', () => {
     it('should return consistent results across multiple calls', () => {
-      const result1 = suite.validate();
-      const result2 = suite.validate();
+      writeFileSync(
+        join(tempDir, 'tasks', 'task1.json'),
+        JSON.stringify({ id: 'task1', status: 'pending' })
+      );
 
-      expect(result1.passed).toBe(result2.passed);
-      expect(result1.taskValidation.passed).toBe(result2.taskValidation.passed);
-      expect(result1.dagValidation.passed).toBe(result2.dagValidation.passed);
-      expect(result1.worktreeValidation.passed).toBe(result2.worktreeValidation.passed);
-    });
+      const report1 = enforceClutterPrevention(tempDir);
+      const report2 = enforceClutterPrevention(tempDir);
 
-    it('should generate consistent reports across multiple calls', () => {
-      const report1 = suite.report();
-      const report2 = suite.report();
-
-      expect(report1).toContain(report1.split('\n')[3]); // Status line
-      expect(report2).toContain(report2.split('\n')[3]);
+      expect(report1.allPassed).toBe(report2.allPassed);
+      expect(report1.violations.length).toBe(report2.violations.length);
+      expect(report1.summary).toBe(report2.summary);
     });
   });
 });
