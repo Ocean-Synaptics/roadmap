@@ -776,5 +776,20 @@
     ],
     "gitSha": "a823ba6c8feb79d15ffd2539184dc9c3b6c5cf16",
     "treeSha": "0ae4e18e46a6be64e79b9bfa9c19a4e5eb33c19f"
+  },
+  {
+    "nodeId": "protocol-design",
+    "completedAt": "2026-03-02T14:26:03.882Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302142603",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: docs/WORKTREE-PROTOCOL.md"
+      }
+    ],
+    "gitSha": "565ba14eca1f2c35115d4208dccdbd347dd2d256",
+    "treeSha": "ac872a0536c8a7a5c2e0c37c694a02077a8a268a"
   }
 ]
