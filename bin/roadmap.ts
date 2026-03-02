@@ -373,7 +373,7 @@ async function main() {
       case 'scaffold':  return await cmdScaffold(note!);
       case 'cluster':   return cmdCluster(note!);
       case 'schedule':  return cmdSchedule(note!);
-      case 'show':      return cmdShow();
+      case 'show':      return await cmdShow();
       case 'commit':    return cmdCommit(note!);
       case 'complete':  return await cmdComplete(note!);
       case 'certify':   return await cmdCertify(note!);
@@ -1520,7 +1520,7 @@ async function cmdChart() {
 
   const showDeps = args.includes('--deps');
   const showCritical = args.includes('--critical-path');
-  const dag = loadDAG();
+  const dag = await loadDAGAsync();
   const completion = loadStore();
   const pos = await crossOrientWithState(dag);
   const batches = parallelOrder(dag);
@@ -2525,13 +2525,13 @@ function cmdDiff() {
   }
 }
 
-function cmdShow() {
+async function cmdShow() {
   if (!hasLocalDAG) {
     json({ error: 'No roadmap in this repo.' });
     process.exit(1);
   }
 
-  const dag = loadDAG();
+  const dag = await loadDAGAsync();
   const pos = orientWithState(dag);
   const doneSet = new Set(pos.done);
   const claimStore = loadClaims(repoRoot);
@@ -2748,7 +2748,7 @@ async function cmdComplete(note: string) {
     process.exit(1);
   }
 
-  const dag = loadDAG();
+  const dag = await loadDAGAsync();
   const allNodes = Object.keys(dag.nodes);
   if (!allNodes.includes(nodeId)) {
     json({ error: `Node "${nodeId}" not found`, available: allNodes.slice(0, 10) });
