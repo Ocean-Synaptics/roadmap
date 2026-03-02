@@ -1,759 +1,86 @@
 {
-  "id": "fr-chatelet-001",
-  "desc": "Imported from spec-kit",
-  "init": "init",
-  "term": "term",
+  "id": "dispatch-system-001",
+  "desc": "Sealed brief orchestration: agents receive only consumes/produces slice, no DAG introspection. Phase 1 of next mining run.",
+  "init": "dispatch-init",
+  "term": "dispatch-system-complete",
   "nodes": {
-    "term": {
-      "id": "term",
-      "desc": "Synthetic term \u2014 gates on all leaf tasks",
-      "produces": [],
-      "consumes": [
-        ".chatelet/.gitignore",
-        ".chatelet/README.md",
-        "src/lib/chatelet/__tests__/types.test.ts",
-        "src/lib/chatelet/migration-validator.ts",
-        ".chatelet/fr-chatelet-001-complete.json"
-      ],
-      "deps": [
-        "chatelet-init-marker",
-        "chatelet-types-tests",
-        "migration-plan-validator",
-        "terminal-receipt"
-      ],
-      "validate": [
-        {
-          "type": "spec-conformance",
-          "spec": ".specify/specs/fr-chatelet-001/spec.md",
-          "scenario": "All acceptance scenarios pass (User Stories 1-6)",
-          "section": "Feature Specification"
-        },
-        {
-          "type": "shell",
-          "command": "test -f package.json && npm run test 2>&1 | grep -q 'test'",
-          "expectExitCode": 0
-        },
-        {
-          "type": "shell",
-          "command": "npm run build 2>&1 | grep -q \"built\"",
-          "expectExitCode": 0
-        }
-      ],
-      "idempotent": false,
-      "ambient": [
-        ".specify/specs/fr-chatelet-001/spec.md"
-      ]
-    },
-    "init": {
-      "id": "init",
-      "desc": "Phase 4 complete \u2014 gitsafe skeleton, keepbudget config, CLI commands drafted, pack stub, acceptance test framework",
-      "produces": [
-        "src/lib/gitsafe/",
-        "src/lib/chatelet/",
-        "src/cli/commands/"
-      ],
+    "dispatch-init": {
+      "id": "dispatch-init",
+      "desc": "Initialize dispatch-system phase: directory structure, type definitions, contracts",
+      "produces": [".dispatch/.gitkeep", "src/lib/agent-dispatch/README.md"],
       "consumes": [],
       "deps": [],
-      "validate": [
-        {
-          "type": "spec-conformance",
-          "spec": ".specify/specs/fr-chatelet-001/spec.md",
-          "scenario": "Plan clarity validated against feature spec",
-          "section": "Specification"
-        }
-      ],
-      "idempotent": true,
-      "ambient": [
-        ".specify/pre-spec.md",
-        ".specify/specs/fr-chatelet-001/spec.md",
-        ".specify/specs/fr-chatelet-001/plan.md",
-        ".specify/specs/fr-chatelet-001/tasks.md"
-      ]
+      "validate": [{"type": "artifact-exists", "path": ".dispatch/.gitkeep"}],
+      "idempotent": true
     },
-    "gitsafe-primitives-impl": {
-      "id": "gitsafe-primitives-impl",
-      "desc": "Implement listRefs, readBlob, readJson, lsTree, diffPaths in src/lib/gitsafe/index.ts with bounds + deny-list enforcement",
-      "produces": [
-        "src/lib/gitsafe/index.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "init"
-      ],
+    "brief-gate-impl": {
+      "id": "brief-gate-impl",
+      "desc": "Implement and test brief gate: validates brief contract before dispatch",
+      "produces": ["src/lib/agent-dispatch/brief-gate.ts"],
+      "consumes": ["src/lib/brief.ts", "src/protocol.ts"],
+      "deps": ["dispatch-init"],
       "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
+        {"type": "shell", "command": "npx tsc --noEmit"},
+        {"type": "shell", "command": "npx vitest run tests/agent-dispatch.test.ts"}
       ],
       "idempotent": true
     },
-    "keepbudget-schema": {
-      "id": "keepbudget-schema",
-      "desc": "Define KeepBudget schema + loader in src/lib/chatelet/keepbudget.ts (schema types, loader function, validation)",
-      "produces": [
-        "src/lib/chatelet/keepbudget.ts",
-        "src/lib/chatelet/types.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "init"
-      ],
+    "dispatch-coordinator-impl": {
+      "id": "dispatch-coordinator-impl",
+      "desc": "Implement dispatch coordinator: compute batch → assign agents → generate sealed briefs",
+      "produces": ["src/lib/agent-dispatch/dispatch-coordinator.ts"],
+      "consumes": ["src/lib/brief.ts", "src/lib/agent-dispatch/brief-gate.ts", ".dispatch/plan.json"],
+      "deps": ["brief-gate-impl"],
+      "validate": [{"type": "shell", "command": "npx tsc --noEmit"}],
+      "idempotent": true
+    },
+    "agent-executor-impl": {
+      "id": "agent-executor-impl",
+      "desc": "Implement sealed agent executor: read brief (no DAG), execute, checkpoint progress, final handoff",
+      "produces": ["src/lib/agent-dispatch/agent-executor.ts"],
+      "consumes": ["src/lib/brief.ts", "src/lib/handoff.ts", "src/lib/agent-dispatch/handoff-journal.ts"],
+      "deps": ["dispatch-coordinator-impl"],
+      "validate": [{"type": "shell", "command": "npx tsc --noEmit"}],
+      "idempotent": true
+    },
+    "handoff-journal-impl": {
+      "id": "handoff-journal-impl",
+      "desc": "Implement handoff journal: store interim checkpoints, final handoffs, load chain for next agent",
+      "produces": ["src/lib/agent-dispatch/handoff-journal.ts"],
+      "consumes": ["src/lib/brief.ts"],
+      "deps": ["dispatch-init"],
+      "validate": [{"type": "shell", "command": "npx tsc --noEmit"}],
+      "idempotent": true
+    },
+    "orchestrator-harness": {
+      "id": "orchestrator-harness",
+      "desc": "Implement orchestrator harness: read dispatch plan, spawn sealed agents per brief, coordinate completions",
+      "produces": ["src/lib/agent-dispatch/orchestrator.ts"],
+      "consumes": ["src/lib/agent-dispatch/dispatch-coordinator.ts", "src/lib/agent-dispatch/agent-executor.ts"],
+      "deps": ["agent-executor-impl", "handoff-journal-impl"],
+      "validate": [{"type": "shell", "command": "npx tsc --noEmit"}],
+      "idempotent": true
+    },
+    "dispatch-system-tests": {
+      "id": "dispatch-system-tests",
+      "desc": "Integration tests: orchestrator → dispatch → sealed agents → handoffs → batch advance",
+      "produces": ["tests/dispatch-system.integration.test.ts"],
+      "consumes": ["tests/agent-dispatch.test.ts", "src/lib/agent-dispatch/index.ts"],
+      "deps": ["orchestrator-harness"],
       "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
+        {"type": "shell", "command": "npx tsc --noEmit"},
+        {"type": "shell", "command": "npx vitest run tests/dispatch-system 2>&1 | grep -q 'passed'"}
       ],
       "idempotent": true
     },
-    "chatelet-init-marker": {
-      "id": "chatelet-init-marker",
-      "desc": "Create .chatelet/ directory structure, .gitignore, README.md",
-      "produces": [
-        ".chatelet/.gitignore",
-        ".chatelet/README.md"
-      ],
+    "dispatch-system-complete": {
+      "id": "dispatch-system-complete",
+      "desc": "Dispatch system complete: sealed briefs, orchestration, handoff flow validated",
+      "produces": [".dispatch/system-ready.json"],
       "consumes": [],
-      "deps": [
-        "init"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "test -d .chatelet && test -f .chatelet/.gitignore && test -f .chatelet/README.md"
-        }
-      ],
-      "idempotent": true
-    },
-    "gitsafe-contract-tests": {
-      "id": "gitsafe-contract-tests",
-      "desc": "Unit tests for deny-list + bounds enforcement in src/lib/gitsafe/__tests__/contract.test.ts (S1)",
-      "produces": [
-        "src/lib/gitsafe/__tests__/contract.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "gitsafe-primitives-impl"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx vitest src/lib/gitsafe/__tests__/contract.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "keepbudget-validator-tests": {
-      "id": "keepbudget-validator-tests",
-      "desc": "Unit tests for schema validation + violation detection in src/lib/chatelet/__tests__/keepbudget.test.ts (S2)",
-      "produces": [
-        "src/lib/chatelet/__tests__/keepbudget.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "keepbudget-schema"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx vitest src/lib/chatelet/__tests__/keepbudget.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "chatelet-types-tests": {
-      "id": "chatelet-types-tests",
-      "desc": "Type definition tests in src/lib/chatelet/__tests__/types.test.ts",
-      "produces": [
-        "src/lib/chatelet/__tests__/types.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "keepbudget-schema"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "packs-list-cmd": {
-      "id": "packs-list-cmd",
-      "desc": "Implement tool packs list [--format json|text] in src/cli/commands/packs-list.ts",
-      "produces": [
-        "src/cli/commands/packs-list.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "gitsafe-primitives-impl",
-        "keepbudget-schema"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "packs-show-cmd": {
-      "id": "packs-show-cmd",
-      "desc": "Implement tool packs show <name> in src/cli/commands/packs-show.ts",
-      "produces": [
-        "src/cli/commands/packs-show.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "gitsafe-primitives-impl"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "packs-extract-cmd": {
-      "id": "packs-extract-cmd",
-      "desc": "Implement tool packs extract <name> [paths...] in src/cli/commands/packs-extract.ts with bounds enforcement",
-      "produces": [
-        "src/cli/commands/packs-extract.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "gitsafe-primitives-impl",
-        "keepbudget-schema"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "chatelet-status-cmd": {
-      "id": "chatelet-status-cmd",
-      "desc": "Implement tool chatelet status in src/cli/commands/chatelet-status.ts",
-      "produces": [
-        "src/cli/commands/chatelet-status.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "gitsafe-primitives-impl",
-        "keepbudget-schema"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "packs-list-tests": {
-      "id": "packs-list-tests",
-      "desc": "Test packs list command (S3) in src/cli/commands/__tests__/packs-list.test.ts",
-      "produces": [
-        "src/cli/commands/__tests__/packs-list.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "packs-list-cmd"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx vitest src/cli/commands/__tests__/packs-list.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "packs-show-tests": {
-      "id": "packs-show-tests",
-      "desc": "Test packs show command (S3) in src/cli/commands/__tests__/packs-show.test.ts",
-      "produces": [
-        "src/cli/commands/__tests__/packs-show.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "packs-show-cmd"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx vitest src/cli/commands/__tests__/packs-show.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "packs-extract-tests": {
-      "id": "packs-extract-tests",
-      "desc": "Test packs extract command (S4) in src/cli/commands/__tests__/packs-extract.test.ts",
-      "produces": [
-        "src/cli/commands/__tests__/packs-extract.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "packs-extract-cmd"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx vitest src/cli/commands/__tests__/packs-extract.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "chatelet-status-tests": {
-      "id": "chatelet-status-tests",
-      "desc": "Test chatelet status command (S2/S7) in src/cli/commands/__tests__/chatelet-status.test.ts",
-      "produces": [
-        "src/cli/commands/__tests__/chatelet-status.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "chatelet-status-cmd"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx vitest src/cli/commands/__tests__/chatelet-status.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "cli-error-tests": {
-      "id": "cli-error-tests",
-      "desc": "Test CLI error paths + help rendering (S6) in src/cli/commands/__tests__/cli-errors.test.ts",
-      "produces": [
-        "src/cli/commands/__tests__/cli-errors.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "packs-list-cmd",
-        "packs-show-cmd",
-        "packs-extract-cmd",
-        "chatelet-status-cmd"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx vitest src/cli/commands/__tests__/cli-errors.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "ci-gate-keep": {
-      "id": "ci-gate-keep",
-      "desc": "Implement gate-chatelet-keep workflow in .github/workflows/gate-chatelet-keep.yml (S2)",
-      "produces": [
-        ".github/workflows/gate-chatelet-keep.yml"
-      ],
-      "consumes": [],
-      "deps": [
-        "keepbudget-schema",
-        "chatelet-status-cmd",
-        "keepbudget-validator-tests"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": ".github/workflows/gate-chatelet-keep.yml"
-        }
-      ],
-      "idempotent": true
-    },
-    "ci-gate-manifests": {
-      "id": "ci-gate-manifests",
-      "desc": "Implement gate-pack-manifests workflow in .github/workflows/gate-pack-manifests.yml (S3)",
-      "produces": [
-        ".github/workflows/gate-pack-manifests.yml"
-      ],
-      "consumes": [],
-      "deps": [
-        "packs-list-cmd"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": ".github/workflows/gate-pack-manifests.yml"
-        }
-      ],
-      "idempotent": true
-    },
-    "gate-tests": {
-      "id": "gate-tests",
-      "desc": "Test CI gate logic in tests/ci-gates.test.ts",
-      "produces": [
-        "tests/ci-gates.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "ci-gate-keep",
-        "ci-gate-manifests"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx vitest tests/ci-gates.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "migration-planner-impl": {
-      "id": "migration-planner-impl",
-      "desc": "Implement tool chatelet migrate --plan-only in src/cli/commands/chatelet-migrate.ts",
-      "produces": [
-        "src/cli/commands/chatelet-migrate.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "gitsafe-primitives-impl",
-        "chatelet-status-cmd"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "migration-planner-tests": {
-      "id": "migration-planner-tests",
-      "desc": "Test migration plan generation (S5) in tests/migration.test.ts",
-      "produces": [
-        "tests/migration.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "migration-planner-impl"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx vitest tests/migration.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "migration-plan-validator": {
-      "id": "migration-plan-validator",
-      "desc": "Utility module src/lib/chatelet/migration-validator.ts for plan validation",
-      "produces": [
-        "src/lib/chatelet/migration-validator.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "init"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx tsc --noEmit"
-        }
-      ],
-      "idempotent": true
-    },
-    "gitsafe-integration-tests": {
-      "id": "gitsafe-integration-tests",
-      "desc": "Integration tests for gitsafe on real repos (S1) in src/lib/gitsafe/__tests__/integration.test.ts",
-      "produces": [
-        "src/lib/gitsafe/__tests__/integration.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "gitsafe-primitives-impl",
-        "gitsafe-contract-tests"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx vitest src/lib/gitsafe/__tests__/integration.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "gitsafe-perf-tests": {
-      "id": "gitsafe-perf-tests",
-      "desc": "Performance benchmarks for gitsafe (P50 < 100ms) in tests/perf-gitsafe.test.ts",
-      "produces": [
-        "tests/perf-gitsafe.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "gitsafe-primitives-impl",
-        "gitsafe-integration-tests"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx vitest tests/perf-gitsafe.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "cli-perf-tests": {
-      "id": "cli-perf-tests",
-      "desc": "Performance benchmarks for CLI commands (P50 < 500ms) in tests/perf-cli.test.ts",
-      "produces": [
-        "tests/perf-cli.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "packs-list-cmd",
-        "packs-show-cmd",
-        "packs-extract-cmd",
-        "chatelet-status-cmd",
-        "migration-planner-impl"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx vitest tests/perf-cli.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "e2e-integration-tests": {
-      "id": "e2e-integration-tests",
-      "desc": "End-to-end workflow tests (S8) in tests/e2e-chatelet.test.ts",
-      "produces": [
-        "tests/e2e-chatelet.test.ts"
-      ],
-      "consumes": [],
-      "deps": [
-        "packs-list-cmd",
-        "packs-show-cmd",
-        "packs-extract-cmd",
-        "chatelet-status-cmd",
-        "migration-planner-impl",
-        "ci-gate-keep",
-        "ci-gate-manifests"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "npx vitest tests/e2e-chatelet.test.ts"
-        }
-      ],
-      "idempotent": true
-    },
-    "docs-chatelet": {
-      "id": "docs-chatelet",
-      "desc": "Write docs/CHATELET.md (architecture guide)",
-      "produces": [
-        "docs/CHATELET.md"
-      ],
-      "consumes": [],
-      "deps": [
-        "packs-list-cmd",
-        "packs-show-cmd",
-        "packs-extract-cmd",
-        "chatelet-status-cmd",
-        "keepbudget-schema"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": "docs/CHATELET.md"
-        }
-      ],
-      "idempotent": true
-    },
-    "docs-migration": {
-      "id": "docs-migration",
-      "desc": "Write docs/MIGRATION.md (step-by-step playbook)",
-      "produces": [
-        "docs/MIGRATION.md"
-      ],
-      "consumes": [],
-      "deps": [
-        "migration-planner-impl",
-        "migration-planner-tests"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": "docs/MIGRATION.md"
-        }
-      ],
-      "idempotent": true
-    },
-    "docs-api": {
-      "id": "docs-api",
-      "desc": "Write docs/API.md (command reference)",
-      "produces": [
-        "docs/API.md"
-      ],
-      "consumes": [],
-      "deps": [
-        "packs-list-cmd",
-        "packs-show-cmd",
-        "packs-extract-cmd",
-        "chatelet-status-cmd",
-        "migration-planner-impl"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": "docs/API.md"
-        }
-      ],
-      "idempotent": true
-    },
-    "docs-troubleshooting": {
-      "id": "docs-troubleshooting",
-      "desc": "Write docs/TROUBLESHOOTING.md (common violations + fixes)",
-      "produces": [
-        "docs/TROUBLESHOOTING.md"
-      ],
-      "consumes": [],
-      "deps": [
-        "cli-error-tests",
-        "keepbudget-validator-tests"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": "docs/TROUBLESHOOTING.md"
-        }
-      ],
-      "idempotent": true
-    },
-    "coverage-report": {
-      "id": "coverage-report",
-      "desc": "Generate coverage report (target \u226590%) in .chatelet/coverage-report.json",
-      "produces": [
-        ".chatelet/coverage-report.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "gitsafe-contract-tests",
-        "keepbudget-validator-tests",
-        "packs-list-tests",
-        "packs-show-tests",
-        "packs-extract-tests",
-        "chatelet-status-tests",
-        "cli-error-tests",
-        "gate-tests",
-        "gitsafe-integration-tests",
-        "cli-perf-tests",
-        "e2e-integration-tests"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": ".chatelet/coverage-report.json"
-        },
-        {
-          "type": "shell",
-          "command": "jq -e \".meetsTarget == true\" .chatelet/coverage-report.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "security-audit": {
-      "id": "security-audit",
-      "desc": "Security audit of gitsafe + audit trail design in .chatelet/security-audit.json + .chatelet/audit-checklist.md",
-      "produces": [
-        ".chatelet/security-audit.json",
-        ".chatelet/audit-checklist.md"
-      ],
-      "consumes": [],
-      "deps": [
-        "gitsafe-primitives-impl",
-        "keepbudget-schema",
-        "ci-gate-keep",
-        "ci-gate-manifests"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": ".chatelet/security-audit.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "acceptance-validation": {
-      "id": "acceptance-validation",
-      "desc": "Verify all 8 acceptance scenarios (S1-S8) pass in .chatelet/acceptance-results.json",
-      "produces": [
-        ".chatelet/acceptance-results.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "gitsafe-contract-tests",
-        "gitsafe-integration-tests",
-        "keepbudget-validator-tests",
-        "packs-list-tests",
-        "packs-show-tests",
-        "packs-extract-tests",
-        "chatelet-status-tests",
-        "cli-error-tests",
-        "gate-tests",
-        "migration-planner-tests",
-        "cli-perf-tests",
-        "e2e-integration-tests"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": ".chatelet/acceptance-results.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "performance-gate": {
-      "id": "performance-gate",
-      "desc": "Verify latency targets in .chatelet/performance-gate.json",
-      "produces": [
-        ".chatelet/performance-gate.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "gitsafe-perf-tests",
-        "cli-perf-tests"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": ".chatelet/performance-gate.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "terminal-receipt": {
-      "id": "terminal-receipt",
-      "desc": "Generate phase completion receipt in .chatelet/fr-chatelet-001-complete.json",
-      "produces": [
-        ".chatelet/fr-chatelet-001-complete.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "security-audit",
-        "acceptance-validation",
-        "performance-gate",
-        "coverage-report",
-        "docs-chatelet",
-        "docs-migration",
-        "docs-api",
-        "docs-troubleshooting"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "path": ".chatelet/fr-chatelet-001-complete.json"
-        }
-      ],
-      "idempotent": true
+      "deps": ["dispatch-system-tests"],
+      "validate": [{"type": "artifact-exists", "path": ".dispatch/system-ready.json"}],
+      "idempotent": false
     }
-  },
-  "version": "0.3.0",
-  "protocolVersion": "0.3.0"
+  }
 }
