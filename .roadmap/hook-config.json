@@ -1,7 +1,0 @@
-{
-  "testEnforcement": {
-    "enabled": true,
-    "scope": ["src/", "bin/"],
-    "testPattern": "(tests/**/*.test.ts|src/**/__tests__/**/*.test.ts)"
-  }
-}
