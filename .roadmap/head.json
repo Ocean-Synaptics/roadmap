@@ -6,7 +6,7 @@
   "nodes": {
     "term": {
       "id": "term",
-      "desc": "Synthetic term — gates on all leaf tasks",
+      "desc": "Synthetic term \u2014 gates on all leaf tasks",
       "produces": [],
       "consumes": [
         ".chatelet/.gitignore",
@@ -46,7 +46,7 @@
     },
     "init": {
       "id": "init",
-      "desc": "Phase 4 complete — gitsafe skeleton, keepbudget config, CLI commands drafted, pack stub, acceptance test framework",
+      "desc": "Phase 4 complete \u2014 gitsafe skeleton, keepbudget config, CLI commands drafted, pack stub, acceptance test framework",
       "produces": [
         "src/lib/gitsafe/",
         "src/lib/chatelet/",
@@ -362,8 +362,8 @@
       ],
       "validate": [
         {
-          "type": "shell",
-          "command": "artifact-exists:.github/workflows/gate-chatelet-keep.yml"
+          "type": "artifact-exists",
+          "path": ".github/workflows/gate-chatelet-keep.yml"
         }
       ],
       "idempotent": true
@@ -380,8 +380,8 @@
       ],
       "validate": [
         {
-          "type": "shell",
-          "command": "artifact-exists:.github/workflows/gate-pack-manifests.yml"
+          "type": "artifact-exists",
+          "path": ".github/workflows/gate-pack-manifests.yml"
         }
       ],
       "idempotent": true
@@ -560,8 +560,8 @@
       ],
       "validate": [
         {
-          "type": "shell",
-          "command": "artifact-exists:docs/CHATELET.md"
+          "type": "artifact-exists",
+          "path": "docs/CHATELET.md"
         }
       ],
       "idempotent": true
@@ -628,7 +628,7 @@
     },
     "coverage-report": {
       "id": "coverage-report",
-      "desc": "Generate coverage report (target ≥90%) in .chatelet/coverage-report.json",
+      "desc": "Generate coverage report (target \u226590%) in .chatelet/coverage-report.json",
       "produces": [
         ".chatelet/coverage-report.json"
       ],
