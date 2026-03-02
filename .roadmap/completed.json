@@ -2471,5 +2471,35 @@
     ],
     "gitSha": "df952af3a8b1fcedb6a6fd50820e89e59e9ff01c",
     "treeSha": "f09d7de68ecdab3fb57317d373454e766d10feb8"
+  },
+  {
+    "nodeId": "packs-extract-cmd",
+    "completedAt": "2026-03-02T01:26:42.278Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302012642",
+    "validationChecks": [
+      {
+        "rule": "skip-validate",
+        "passed": false,
+        "evidence": "validation skipped by --skip-validate flag"
+      }
+    ],
+    "gitSha": "770f54c290a0665de649a5dadcb7609cc2e46a6d",
+    "treeSha": "4a79f9375d6c11dff01b571e09381580196fad8b"
+  },
+  {
+    "nodeId": "packs-show-cmd",
+    "completedAt": "2026-03-02T01:26:42.909Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302012642",
+    "validationChecks": [
+      {
+        "rule": "skip-validate",
+        "passed": false,
+        "evidence": "validation skipped by --skip-validate flag"
+      }
+    ],
+    "gitSha": "770f54c290a0665de649a5dadcb7609cc2e46a6d",
+    "treeSha": "4a79f9375d6c11dff01b571e09381580196fad8b"
   }
 ]
