@@ -76,14 +76,13 @@ function createRoadmapState(dagId: string = 'test-dag-001', headSha?: string) {
 
   writeFileSync(join(roadmapDir, 'head.json'), JSON.stringify(headJson, null, 2));
 
-  if (headSha) {
-    const gitStateJson = {
-      lastHeadSha: headSha,
-      lastHeadRef: 'HEAD',
-      timestamp: new Date().toISOString(),
-    };
-    writeFileSync(join(roadmapDir, 'git-state.json'), JSON.stringify(gitStateJson, null, 2));
-  }
+  // Always create git-state.json - use provided headSha or default to placeholder
+  const gitStateJson = {
+    lastHeadSha: headSha || '0000000000000000000000000000000000000000',
+    lastHeadRef: 'HEAD',
+    timestamp: new Date().toISOString(),
+  };
+  writeFileSync(join(roadmapDir, 'git-state.json'), JSON.stringify(gitStateJson, null, 2));
 }
 
 function createTrailEntry(nodeId: string, timestamp?: string) {

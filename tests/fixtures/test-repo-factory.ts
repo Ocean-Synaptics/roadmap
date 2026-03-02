@@ -58,7 +58,29 @@ export class TestRepo {
    * Factory: Create and initialize a test repo with defaults
    */
   static setup(name: string = 'test-repo'): TestRepo {
-    return new TestRepo({ name, initGit: true });
+    const repo = new TestRepo({ name, initGit: true });
+    // Initialize git-state.json with current HEAD
+    repo.initializeGitState();
+    return repo;
+  }
+
+  /**
+   * Initialize git-state.json with current git HEAD SHA
+   */
+  private initializeGitState(): void {
+    try {
+      const currentSha = this.getCurrentSha();
+      this.setGitState({
+        lastCommit: currentSha,
+        timestamp: new Date().toISOString(),
+      });
+    } catch (err) {
+      // If no commits yet, write a placeholder
+      this.setGitState({
+        lastCommit: '0000000000000000000000000000000000000000',
+        timestamp: new Date().toISOString(),
+      });
+    }
   }
 
   /**
