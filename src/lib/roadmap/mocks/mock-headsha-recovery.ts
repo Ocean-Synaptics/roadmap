@@ -29,7 +29,7 @@ export class MockHeadShaRecovery {
       hasMismatch: false,
       headShaInFile: 'ae92425b8c4f0d1e9f8a3b5c7d9e1f2a3b5c7d9e',
       actualGitSha: 'ae92425b8c4f0d1e9f8a3b5c7d9e1f2a3b5c7d9e',
-      headJsonSha: 'f7e3d4c5b6a798765432109876543210fedcba98',
+      headJsonSha: 'f7e3d4c5b6a798765432109876543210fedcba98765432109876543210fedcba98',
       timestamp: new Date().toISOString(),
     };
   }
@@ -41,8 +41,8 @@ export class MockHeadShaRecovery {
   autoRecover(): RecoveryResult {
     return {
       recovered: true,
-      prevHeadSha: 'f7e3d4c5b6a798765432109876543210fedcba98',
-      newHeadSha: 'f7e3d4c5b6a798765432109876543210fedcba99',
+      prevHeadSha: 'f7e3d4c5b6a798765432109876543210fedcba98765432109876543210fedcba98',
+      newHeadSha: 'f7e3d4c5b6a798765432109876543210fedcba98765432109876543210fedcba99',
       prevGitState: 'ae92425b8c4f0d1e9f8a3b5c7d9e1f2a3b5c7d9d',
       newGitState: 'ae92425b8c4f0d1e9f8a3b5c7d9e1f2a3b5c7d9e',
       timestamp: new Date().toISOString(),

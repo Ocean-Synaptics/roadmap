@@ -1,5 +1,5 @@
 {
-  "lastCommit": "b715df3902ea544e816dfe858a5dca0008149d8f",
-  "timestamp": "2026-03-02T12:13:13Z",
-  "message": "validate-gates-integration: simplify validation to artifact-exists check (shell validation deferred)"
+  "lastCommit": "f4ffeae3c21d45e5fafaf7d2e87360db8d08e490",
+  "timestamp": "2026-03-02T12:14:42Z",
+  "message": "align-trail-manager: mock adapter aligned to real API signatures"
 }

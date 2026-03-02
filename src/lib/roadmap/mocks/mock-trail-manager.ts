@@ -31,6 +31,7 @@ export class MockTrailManager {
   private entries: TrailEntry[] = [];
   private isWatching: boolean = false;
   private isDirty: boolean = false;
+  private lastCommittedEntryCount: number = 0;
 
   constructor(repoRoot: string) {
     this.repoRoot = repoRoot;
@@ -97,9 +98,10 @@ export class MockTrailManager {
       return { committed: false, reason: 'nothing-dirty' };
     }
 
-    const entriesAdded = this.entries.length;
+    const entriesAdded = this.entries.length - this.lastCommittedEntryCount;
     const message = `trail: ${entriesAdded} entries, head sync`;
 
+    this.lastCommittedEntryCount = this.entries.length;
     this.isDirty = false;
 
     return {
