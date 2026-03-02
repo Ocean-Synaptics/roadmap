@@ -1196,9 +1196,24 @@ async function cmdExpand(note: string) {
     }, terminalError.message);
   }
 
-  // FR-GOV-004: enforce batchConflicts on expanded DAG
+  // AUTO-PROPAGATE: Back-derive validation rules on the expanded DAG
+  // This ensures all artifact dependencies are validated without manual propagate step
+  const propagationResult = propagateConstraints(dagAfter, { dryRun: false });
+  let dagFinal = propagationResult.dag ?? dagAfter;
+
+  // Re-validate after propagation to ensure no new issues were introduced
+  const propagCheckResult = check(dagFinal);
+  const propagVerifyErrors = verify(dagFinal);
+  if (!propagCheckResult.done || propagVerifyErrors.length) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      attempted: scriptPath,
+      fix: 'Propagation introduced validation errors. Review the expansion script.',
+    }, `Propagation produced invalid DAG: ${propagVerifyErrors.length} errors`);
+  }
+
+  // FR-GOV-004: enforce batchConflicts on expanded DAG (check after propagation)
   const allowConflicts = args.includes('--allow-conflicts');
-  const expandConflicts = batchConflicts(dagAfter);
+  const expandConflicts = batchConflicts(dagFinal);
   if (expandConflicts.length > 0 && !allowConflicts) {
     throw new RoadmapError('VALIDATION_FAILED', {
       fix: 'Resolve conflicts (split nodes or serialize) then re-run. Use --allow-conflicts to override (receipted).',
@@ -1210,7 +1225,8 @@ async function cmdExpand(note: string) {
   }
 
   // Write candidate DAG instead of directly mutating head.json
-  writeCandidateDAG(repoRoot, dagAfter, 'expand', scriptPath);
+  // Now includes auto-propagated validation rules
+  writeCandidateDAG(repoRoot, dagFinal, 'expand', scriptPath);
 
   const posAfter = orient(dagBefore, loadStore(), retiredSet());
   recordTrail({ ts: new Date().toISOString(), cmd: 'expand', note, repo: basename(repoRoot), position: posAfter.position, level: posAfter.level, dagId: dagAfter.id, detail: { script: scriptPath, added, type: expansionType, candidate: true } });
@@ -1224,6 +1240,10 @@ async function cmdExpand(note: string) {
     nodesAfter,
     added,
     addedIds,
+    propagated: {
+      rulesAdded: propagationResult.propagated,
+      nodesAffected: propagationResult.nodesAffected,
+    },
     position: posAfter.position,
     level: posAfter.level,
     batchRemaining: posAfter.batchRemaining,
