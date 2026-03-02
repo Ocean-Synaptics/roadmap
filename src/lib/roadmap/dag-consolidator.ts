@@ -4,7 +4,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { Graph, NodeSpec, merge, mergeCheck, define, verify } from '../protocol.ts';
+import { Graph, merge, define } from '../../protocol';
 
 export interface DAGFile {
   path: string;
@@ -200,16 +200,18 @@ export function mergeMultiWay(dagFiles: DAGFile[]): MergeResult {
       const termNode = currentMerged.nodes[currentMerged.term];
       const initNode = nextDAG.content.nodes[nextDAG.content.init];
 
-      // Prepare node specs for merge
-      const connSpec: Connection = {
-        from: termNode.id,
-        to: initNode.id,
-        produces: termNode.produces || [],
-        consumes: initNode.consumes || [],
-      };
+      // Prepare merge connection specs
+      const artifact = termNode.produces && termNode.produces[0] ? termNode.produces[0] : '';
+      const connSpecs: Array<{ g1Node: string; g2Node: string; artifact: string }> = [
+        {
+          g1Node: termNode.id,
+          g2Node: initNode.id,
+          artifact,
+        },
+      ];
 
       try {
-        const merged = merge(currentMerged, nextDAG.content, connSpec);
+        const merged = merge(currentMerged, nextDAG.content, connSpecs);
         currentMerged = merged;
       } catch (err) {
         throw new ConsolidationError(
@@ -221,15 +223,16 @@ export function mergeMultiWay(dagFiles: DAGFile[]): MergeResult {
     } else {
       // No direct connection, just merge graphs without edge
       // This is less ideal but allows modular DAGs
-      const connSpec: Connection = {
-        from: currentMerged.term,
-        to: nextDAG.content.init,
-        produces: [],
-        consumes: [],
-      };
+      const connSpecs: Array<{ g1Node: string; g2Node: string; artifact: string }> = [
+        {
+          g1Node: currentMerged.term,
+          g2Node: nextDAG.content.init,
+          artifact: '',
+        },
+      ];
 
       try {
-        const merged = merge(currentMerged, nextDAG.content, connSpec);
+        const merged = merge(currentMerged, nextDAG.content, connSpecs);
         currentMerged = merged;
       } catch (err) {
         throw new ConsolidationError(
@@ -277,10 +280,3 @@ export async function consolidateAllDAGs(roadmapRoot: string): Promise<MergeResu
   return result;
 }
 
-// Type for merge connection spec
-interface Connection {
-  from: string;
-  to: string;
-  produces: string[];
-  consumes: string[];
-}
