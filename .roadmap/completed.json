@@ -2298,9 +2298,9 @@
     "checkpointId": "cp-20260302004901",
     "validationChecks": [
       {
-        "rule": "skip-validate",
-        "passed": false,
-        "evidence": "validation skipped by --skip-validate flag"
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): test -d .chatelet && test -f .chatelet/.gitignore && test -f .chatelet/README.md"
       }
     ],
     "gitSha": "6a19dd84ffb7d6d68ba66850eff4b07ef724d83a",
@@ -2313,9 +2313,9 @@
     "checkpointId": "cp-20260302004920",
     "validationChecks": [
       {
-        "rule": "skip-validate",
-        "passed": false,
-        "evidence": "validation skipped by --skip-validate flag"
+        "rule": "shell",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsc --noEmit"
       }
     ],
     "gitSha": "6a19dd84ffb7d6d68ba66850eff4b07ef724d83a",
