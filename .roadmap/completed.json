@@ -558,5 +558,20 @@
     ],
     "gitSha": "61c1a788c0c2fa4a3e41c9067918335060ce0db9",
     "treeSha": "f562db131ca6c9ffcee83e27436c2b2f40aab9e4"
+  },
+  {
+    "nodeId": "clutter-prevention-gates",
+    "completedAt": "2026-03-02T12:40:20.411Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302124020",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: clutter-prevention-report.json"
+      }
+    ],
+    "gitSha": "f151f2a34f7667641d56a6f96bdfb7874a950337",
+    "treeSha": "4bb3509b45029247761ff5295a133ec2c21003b4"
   }
 ]
