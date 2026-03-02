@@ -1,79 +1,90 @@
 {
-  "id": "metaflows-p2",
-  "desc": "Phase 2: Optimization + Re-validation (3 parallel flows)",
+  "id": "metaflows-p3",
+  "desc": "Phase 3: Final Validation + Production Deploy + Metrics Synthesis",
   "protocolVersion": "1.0.0",
   "version": "1.0",
-  "init": "p2-init",
-  "term": "p2-optimization-complete",
+  "init": "p3-init",
+  "term": "p3-synthesis-complete",
   "spec": ".specify/specs/metaflows-p1/spec.md",
   "nodes": {
-    "p2-init": {
-      "id": "p2-init",
-      "desc": "Phase 2 init - consume Phase 1 results",
-      "produces": ["p2-init.marker"],
-      "consumes": [".roadmap/metaflow/intent-metaflow-audit-complete.json"],
+    "p3-init": {
+      "id": "p3-init",
+      "desc": "Phase 3 init - consume Phase 2 optimization results",
+      "produces": ["p3-init.marker"],
+      "consumes": [".roadmap/metaflow/p2-optimization-complete.json"],
       "deps": [],
       "validate": [
-        {"type": "artifact-exists", "target": "p2-init.marker"}
+        {"type": "artifact-exists", "target": "p3-init.marker"}
       ],
       "idempotent": true
     },
-    "p2-audit-recovery": {
-      "id": "p2-audit-recovery",
-      "desc": "Flow 1: Audit recovery - close validation gaps",
-      "produces": [".roadmap/metaflow/recovery/p2-recovery-report.json"],
-      "consumes": ["p2-init.marker"],
-      "deps": ["p2-init"],
+    "p3-validate-performance": {
+      "id": "p3-validate-performance",
+      "desc": "Validate performance improvements against SLO targets",
+      "produces": [".roadmap/metaflow/validation/p3-performance-validation.json"],
+      "consumes": ["p3-init.marker"],
+      "deps": ["p3-init"],
       "validate": [
-        {"type": "artifact-exists", "target": ".roadmap/metaflow/recovery/p2-recovery-report.json"}
+        {"type": "artifact-exists", "target": ".roadmap/metaflow/validation/p3-performance-validation.json"}
       ],
       "idempotent": true
     },
-    "p2-state-coherence": {
-      "id": "p2-state-coherence",
-      "desc": "Flow 2: State coherence - corruption detection + hardening",
-      "produces": [".roadmap/metaflow/coherence/p2-coherence-report.json"],
-      "consumes": ["p2-init.marker"],
-      "deps": ["p2-init"],
+    "p3-prod-deployment": {
+      "id": "p3-prod-deployment",
+      "desc": "Deploy optimizations to production CLI",
+      "produces": [".roadmap/metaflow/deployment/p3-deployment-log.json"],
+      "consumes": ["p3-init.marker"],
+      "deps": ["p3-init"],
       "validate": [
-        {"type": "artifact-exists", "target": ".roadmap/metaflow/coherence/p2-coherence-report.json"}
+        {"type": "artifact-exists", "target": ".roadmap/metaflow/deployment/p3-deployment-log.json"}
       ],
       "idempotent": true
     },
-    "p2-performance-hardening": {
-      "id": "p2-performance-hardening",
-      "desc": "Flow 3: Performance hardening - optimize P50 + recovery hints",
-      "produces": [".roadmap/metaflow/performance/p2-optimization-report.json"],
-      "consumes": ["p2-init.marker"],
-      "deps": ["p2-init"],
+    "p3-post-deploy-metrics": {
+      "id": "p3-post-deploy-metrics",
+      "desc": "Collect post-deployment metrics and performance baselines",
+      "produces": [".roadmap/metaflow/metrics/p3-post-deploy-metrics.json"],
+      "consumes": ["p3-init.marker"],
+      "deps": ["p3-init"],
       "validate": [
-        {"type": "artifact-exists", "target": ".roadmap/metaflow/performance/p2-optimization-report.json"}
+        {"type": "artifact-exists", "target": ".roadmap/metaflow/metrics/p3-post-deploy-metrics.json"}
       ],
       "idempotent": true
     },
-    "p2-integration": {
-      "id": "p2-integration",
-      "desc": "Integration - validate all flows complete",
-      "produces": [".roadmap/metaflow/p2-integration-check.json"],
+    "p3-integration": {
+      "id": "p3-integration",
+      "desc": "Integration - validate deployment and performance metrics",
+      "produces": [".roadmap/metaflow/p3-integration-check.json"],
       "consumes": [
-        ".roadmap/metaflow/recovery/p2-recovery-report.json",
-        ".roadmap/metaflow/coherence/p2-coherence-report.json",
-        ".roadmap/metaflow/performance/p2-optimization-report.json"
+        ".roadmap/metaflow/validation/p3-performance-validation.json",
+        ".roadmap/metaflow/deployment/p3-deployment-log.json",
+        ".roadmap/metaflow/metrics/p3-post-deploy-metrics.json"
       ],
-      "deps": ["p2-audit-recovery", "p2-state-coherence", "p2-performance-hardening"],
+      "deps": ["p3-validate-performance", "p3-prod-deployment", "p3-post-deploy-metrics"],
       "validate": [
-        {"type": "artifact-exists", "target": ".roadmap/metaflow/p2-integration-check.json"}
+        {"type": "artifact-exists", "target": ".roadmap/metaflow/p3-integration-check.json"}
       ],
       "idempotent": true
     },
-    "p2-optimization-complete": {
-      "id": "p2-optimization-complete",
-      "desc": "Phase 2 complete - all optimizations validated",
-      "produces": [".roadmap/metaflow/p2-optimization-complete.json"],
-      "consumes": [".roadmap/metaflow/p2-integration-check.json"],
-      "deps": ["p2-integration"],
+    "p3-synthesis-report": {
+      "id": "p3-synthesis-report",
+      "desc": "Final synthesis - aggregate all 3 phases into comprehensive report",
+      "produces": [".roadmap/metaflow/synthesis/p3-synthesis-report.json"],
+      "consumes": [".roadmap/metaflow/p3-integration-check.json"],
+      "deps": ["p3-integration"],
       "validate": [
-        {"type": "artifact-exists", "target": ".roadmap/metaflow/p2-optimization-complete.json"}
+        {"type": "artifact-exists", "target": ".roadmap/metaflow/synthesis/p3-synthesis-report.json"}
+      ],
+      "idempotent": true
+    },
+    "p3-synthesis-complete": {
+      "id": "p3-synthesis-complete",
+      "desc": "Phase 3 complete - metaflows execution finalized",
+      "produces": [".roadmap/metaflow/p3-synthesis-complete.json"],
+      "consumes": [".roadmap/metaflow/synthesis/p3-synthesis-report.json"],
+      "deps": ["p3-synthesis-report"],
+      "validate": [
+        {"type": "artifact-exists", "target": ".roadmap/metaflow/p3-synthesis-complete.json"}
       ],
       "idempotent": true
     }
