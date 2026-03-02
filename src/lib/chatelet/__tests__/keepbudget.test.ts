@@ -121,7 +121,7 @@ describe('KeepBudget Schema Validation (S2)', () => {
 
       const result = validateChatelet(invalidBudget);
       expect(result.passed).toBe(false);
-      expect(result.errors.some(e => e.includes('Unsupported'))).toBe(true);
+      expect(result.errors.some((e: string) => e.includes('Unsupported'))).toBe(true);
     });
 
     it('should reject missing version', () => {
