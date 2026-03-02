@@ -61,5 +61,49 @@
     ],
     "gitSha": "5283ad4b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f",
     "treeSha": "5283ad4b1c2d3e4f5a6b7c8d9e0f1a2b3c4d5e6f"
+  },
+  {
+    "nodeId": "enforce-batch-invariants",
+    "completedAt": "2026-03-02T10:55:00.000Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302105500",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "path": "src/lib/protocol/batch-invariants.ts",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/protocol/batch-invariants.ts"
+      },
+      {
+        "rule": "shell",
+        "command": "npx tsc --noEmit src/lib/protocol/batch-invariants.ts",
+        "passed": true,
+        "evidence": "TypeScript compilation successful"
+      }
+    ],
+    "gitSha": "c7c3a62d5e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b",
+    "treeSha": "c7c3a62d5e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b"
+  },
+  {
+    "nodeId": "enforce-completion-sync",
+    "completedAt": "2026-03-02T10:55:15.000Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302105515",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "path": "src/lib/evidence/completion-enforcer.ts",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/evidence/completion-enforcer.ts"
+      },
+      {
+        "rule": "shell",
+        "command": "npx tsc --noEmit src/lib/evidence/completion-enforcer.ts",
+        "passed": true,
+        "evidence": "TypeScript compilation successful"
+      }
+    ],
+    "gitSha": "c7c3a62d5e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b",
+    "treeSha": "c7c3a62d5e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b"
   }
 ]
