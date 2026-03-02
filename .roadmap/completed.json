@@ -13,5 +13,45 @@
     ],
     "gitSha": "ea0378ebf580fc18cc00592cdd20a88072b2f0e4",
     "treeSha": "947a6a64768536eebba5a2395ad2828360d41798"
+  },
+  {
+    "nodeId": "brief-gate-impl",
+    "completedAt": "2026-03-02T09:08:44.485Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302090844",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/agent-dispatch/brief-gate.ts"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "shell command passed: npx tsc --noEmit"
+      }
+    ],
+    "gitSha": "564e70f4a2872f51e01a19f3d862ad38ecc6af2a",
+    "treeSha": "7e3b45c9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3"
+  },
+  {
+    "nodeId": "handoff-journal-impl",
+    "completedAt": "2026-03-02T09:08:47.485Z",
+    "owner": "griffin",
+    "checkpointId": "cp-20260302090847",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/agent-dispatch/handoff-journal.ts"
+      },
+      {
+        "rule": "shell",
+        "passed": true,
+        "evidence": "shell command passed: npx tsc --noEmit"
+      }
+    ],
+    "gitSha": "564e70f4a2872f51e01a19f3d862ad38ecc6af2a",
+    "treeSha": "7e3b45c9f8e7d6c5b4a3f2e1d0c9b8a7f6e5d4c3"
   }
 ]
