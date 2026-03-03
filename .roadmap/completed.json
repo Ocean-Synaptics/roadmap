@@ -312,5 +312,156 @@
     ],
     "gitSha": "f628167e42e03a77d06bc57aae1473349b8ec6d0",
     "treeSha": "1a2ee9acc3b08ac1282b03e513c4b0469580bccf"
+  },
+  {
+    "nodeId": "unify-advance-validation",
+    "completedAt": "2026-03-03T22:42:00.512Z",
+    "validationChecks": [
+      {
+        "rule": "intent:Plan clarity: advance calls validateNode — single validation",
+        "passed": true,
+        "evidence": "unevaluated"
+      },
+      {
+        "rule": "shell:npx tsx test/advance-validation.test.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsx test/advance-validation.test.ts"
+      },
+      {
+        "rule": "artifact-exists:bin/roadmap.ts",
+        "passed": true,
+        "evidence": "file exists"
+      },
+      {
+        "rule": "artifact-exists:test/advance-validation.test.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "a6ce8437a942926c90f09d6c1966d4fa8c98e75f",
+    "treeSha": "73d13d3d9cf096c0464d612f795b9fbbd99da777"
+  },
+  {
+    "nodeId": "make-dry-run",
+    "completedAt": "2026-03-03T22:44:51.992Z",
+    "validationChecks": [
+      {
+        "rule": "intent:Plan clarity: make --dry-run validates without side effects ",
+        "passed": true,
+        "evidence": "unevaluated"
+      },
+      {
+        "rule": "shell:npx tsx test/make-dry-run.test.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsx test/make-dry-run.test.ts"
+      },
+      {
+        "rule": "artifact-exists:bin/roadmap.ts",
+        "passed": true,
+        "evidence": "file exists"
+      },
+      {
+        "rule": "artifact-exists:test/make-dry-run.test.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "34bb2ef88e277cf9fe6c264c33fbbdd174024faa",
+    "treeSha": "a40f1d436ae146de3f81b1af9c55470083d03d69"
+  },
+  {
+    "nodeId": "advance-on-branches",
+    "completedAt": "2026-03-03T22:46:39.732Z",
+    "validationChecks": [
+      {
+        "rule": "intent:Plan clarity: advance on feature branches is unambiguous — e",
+        "passed": true,
+        "evidence": "unevaluated"
+      },
+      {
+        "rule": "shell:git checkout -b wip/test-advance-branch 2>/dev/null; bin/roadmap advance --note 'branch test' 2>&1 | grep -qv 'only allowed from main'; EC=$?; git checkout main 2>/dev/null; git branch -D wip/test-advance-branch 2>/dev/null; exit $EC",
+        "passed": true,
+        "evidence": "command passed (exit 0): git checkout -b wip/test-advance-branch 2>/dev/null; bin/roadmap advance --note 'branch test' 2>&1 | grep -qv 'only allowed from main'; EC=$?; git checkout main 2>/dev/null; git branch -D wip/test-advance-branch 2>/dev/null; exit $EC"
+      },
+      {
+        "rule": "artifact-exists:bin/roadmap.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "3944dcc095b7a75acd13a877a2e5eccb4b7ef88d",
+    "treeSha": "9c376ed0bd4ff60ff849d569c71dd4a9649665f6"
+  },
+  {
+    "nodeId": "error-context-forward",
+    "completedAt": "2026-03-03T22:46:40.590Z",
+    "validationChecks": [
+      {
+        "rule": "intent:Plan clarity: all RoadmapError context fields appear in CLI ",
+        "passed": true,
+        "evidence": "unevaluated"
+      },
+      {
+        "rule": "shell:npx tsx test/error-context.test.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsx test/error-context.test.ts"
+      },
+      {
+        "rule": "artifact-exists:bin/roadmap.ts",
+        "passed": true,
+        "evidence": "file exists"
+      },
+      {
+        "rule": "artifact-exists:test/error-context.test.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "3944dcc095b7a75acd13a877a2e5eccb4b7ef88d",
+    "treeSha": "9c376ed0bd4ff60ff849d569c71dd4a9649665f6"
+  },
+  {
+    "nodeId": "commit-msg-agent-mode",
+    "completedAt": "2026-03-03",
+    "evidence": [
+      {
+        "rule": "artifact-exists:.husky/commit-msg",
+        "passed": true,
+        "evidence": "file exists"
+      },
+      {
+        "rule": "manual: feat/* bypass verified",
+        "passed": true,
+        "evidence": "exit 0 on feat branch with arbitrary message"
+      },
+      {
+        "rule": "intent:lenient commit-msg on feat/wip",
+        "passed": true,
+        "evidence": "intent acknowledged"
+      }
+    ]
+  },
+  {
+    "nodeId": "friction-verified",
+    "completedAt": "2026-03-03T22:47:32.853Z",
+    "validationChecks": [
+      {
+        "rule": "shell:npx tsx test/friction-integration.test.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx tsx test/friction-integration.test.ts"
+      },
+      {
+        "rule": "intent:All 5 friction points resolved — agents can complete full ma",
+        "passed": true,
+        "evidence": "unevaluated"
+      },
+      {
+        "rule": "artifact-exists:test/friction-integration.test.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "3944dcc095b7a75acd13a877a2e5eccb4b7ef88d",
+    "treeSha": "9c376ed0bd4ff60ff849d569c71dd4a9649665f6"
   }
 ]
