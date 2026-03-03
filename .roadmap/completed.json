@@ -1,0 +1,4 @@
+{
+  "phase-0-start": {"completed_at": "2026-03-03", "via": "agent-guide-embedded-in-CLAUDE.md"},
+  "enrich-claude-md": {"completed_at": "2026-03-03", "via": "CLAUDE.md-updated-with-agent-guide"}
+}
