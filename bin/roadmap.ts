@@ -763,12 +763,37 @@ async function cmdMake(note: string) {
   }
 
   // Validate the DAG — collect all errors before reporting
+  const isDryRun = args.includes('--dry-run');
   const errors = collectMakeErrors(dag, { skipTerminalIntent: args.includes('--skip-terminal-intent') });
   if (errors.length > 0) {
+    if (isDryRun) {
+      json({
+        ok: false,
+        dryRun: true,
+        errors,
+        message: `${errors.length} validation error(s) found`,
+      });
+      return;
+    }
     throw new RoadmapError('VALIDATION_FAILED', {
       errors,
       fix: errors.map(e => `[${e.gate}] ${e.fix}`).join('\n'),
     }, `${errors.length} validation error(s) found`);
+  }
+
+  // Dry run: return validation result without side effects
+  if (isDryRun) {
+    const pos = await crossOrientWithState(dag);
+    json({
+      ok: true,
+      dryRun: true,
+      dag: dag,
+      position: pos.position,
+      level: pos.level,
+      errors: [],
+      message: 'Dry run: spec validates successfully (no files written)',
+    });
+    return;
   }
 
   // Write to head.json
