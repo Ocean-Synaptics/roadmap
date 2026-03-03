@@ -64,6 +64,15 @@ function getCurrentBranch(): string {
   }
 }
 
+function isWorktree(): boolean {
+  try {
+    const gitDir = execSync('git rev-parse --git-dir', { cwd: repoRoot, stdio: 'pipe' }).toString().trim();
+    return gitDir.includes('worktrees');
+  } catch {
+    return false;
+  }
+}
+
 function enforceMainBranch(): void {
   const branch = getCurrentBranch();
   if (branch !== 'main' && branch !== 'HEAD') {
@@ -413,6 +422,8 @@ async function cmdOrient(note: string | undefined) {
     done: pos.done.length,
     remaining: pos.remaining.length,
     complete: pos.remaining.length === 0,
+    branch: getCurrentBranch(),
+    worktree: isWorktree(),
   };
 
   // When DAG is complete, surface unloaded specs as next action
@@ -531,6 +542,9 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
     return;
   }
 
+  // Attribution safety: warn if branch has changes outside this node's produces
+  const attributionWarning = checkAttribution(repoRoot, produces);
+
   // Record completion with evidence
   saveCompletionWithEvidence(repoRoot, nodeId, checks);
 
@@ -542,6 +556,7 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
     checks,
     batchComplete: newPos.batchComplete,
     remaining: newPos.batchRemaining,
+    ...(attributionWarning ? { attributionWarning } : {}),
   };
 
   // If batch is now complete, auto-advance
@@ -631,6 +646,29 @@ async function advanceBatchCmd(dag: Graph<string>, note: string) {
     ts: new Date().toISOString(), cmd: 'advance', note, repo: basename(repoRoot),
     position: next.position, level: next.level,
   });
+}
+
+// Check if branch has uncommitted/untracked changes outside node's produces
+function checkAttribution(root: string, produces: string[]): string | undefined {
+  try {
+    // Get all modified/untracked files
+    const status = execSync('git status --porcelain', { cwd: root, encoding: 'utf-8' }).trim();
+    if (!status) return undefined;
+
+    const changedFiles = status.split('\n')
+      .map(line => line.slice(3).trim())  // strip status prefix
+      .filter(f => f.length > 0);
+
+    const producesSet = new Set(produces.map(p => (p.startsWith('/') ? p.slice(1) : p)));
+    const outsideFiles = changedFiles.filter(f => !producesSet.has(f) && !f.startsWith('.roadmap/'));
+
+    if (outsideFiles.length > 0) {
+      return `Branch has ${outsideFiles.length} changed file(s) outside this node's produces: ${outsideFiles.slice(0, 5).join(', ')}`;
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 // Normalize compile_hash to sha256 hex format
