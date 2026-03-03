@@ -538,6 +538,30 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
     return;
   }
 
+  // Parallel-edit guard: warn if another agent advanced on same branch within 60s
+  let parallelEditWarning: string | undefined;
+  try {
+    const completion = CompletionStore.loadOrEmpty(repoRoot);
+    const currentBranch = getCurrentBranch();
+    const now = Date.now();
+    const sixtySecsAgo = now - (60 * 1000);
+
+    // Check for other agents' recent advances on same branch
+    for (const [id, record] of completion.allIds().entries()) {
+      if (id === nodeId) continue; // skip self
+      const rec = completion.record(id);
+      if (!rec || !rec.branch || rec.branch !== currentBranch) continue;
+
+      const completedTime = new Date(rec.completedAt).getTime();
+      if (completedTime > sixtySecsAgo) {
+        parallelEditWarning = `Concurrent edits detected: ${id} completed ${Math.round((now - completedTime) / 1000)}s ago on same branch. Recommend using worktree isolation for parallel agents.`;
+        break;
+      }
+    }
+  } catch {
+    // If completion check fails, continue silently
+  }
+
   // Record completion with evidence
   saveCompletionWithEvidence(repoRoot, nodeId, checks);
 
@@ -549,6 +573,7 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
     checks,
     batchComplete: newPos.batchComplete,
     remaining: newPos.batchRemaining,
+    ...(parallelEditWarning ? { parallelEditWarning } : {}),
   };
 
   // If batch is now complete, auto-advance
