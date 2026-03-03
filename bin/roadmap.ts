@@ -271,7 +271,8 @@ async function main() {
 
   // Enforce main branch for all DAG-mutating commands
   const BRANCH_EXEMPT = new Set(['help', '--help', '-h', 'api', 'orient', 'advance']);
-  if (!BRANCH_EXEMPT.has(cmd)) {
+  // --dry-run flag exempts make from branch enforcement
+  if (!BRANCH_EXEMPT.has(cmd) && !(cmd === 'make' && args.includes('--dry-run'))) {
     enforceMainBranch();
   }
 
@@ -286,10 +287,12 @@ async function main() {
       recordTrailError(cmd, code, message, note);
 
       // Centralized schema attachment: enrich VALIDATION_FAILED errors with schema + example
+      // Forward all context fields to CLI output (no silent drops)
+      const { fix: ctxFix, ...restContext } = rej.context ?? {};
       const errorPayload: import('../src/lib/cli-envelope.ts').CliError = {
         code, message,
-        fix: rej.context?.fix ? [rej.context.fix] : undefined,
-        ...(rej.context?.errors ? { errors: rej.context.errors } : {}),
+        fix: ctxFix ? [ctxFix] : undefined,
+        ...restContext,
       };
       if (code === 'VALIDATION_FAILED') {
         Object.assign(errorPayload, schemaFields(deriveSchemaKey()));
@@ -486,48 +489,36 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
     return;
   }
 
-  // Run validators
-  const validates = node.validate ?? [];
-  const produces = node.produces ?? [];
-  const checks: EvidenceRecord[] = [];
-  let allPassed = true;
+  // Run validators via unified validation function
+  const existsPredicate = (artifact: string) => existsSync(join(repoRoot, artifact));
+  const validationResult = await validateNode(dag, nodeId, existsPredicate);
 
-  // Check produces artifacts exist
+  // Map ValidationCheck to EvidenceRecord format
+  const checks: EvidenceRecord[] = validationResult.checks.map(c => ({
+    rule: c.rule.type === 'artifact-exists'
+      ? `artifact-exists:${(c.rule.target ?? c.rule.path) || 'produces'}`
+      : c.rule.type === 'shell'
+      ? `shell:${((c.rule as any).command ?? (c.rule as any).argv?.join(' ') ?? 'unknown')}`
+      : c.rule.type === 'intent'
+      ? `intent:${c.rule.statement?.slice(0, 60) || 'ok'}`
+      : `${c.rule.type}:${(c.rule as any).target || (c.rule as any).command || 'unknown'}`,
+    passed: c.passed,
+    evidence: c.evidence ?? (c.passed ? 'passed' : 'failed'),
+  }));
+
+  // Also check produces artifacts (separate from validate rules)
+  const produces = node.produces ?? [];
   for (const artifact of produces) {
     const fullPath = join(repoRoot, artifact);
-    const exists = existsSync(fullPath);
-    checks.push({ rule: `artifact-exists:${artifact}`, passed: exists, evidence: exists ? 'file exists' : 'file missing' });
-    if (!exists) allPassed = false;
+    const artifactExists = existsSync(fullPath);
+    checks.push({
+      rule: `artifact-exists:${artifact}`,
+      passed: artifactExists,
+      evidence: artifactExists ? 'file exists' : 'file missing',
+    });
   }
 
-  // Run declared validators
-  for (const rule of validates) {
-    if (rule.type === 'shell') {
-      try {
-        const output = execSync(rule.command, { cwd: repoRoot, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'], timeout: 30000 }).trim();
-        checks.push({ rule: `shell:${rule.command}`, passed: true, evidence: output.slice(0, 200) || 'exit 0' });
-      } catch (e: any) {
-        const stderr = e.stderr?.toString().trim() || e.message || 'non-zero exit';
-        checks.push({ rule: `shell:${rule.command}`, passed: false, evidence: stderr.slice(0, 200) });
-        allPassed = false;
-      }
-    } else if (rule.type === 'artifact-exists') {
-      const target = rule.target ?? rule.path;
-      if (!target) {
-        // No explicit target — produces already checked above
-        checks.push({ rule: 'artifact-exists:produces', passed: true, evidence: 'covered by produces check' });
-        continue;
-      }
-      const fullPath = join(repoRoot, target);
-      const exists = existsSync(fullPath);
-      checks.push({ rule: `artifact-exists:${target}`, passed: exists, evidence: exists ? 'file exists' : 'file missing' });
-      if (!exists) allPassed = false;
-    } else if (rule.type === 'intent') {
-      // Intent validators pass if node has produces or is explicitly completed
-      checks.push({ rule: `intent:${rule.statement?.slice(0, 60) || 'ok'}`, passed: true, evidence: 'intent acknowledged' });
-    }
-    // Other validator types (function, manual-approval, expanded) — skip silently
-  }
+  const allPassed = validationResult.passed && checks.every(c => c.passed);
 
   if (!allPassed) {
     json({

@@ -28,6 +28,12 @@ if echo "$MSG" | grep -q '^roadmap:'; then
   exit 0
 fi
 
+# Feature branches: lenient mode (branch name is the scope)
+BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+if [[ "$BRANCH" == feat/* ]] || [[ "$BRANCH" == wip/* ]]; then
+  exit 0
+fi
+
 # Check if message contains any known node ID
 NODE_IDS=$(jq -r '.nodes | keys[]' "$ROADMAP_FILE" 2>/dev/null)
 for NODE_ID in $NODE_IDS; do
