@@ -633,6 +633,12 @@ async function advanceBatchCmd(dag: Graph<string>, note: string) {
   });
 }
 
+// Normalize compile_hash to sha256 hex format
+function normalizeHash(input: string): string {
+  if (/^[a-f0-9]{64}$/.test(input)) return input;
+  return createHash('sha256').update(input).digest('hex');
+}
+
 async function cmdMake(note: string) {
   const specPath = args[1];
   if (!specPath) {
@@ -810,7 +816,7 @@ async function cmdMake(note: string) {
     schemaVersion: 1,
     engine: parsed.engine?.name ?? 'spec-kit',
     version: parsed.engine?.version ?? '0.0.0',
-    compile_hash: parsed.metadata?.compile_hash ?? dagHash,
+    compile_hash: normalizeHash(parsed.metadata?.compile_hash ?? dagHash),
     spec_sha: specHash,
     importedAt: new Date().toISOString(),
     dagId: parsed.dag_id ?? parsed.id ?? 'ideal-dag',

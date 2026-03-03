@@ -17,7 +17,7 @@ export async function validateNode<T extends string>(
   g: Graph<T>,
   nodeId: string,
   exists: (artifact: string) => boolean,
-  opts?: { intentJudgments?: IntentJudgment[]; exploreResults?: Array<{ script: string; success: boolean; result?: ExploreResult; error?: string }>; validating?: boolean },
+  opts?: { intentJudgments?: IntentJudgment[]; exploreResults?: Array<{ script: string; success: boolean; result?: ExploreResult; error?: string }>; validating?: boolean; repoRoot?: string; branch?: string },
 ): Promise<ValidationResult> {
   const node = g.nodes[nodeId as keyof typeof g.nodes] as any;
 
@@ -163,7 +163,13 @@ export async function validateNode<T extends string>(
             shell: true,
             timeout,
             stdio: 'pipe',
-            env: { ...process.env, ROADMAP_VALIDATING: '1' },
+            env: {
+              ...process.env,
+              ROADMAP_VALIDATING: '1',
+              ROADMAP_NODE: nodeId,
+              ROADMAP_REPO: opts?.repoRoot ?? process.cwd(),
+              ROADMAP_BRANCH: opts?.branch ?? 'unknown',
+            },
           });
           const stdout = result.stdout?.toString() || '';
           if (successSignal) {
