@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "engine": "spec-kit",
   "version": "1.0.0",
-  "compile_hash": "493956067a417a85b5db9e91ea16c77b307afcb99b4c94bd10e92c6f3c741e3d",
-  "spec_sha": "5f3ddb6c6c3a1209ae48a8919a1e80feb85b86c84f167965207273872ad51484",
-  "importedAt": "2026-03-03T22:26:38.259Z",
-  "dagId": "reorientation-002"
+  "compile_hash": "e73a1cf0bfe74887deb99f4361ee795eb1546df12b2e5e8bc7b2ab41e2a30b16",
+  "spec_sha": "5a9fad406aad2f2cccb2f9668137c9be4d953cb5afa113624bf5d7c685a1fc73",
+  "importedAt": "2026-03-03T22:39:21.203Z",
+  "dagId": "friction-fix-003"
 }

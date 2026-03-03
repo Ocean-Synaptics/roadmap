@@ -1,8 +1,8 @@
 {
-  "id": "reorientation-002",
-  "desc": "Fix three reorientation problems: post-completion dead end, validation error opacity, API schema invariant gap",
+  "id": "friction-fix-003",
+  "desc": "Fix 5 friction points from reorientation-002 session: advance on feature branches, error context propagation, duplicate advance implementations, validator preview, commit-msg agent awareness",
   "init": "init",
-  "term": "integration-verified",
+  "term": "friction-verified",
   "nodes": {
     "init": {
       "id": "init",
@@ -15,12 +15,11 @@
       "validate": [],
       "idempotent": true
     },
-    "orient-forward-pointer": {
-      "id": "orient-forward-pointer",
-      "desc": "When orient returns complete:true, scan for unloaded specs (.roadmap/*-spec.json not yet in head.json) and surface them as pendingSpecs[] with path and dag_id",
+    "advance-on-branches": {
+      "id": "advance-on-branches",
+      "desc": "Allow 'roadmap advance' on feat/* and wip/* branches — the gitsafe main-only gate should exempt advance (read-only: validates + records evidence to completed.json). Keep make/dag-mutate gated to main.",
       "produces": [
-        "src/lib/orient-forward.ts",
-        "test/orient-forward.test.ts"
+        "bin/roadmap.ts"
       ],
       "consumes": [
         "init.marker"
@@ -31,28 +30,25 @@
       "validate": [
         {
           "type": "intent",
-          "statement": "Plan clarity: orient forward pointer is unambiguous — scan .roadmap/*-spec.json, compare to head.json dag id, return unloaded specs",
+          "statement": "Plan clarity: advance on feature branches is unambiguous — exempt advance from enforceMainBranch, keep make/dag gated",
           "expandOnFail": true,
           "confidence": 0.9,
           "evaluator": "self"
         },
         {
-          "type": "artifact-exists"
-        },
-        {
           "type": "shell",
-          "command": "npx tsx test/orient-forward.test.ts",
+          "command": "git checkout -b wip/test-advance-branch 2>/dev/null; bin/roadmap advance --note 'branch test' 2>&1 | grep -qv 'only allowed from main'; EC=$?; git checkout main 2>/dev/null; git branch -D wip/test-advance-branch 2>/dev/null; exit $EC",
           "expectExitCode": 0
         }
       ],
       "idempotent": true
     },
-    "make-full-contract-errors": {
-      "id": "make-full-contract-errors",
-      "desc": "Collect ALL validation failures (define, verify, check, terminal-intent, init-intent) before throwing — emit them as errors[] array with node, message, fix for each",
+    "unify-advance-validation": {
+      "id": "unify-advance-validation",
+      "desc": "advanceNode in bin/roadmap.ts reimplements artifact-exists/shell/intent validation parallel to validateNode in protocol/validation.ts. Unify: advanceNode should call validateNode instead of its own loop. This fixes the artifact-exists crash (no target) and any future validator drift.",
       "produces": [
-        "src/lib/make-validation.ts",
-        "test/make-validation.test.ts"
+        "bin/roadmap.ts",
+        "test/advance-validation.test.ts"
       ],
       "consumes": [
         "init.marker"
@@ -63,28 +59,25 @@
       "validate": [
         {
           "type": "intent",
-          "statement": "Plan clarity: make validation is unambiguous — collect all errors, return array, never throw on first",
+          "statement": "Plan clarity: advance calls validateNode — single validation implementation, no parallel loop in CLI",
           "expandOnFail": true,
           "confidence": 0.9,
           "evaluator": "self"
         },
         {
-          "type": "artifact-exists"
-        },
-        {
           "type": "shell",
-          "command": "npx tsx test/make-validation.test.ts",
+          "command": "npx tsx test/advance-validation.test.ts",
           "expectExitCode": 0
         }
       ],
       "idempotent": true
     },
-    "api-invariants": {
-      "id": "api-invariants",
-      "desc": "Extend api make output with an 'invariants' section documenting: terminal-intent-gate (term needs intent+expandOnFail), init-boundary-gate (init-adjacent needs intent+expandOnFail+plan/clarity keyword), input-verification requirements",
+    "error-context-forward": {
+      "id": "error-context-forward",
+      "desc": "RoadmapError catch block (bin/roadmap.ts:289) should forward ALL context fields to CLI output, not just code/message/fix. Spread rej.context into errorPayload (minus internal fields). Add test.",
       "produces": [
-        "src/lib/api-invariants.ts",
-        "test/api-invariants.test.ts"
+        "bin/roadmap.ts",
+        "test/error-context.test.ts"
       ],
       "consumes": [
         "init.marker"
@@ -95,113 +88,102 @@
       "validate": [
         {
           "type": "intent",
-          "statement": "Plan clarity: api invariants are unambiguous — machine-readable invariant descriptions for every make validation rule",
+          "statement": "Plan clarity: all RoadmapError context fields appear in CLI JSON output — no silent drops",
           "expandOnFail": true,
           "confidence": 0.9,
           "evaluator": "self"
         },
         {
-          "type": "artifact-exists"
+          "type": "shell",
+          "command": "npx tsx test/error-context.test.ts",
+          "expectExitCode": 0
+        }
+      ],
+      "idempotent": true
+    },
+    "make-dry-run": {
+      "id": "make-dry-run",
+      "desc": "Add --dry-run flag to 'roadmap make': runs full validation pipeline (spec checks + tasksToDAG + define/verify/check + intent gates) but does NOT write head.json or commit. Returns { ok, errors[], dag } so agents can test specs before loading.",
+      "produces": [
+        "bin/roadmap.ts",
+        "test/make-dry-run.test.ts"
+      ],
+      "consumes": [
+        "init.marker"
+      ],
+      "deps": [
+        "init"
+      ],
+      "validate": [
+        {
+          "type": "intent",
+          "statement": "Plan clarity: make --dry-run validates without side effects — no head.json write, no git commit",
+          "expandOnFail": true,
+          "confidence": 0.9,
+          "evaluator": "self"
         },
         {
           "type": "shell",
-          "command": "npx tsx test/api-invariants.test.ts",
+          "command": "npx tsx test/make-dry-run.test.ts",
           "expectExitCode": 0
         }
       ],
       "idempotent": true
     },
-    "orient-wire-cli": {
-      "id": "orient-wire-cli",
-      "desc": "Wire orient-forward into cmdOrient — when complete:true, include pendingSpecs and nextAction hint in output",
+    "commit-msg-agent-mode": {
+      "id": "commit-msg-agent-mode",
+      "desc": "commit-msg hook: on feat/* branches, also accept 'feat/<branch-name>:' prefix (agents commit with node IDs that match the branch). Reduces friction for agents whose commit messages already contain the node ID but not in the exact format.",
       "produces": [
-        "bin/roadmap.ts"
+        ".husky/commit-msg"
       ],
       "consumes": [
-        "src/lib/orient-forward.ts"
+        "init.marker"
       ],
       "deps": [
-        "orient-forward-pointer"
+        "init"
       ],
       "validate": [
         {
-          "type": "shell",
-          "command": "bin/roadmap orient --note 'test' 2>&1 | grep -q 'pendingSpecs\\|complete'",
-          "expectExitCode": 0
-        }
-      ],
-      "idempotent": true
-    },
-    "make-wire-errors": {
-      "id": "make-wire-errors",
-      "desc": "Wire make-validation into cmdMake — replace sequential throws with collected errors[] in error payload",
-      "produces": [
-        "bin/roadmap.ts"
-      ],
-      "consumes": [
-        "src/lib/make-validation.ts"
-      ],
-      "deps": [
-        "make-full-contract-errors"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "echo '{\"tasks\":[]}' > /tmp/bad-spec.json && bin/roadmap make /tmp/bad-spec.json --note test 2>&1 | grep -q 'errors'",
-          "expectExitCode": 0
-        }
-      ],
-      "idempotent": true
-    },
-    "api-wire-invariants": {
-      "id": "api-wire-invariants",
-      "desc": "Wire api-invariants into cmdApi — include invariants in api make output",
-      "produces": [
-        "bin/roadmap.ts"
-      ],
-      "consumes": [
-        "src/lib/api-invariants.ts"
-      ],
-      "deps": [
-        "api-invariants"
-      ],
-      "validate": [
-        {
-          "type": "shell",
-          "command": "bin/roadmap api make 2>&1 | grep -q 'invariants'",
-          "expectExitCode": 0
-        }
-      ],
-      "idempotent": true
-    },
-    "integration-verified": {
-      "id": "integration-verified",
-      "desc": "All three fixes work end-to-end: orient surfaces pending specs on complete DAG, make returns full error array, api make includes invariants",
-      "produces": [
-        "test/reorientation-integration.test.ts"
-      ],
-      "consumes": [
-        "src/lib/orient-forward.ts",
-        "src/lib/make-validation.ts",
-        "src/lib/api-invariants.ts"
-      ],
-      "deps": [
-        "orient-wire-cli",
-        "make-wire-errors",
-        "api-wire-invariants"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists"
+          "type": "intent",
+          "statement": "Plan clarity: commit-msg accepts feat/branch-name prefix and is more lenient on feat/* branches",
+          "expandOnFail": true,
+          "confidence": 0.9,
+          "evaluator": "self"
         },
         {
           "type": "shell",
-          "command": "npx tsx test/reorientation-integration.test.ts",
+          "command": "echo 'test-node-id: fix something' > /tmp/test-commit-msg && ROADMAP_FILE=.roadmap/head.json bash .husky/commit-msg /tmp/test-commit-msg",
+          "expectExitCode": 0
+        }
+      ],
+      "idempotent": true
+    },
+    "friction-verified": {
+      "id": "friction-verified",
+      "desc": "Integration: all 5 friction fixes work together. Agent can advance on feature branch, make --dry-run previews errors, error context propagates, commit-msg accepts agent format.",
+      "produces": [
+        "test/friction-integration.test.ts"
+      ],
+      "consumes": [
+        "bin/roadmap.ts",
+        ".husky/commit-msg"
+      ],
+      "deps": [
+        "advance-on-branches",
+        "unify-advance-validation",
+        "error-context-forward",
+        "make-dry-run",
+        "commit-msg-agent-mode"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsx test/friction-integration.test.ts",
           "expectExitCode": 0
         },
         {
           "type": "intent",
-          "statement": "All three reorientation problems are resolved — agents can self-orient after DAG completion, understand full make contract on first error, and read invariants from api",
+          "statement": "All 5 friction points resolved — agents can complete full make→advance loop on feature branches without orchestrator intervention",
           "expandOnFail": true,
           "confidence": 0.9,
           "evaluator": "self"
