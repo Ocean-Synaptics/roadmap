@@ -78,5 +78,30 @@
     "nodeId": "phase-1-start",
     "completedAt": "2026-03-03T13:23:22.275Z",
     "legacy": true
+  },
+  {
+    "nodeId": "extend-gitsafe-multirepo",
+    "completedAt": "2026-03-03T13:29:31.654Z",
+    "legacy": true
+  },
+  {
+    "nodeId": "extract-metrics-from-trail",
+    "completedAt": "2026-03-03T13:29:31.654Z",
+    "legacy": true
+  },
+  {
+    "nodeId": "integrate-checkpoint-manager",
+    "completedAt": "2026-03-03T13:29:31.654Z",
+    "legacy": true
+  },
+  {
+    "nodeId": "enforce-dag-intake-pipeline",
+    "completedAt": "2026-03-03T13:35:43.766Z",
+    "legacy": true
+  },
+  {
+    "nodeId": "phase-2-start",
+    "completedAt": "2026-03-03T13:35:43.766Z",
+    "legacy": true
   }
 ]
