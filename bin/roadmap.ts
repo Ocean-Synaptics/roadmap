@@ -207,6 +207,14 @@ if (cmd === 'compile-brief' && args.includes('--help')) {
 if ((cmd === 'dag' || cmd === 'team' || cmd === 'spec' || cmd === 'util') && (args[1] === 'help' || args[1] === '--help' || args[1] === '-h')) {
   NOTE_EXEMPT.add(cmd);
 }
+// util explore is read-only (--api dumps surface)
+if (cmd === 'util' && args[1] === 'explore' && args.includes('--api')) {
+  NOTE_EXEMPT.add('util');
+}
+// util trail, install, checkpoint --list/--restore are read-only
+if (cmd === 'util' && (args[1] === 'trail' || args[1] === 'install' || (args[1] === 'checkpoint' && (args.includes('--list') || args.includes('--restore'))))) {
+  NOTE_EXEMPT.add('util');
+}
 
 interface TrailEntry {
   ts: string;
