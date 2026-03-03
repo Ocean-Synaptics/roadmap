@@ -1,0 +1,98 @@
+{
+  "id": "dag-recursion-001",
+  "desc": "Recursive DAG pattern: every DAG level enforces make→validate→brief→execute→advance loop. Mainline: 3 commands (make, orient, advance).",
+  "init": "baseline",
+  "term": "recursive-locked",
+  "nodes": {
+    "baseline": {
+      "id": "baseline",
+      "desc": "Current: 5-core + spec. Target: 3-core with recursive DAG enforcement.",
+      "produces": [],
+      "consumes": [],
+      "deps": [],
+      "validate": [],
+      "idempotent": false
+    },
+    "redesign-dag-schema": {
+      "id": "redesign-dag-schema",
+      "desc": "Update DAG schema: every node/DAG must declare phase (make|validate|brief|execute|term). Cycles forbidden. Init↔term mandatory.",
+      "produces": [".roadmap/dag-schema.json", "src/protocol.ts"],
+      "consumes": [],
+      "deps": ["baseline"],
+      "validate": [{"type": "shell", "command": "npx tsc --noEmit src/protocol.ts"}],
+      "idempotent": true
+    },
+    "implement-brief-sealing": {
+      "id": "implement-brief-sealing",
+      "desc": "Seal node briefs: agent gets deterministic, read-only spec (produces, validate rules, mode). No DAG introspection.",
+      "produces": ["src/lib/compile-brief.ts", "tests/brief-sealing.test.ts"],
+      "consumes": [],
+      "deps": ["redesign-dag-schema"],
+      "validate": [{"type": "shell", "command": "npm test tests/brief-sealing.test.ts"}],
+      "idempotent": true
+    },
+    "implement-recursive-validation": {
+      "id": "implement-recursive-validation",
+      "desc": "Validate at every DAG level: cycles, init↔term, reachability, phase ordering (make→validate→brief→execute→term).",
+      "produces": ["src/lib/validate-dag.ts", "tests/recursive-validation.test.ts"],
+      "consumes": [],
+      "deps": ["redesign-dag-schema"],
+      "validate": [{"type": "shell", "command": "npm test tests/recursive-validation.test.ts"}],
+      "idempotent": true
+    },
+    "refactor-mainline-cli": {
+      "id": "refactor-mainline-cli",
+      "desc": "Mainline: make, orient, advance. Remove: expand, spawn, switch, diff, retire, optimize, complete, chart, validate, hallucinate. Keep: spec group.",
+      "produces": ["bin/roadmap.ts"],
+      "consumes": [],
+      "deps": ["implement-brief-sealing"],
+      "validate": [{"type": "shell", "command": "npx tsc --noEmit bin/roadmap.ts"}],
+      "idempotent": true
+    },
+    "update-help-surface": {
+      "id": "update-help-surface",
+      "desc": "Update help: 3 core commands (make, orient, advance) + spec group. Help < 20 lines.",
+      "produces": ["bin/roadmap.ts"],
+      "consumes": [],
+      "deps": ["refactor-mainline-cli"],
+      "validate": [{"type": "shell", "command": "test $(npx ts-node bin/roadmap.ts help | wc -l) -lt 20"}],
+      "idempotent": true
+    },
+    "test-make": {
+      "id": "test-make",
+      "desc": "Test make: LLM generates DAG from spec, validation rules enforced, briefs sealed.",
+      "produces": ["tests/make.test.ts"],
+      "consumes": [],
+      "deps": ["refactor-mainline-cli"],
+      "validate": [{"type": "shell", "command": "npm test tests/make.test.ts"}],
+      "idempotent": true
+    },
+    "test-orient-briefs": {
+      "id": "test-orient-briefs",
+      "desc": "Test orient: returns batch position + sealed briefs only (no DAG introspection).",
+      "produces": ["tests/orient-briefs.test.ts"],
+      "consumes": [],
+      "deps": ["refactor-mainline-cli"],
+      "validate": [{"type": "shell", "command": "npm test tests/orient-briefs.test.ts"}],
+      "idempotent": true
+    },
+    "test-advance-loop": {
+      "id": "test-advance-loop",
+      "desc": "Test advance: validates work, checks phase gates, moves through make→validate→brief→execute→term.",
+      "produces": ["tests/advance-loop.test.ts"],
+      "consumes": [],
+      "deps": ["refactor-mainline-cli"],
+      "validate": [{"type": "shell", "command": "npm test tests/advance-loop.test.ts"}],
+      "idempotent": true
+    },
+    "recursive-locked": {
+      "id": "recursive-locked",
+      "desc": "Recursive DAG pattern locked: 3-core mainline (make, orient, advance), mandatory validation, briefs sealed, no escapes.",
+      "produces": [".roadmap/metaflow/recursion/LOCKED.json"],
+      "consumes": [],
+      "deps": ["implement-recursive-validation", "update-help-surface", "test-make", "test-orient-briefs", "test-advance-loop"],
+      "validate": [],
+      "idempotent": false
+    }
+  }
+}
