@@ -3,8 +3,7 @@
   "version": "0.2.0",
   "type": "module",
   "bin": {
-    "roadmap": "./bin/roadmap",
-    "tool": "./bin/tool"
+    "roadmap": "./bin/roadmap"
   },
   "exports": {
     ".": "./src/index.ts",
@@ -17,19 +16,8 @@
   },
   "scripts": {
     "check": "tsc --noEmit",
-    "check:surface": "npx tsx scripts/check-explore-surface.ts",
-    "check:dag": "npx tsx scripts/ci-dag-check.ts",
-    "check:dag:define": "npx tsx scripts/ci-dag-check.ts --define",
-    "check:dag:verify": "npx tsx scripts/ci-dag-check.ts --verify",
-    "check:intent": "npx tsx scripts/ci-intent-check.ts",
-    "gate:chatelet-keep": "npx tsx bin/tool.ts chatelet status --check",
-    "test": "vitest run",
-    "test:ci": "vitest run --reporter=json --outputFile=.vitest-results.json",
-    "gate:tests": "npx tsx scripts/ci-test-ledger.ts",
-    "ledger:tests:init": "npx tsx scripts/test-ledger-init.ts",
-    "ledger:tests:prune": "npx tsx scripts/test-ledger-prune.ts",
-    "seed": "node --experimental-strip-types roadmap.ts",
-    "postinstall": "node --experimental-strip-types bin/install-hooks.ts || true"
+    "check:dag:define": "npx tsx bin/roadmap.ts validate --note ci",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@playwright/test": "^1.48.0",
