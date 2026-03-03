@@ -95,14 +95,18 @@ else
   FAILED=$((FAILED + 1))
 fi
 
-# Gate 4: DAG structural integrity
+# Gate 4: DAG structural integrity (main/merge only — gitsafe blocks on feature branches)
 echo -e "${YELLOW}  > DAG structure...${NC}"
-if npm run check:dag:define > /tmp/dag.log 2>&1; then
-  echo -e "${GREEN}  + DAG integrity${NC}"
+if [[ "$BRANCH" == "main" ]] || [[ "$BRANCH" == "master" ]] || [ -f .git/MERGE_HEAD ]; then
+  if npm run check:dag:define > /tmp/dag.log 2>&1; then
+    echo -e "${GREEN}  + DAG integrity${NC}"
+  else
+    echo -e "${RED}  x DAG structural errors:${NC}"
+    head -30 /tmp/dag.log
+    FAILED=$((FAILED + 1))
+  fi
 else
-  echo -e "${RED}  x DAG structural errors:${NC}"
-  head -30 /tmp/dag.log
-  FAILED=$((FAILED + 1))
+  echo -e "${GREEN}  + DAG integrity (skipped: feature branch)${NC}"
 fi
 
 # Result
