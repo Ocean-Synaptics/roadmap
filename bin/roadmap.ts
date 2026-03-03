@@ -10,8 +10,6 @@ import { homedir } from 'node:os';
 import { execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createGitSafeLoader } from '../src/lib/gitsafe-loader.ts';
-import { detectCurrentClone, getArchitecture, getWhere, validateClone, enforceOperation } from '../src/lib/topology/topology-service.ts';
-import type { Operation } from '../src/lib/topology/enforcement-rules.ts';
 import {
   define, check, verify, order, parallelOrder, batchConflicts, orient, advanceBatch, readyNodes, nextBatch, criticalPath, reconcile,
   validateNode, validateGraph, consumeArtifact,
@@ -34,8 +32,10 @@ import { buildScaffold } from '../src/lib/scaffold.ts';
 import { buildGallery } from '../src/lib/gallery-templates/index.ts';
 import { validateTerminalIntentGate, validateInitIntentGate, findInitBoundary } from '../src/lib/validate-dag.ts';
 import { writeSpecOrigin, writeSpecImportReceipt, requireSpecOriginForEdit } from '../src/lib/intake/spec-origin.ts';
+import { requireValidOrigin, checkSpecDrift } from '../src/lib/intake/runtime-gate.ts';
 import type { SpecOrigin, SpecImportReceipt } from '../src/lib/intake/spec-origin.ts';
 import { scanIntake, importIntake, certifyIntake } from '../src/lib/intake/intake.ts';
+import { insertNode, removeNode, modifyNode, commitMutation, loadMutationLog, MutationError } from '../src/lib/dag-mutator.ts';
 import { runIntakeAbsorb } from '../src/lib/intake/intake-cmd.ts';
 import { buildPlanOverlay, writePlanOverlay, loadPlanOverlay, isOverlayValid } from '../src/lib/plan-overlay.ts';
 import { runOverlayFromIntake } from '../src/lib/recipes/overlay/overlay-cmd.ts';
@@ -147,7 +147,7 @@ if (_humanRenderers[_outputOpts.cmd]) {
 }
 
 // Commands that don't require a note
-const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'spec', 'topology']);
+const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'spec', 'dag']);
 const isOrientCheck = (cmd === 'orient') && args.includes('--check');
 if (isOrientCheck) {
   NOTE_EXEMPT.add('orient');
@@ -224,7 +224,7 @@ async function main() {
   const note = _note;
 
   // Enforce main branch for all DAG-mutating commands
-  const BRANCH_EXEMPT = new Set(['help', '--help', '-h', 'topology']);
+  const BRANCH_EXEMPT = new Set(['help', '--help', '-h']);
   if (!BRANCH_EXEMPT.has(cmd)) {
     enforceMainBranch();
   }
@@ -255,15 +255,15 @@ async function routeCommand(cmd: string, note: string | undefined): Promise<void
     // Spec pipeline
     case 'spec':      return await cmdSpecGroup(note);
 
-    // Topology group
-    case 'topology':  return cmdTopologyGroup();
+    // DAG mutation group
+    case 'dag':       return await cmdDagGroup(note);
 
     // Help & unknown
     case 'help':
     case '--help':
     case '-h':        return cmdHelp();
     default:
-      json({ error: `Unknown command: ${cmd}`, fix: `Mainline: {make, orient, advance}. Group: {spec}. Use 'roadmap help' for details.` });
+      json({ error: `Unknown command: ${cmd}`, fix: `Mainline: {make, orient, advance}. Group: {spec, dag}. Use 'roadmap help' for details.` });
       process.exit(1);
   }
 }
@@ -311,6 +311,10 @@ async function cmdOrient(note: string | undefined) {
     return;
   }
 
+  // Runtime origin gate: reject DAGs without valid spec origin
+  const origin = requireValidOrigin(repoRoot);
+  const drift = checkSpecDrift(repoRoot);
+
   const dag = await loadDAGAsync();
 
   const pos = await crossOrientWithState(dag);
@@ -343,6 +347,11 @@ async function cmdOrient(note: string | undefined) {
     complete: pos.remaining.length === 0,
   };
 
+  // Include spec drift warning if detected
+  if (drift.drifted) {
+    result.specDrift = { drifted: true, message: drift.message };
+  }
+
   if (!isCheck) {
     recordTrail({
       ts: new Date().toISOString(),
@@ -364,6 +373,9 @@ async function cmdAdvance(note: string) {
     process.exit(1);
     return;
   }
+
+  // Runtime origin gate: reject DAGs without valid spec origin
+  requireValidOrigin(repoRoot);
 
   const dag = await loadDAGAsync();
   const pos = await crossOrientWithState(dag);
@@ -461,11 +473,6 @@ async function cmdAdvance(note: string) {
 }
 
 async function cmdMake(note: string) {
-  // Plan gate not required in minimal mode
-  if (!args.includes('--skip-plan-gate')) {
-    // Optional: could add plan gate check here if needed
-  }
-
   const specPath = args[1];
   if (!specPath) {
     throw new RoadmapError('VALIDATION_FAILED', {
@@ -493,21 +500,47 @@ async function cmdMake(note: string) {
     }, `Failed to parse spec: ${e instanceof Error ? e.message : String(e)}`);
   }
 
+  // Intake enforcement: reject raw DAG JSON, require spec format
+  if (parsed.nodes && typeof parsed.nodes === 'object' && !parsed.tasks) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      fix: [
+        'Cannot create DAG from raw JSON.',
+        'roadmap make expects a spec, not a DAG definition.',
+        '',
+        'Proper workflow:',
+        '  1. roadmap spec plan --from <requirements.md> --output spec.json',
+        '  2. roadmap make spec.json',
+        '  3. roadmap show <node-id> to inspect',
+      ].join('\n'),
+    }, 'Invalid spec: raw DAG detected. Use the spec pipeline to create a spec first.');
+  }
+
+  // Validate required spec fields
+  if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      fix: 'Spec must have a "tasks" array. Use: roadmap spec plan --from <requirements.md>',
+    }, 'Invalid spec: missing "tasks" array');
+  }
+
+  if (!parsed.metadata || typeof parsed.metadata !== 'object') {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      fix: 'Spec must have a "metadata" object with "generated" and "compile_hash". Use the spec pipeline.',
+    }, 'Invalid spec: missing "metadata" object');
+  }
+
+  if (!parsed.schema_version) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      fix: 'Spec must have "schema_version". Use the spec pipeline to generate a valid spec.',
+    }, 'Invalid spec: missing "schema_version"');
+  }
+
   // Convert spec to DAG
   let dag: any;
   try {
-    // If parsed is a SpecIR (has tasks array), convert it
-    if (parsed.tasks && Array.isArray(parsed.tasks)) {
-      dag = tasksToDAG(parsed.tasks, parsed.id ?? 'ideal-dag');
-    } else if (parsed.nodes && typeof parsed.nodes === 'object') {
-      // Already a DAG
-      dag = parsed;
-    } else {
-      throw new Error('Spec must have "tasks" array or "nodes" object');
-    }
+    dag = tasksToDAG(parsed.tasks, { dagId: parsed.dag_id ?? parsed.id ?? 'ideal-dag', dagDesc: parsed.dag_desc });
   } catch (e) {
     throw new RoadmapError('VALIDATION_FAILED', {
-      fix: 'Ensure spec conforms to SpecIR or DAG format',
+      fix: 'Ensure spec conforms to SpecIR format',
     }, `Failed to convert spec: ${e instanceof Error ? e.message : String(e)}`);
   }
 
@@ -541,9 +574,24 @@ async function cmdMake(note: string) {
   if (!existsSync(roadmapDir)) mkdirSync(roadmapDir, { recursive: true });
   writeFileSync(headPath, JSON.stringify(dag, null, 2) + '\n');
 
+  // Write spec-origin receipt for provenance tracking
+  const dagJson = JSON.stringify(dag);
+  const dagHash = createHash('sha256').update(dagJson).digest('hex');
+  const specHash = createHash('sha256').update(specContent).digest('hex');
+  const origin: SpecOrigin = {
+    schemaVersion: 1,
+    engine: parsed.engine?.name ?? 'spec-kit',
+    version: parsed.engine?.version ?? '0.0.0',
+    compile_hash: parsed.metadata?.compile_hash ?? dagHash,
+    spec_sha: specHash,
+    importedAt: new Date().toISOString(),
+    dagId: parsed.dag_id ?? parsed.id ?? 'ideal-dag',
+  };
+  writeSpecOrigin(repoRoot, origin);
+
   // Commit
   try {
-    execSync('git add .roadmap/head.json', { cwd: repoRoot, stdio: 'pipe' });
+    execSync('git add .roadmap/head.json .roadmap/spec-origin.json', { cwd: repoRoot, stdio: 'pipe' });
     execSync(`git commit -m "make: ideal DAG from ${specPath}"`, {
       cwd: repoRoot,
       stdio: 'pipe',
@@ -834,79 +882,214 @@ function cmdSpecInit(note: string) {
   json({ error: 'spec init not yet implemented in mainline', fix: 'roadmap spec init --id <dag-id> --note "..."' });
 }
 
-// --- Topology group ---
-
-function cmdTopologyGroup() {
+// --- DAG group ---
+async function cmdDagGroup(note: string | undefined) {
   const sub = args[1];
+  if (!sub || sub === 'help') {
+    console.log(`roadmap dag — DAG mutation commands
+
+  insert   Insert a new node into the DAG
+  remove   Remove a node (--cascade to remove dependents)
+  modify   Modify an existing node's fields
+  log      Show mutation history
+
+All mutations validate the DAG (define/verify/check) before committing.
+Provenance receipts are appended to .roadmap/mutations.jsonl.
+
+Examples:
+  roadmap dag insert --node '{"id":"x","desc":"...","produces":[],"consumes":[],"deps":["init"]}' --note "why"
+  roadmap dag remove my-node --note "why" --cascade
+  roadmap dag modify my-node --set '{"desc":"new desc"}' --note "why"
+  roadmap dag log
+`);
+    return;
+  }
+
+  if (!note && sub !== 'log') {
+    json({ error: 'Missing --note "reason"', fix: `roadmap dag ${sub} --note "why"` });
+    process.exit(1);
+    return;
+  }
+
   switch (sub) {
-    case 'help':
-    case '--help':
-    case '-h':
-      return cmdTopologyHelp();
-    case 'show':
-      return cmdTopologyShow();
-    case 'where':
-      return cmdTopologyWhere();
-    case 'validate':
-      return cmdTopologyValidate();
-    case 'enforce':
-      return cmdTopologyEnforce();
+    case 'insert': return await cmdDagInsert(note!);
+    case 'remove': return await cmdDagRemove(note!);
+    case 'modify': return await cmdDagModify(note!);
+    case 'log':    return cmdDagLog();
     default:
-      json({ error: `Unknown topology subcommand: ${sub}`, fix: 'roadmap topology show|where|validate|enforce' });
+      json({ error: `Unknown dag subcommand: ${sub}`, fix: 'roadmap dag help' });
       process.exit(1);
   }
 }
 
-function cmdTopologyHelp() {
-  json({
-    command: 'topology',
-    description: 'Git architecture topology for LLM agents',
-    subcommands: [
-      { name: 'show', args: '', description: 'Full architecture: clones, branches, contracts' },
-      { name: 'where', args: '', description: 'Current position: clone, branch, sync status' },
-      { name: 'validate', args: '', description: 'Verify clone state matches expected topology' },
-      { name: 'enforce', args: '--op <operation> [--branch <branch>] [--to <target>]', description: 'Check if operation is allowed in current context' },
-    ],
-    examples: [
-      'roadmap topology show',
-      'roadmap topology where',
-      'roadmap topology validate',
-      'roadmap topology enforce --op push --to origin',
-      'roadmap topology enforce --op work --branch feat/new',
-    ],
-  });
-}
-
-function cmdTopologyShow() {
-  const result = getArchitecture(repoRoot);
-  emit({ ok: true, cmd: 'topology.show', data: result }, _outputOpts);
-}
-
-function cmdTopologyWhere() {
-  const result = getWhere(repoRoot);
-  emit({ ok: true, cmd: 'topology.where', data: result }, _outputOpts);
-}
-
-function cmdTopologyValidate() {
-  const result = validateClone(repoRoot);
-  emit({ ok: true, cmd: 'topology.validate', data: result }, _outputOpts);
-}
-
-function cmdTopologyEnforce() {
-  const opIdx = args.indexOf('--op');
-  if (opIdx === -1 || !args[opIdx + 1]) {
-    json({ error: 'Missing --op <operation>', fix: 'roadmap topology enforce --op push|merge|fetch|checkout|commit|work|read [--branch X] [--to Y]' });
+async function cmdDagInsert(note: string) {
+  if (!hasLocalDAG) {
+    json({ error: 'No roadmap tracked in this repo', fix: 'Initialize with: roadmap make <spec> --note "..."' });
     process.exit(1);
     return;
   }
-  const op = args[opIdx + 1] as Operation;
-  const branchIdx = args.indexOf('--branch');
-  const branch = branchIdx !== -1 ? args[branchIdx + 1] : undefined;
-  const toIdx = args.indexOf('--to');
-  const to = toIdx !== -1 ? args[toIdx + 1] : undefined;
 
-  const result = enforceOperation(repoRoot, op, branch, to);
-  emit({ ok: true, cmd: 'topology.enforce', data: result }, _outputOpts);
+  // Runtime origin gate
+  requireValidOrigin(repoRoot);
+
+  const nodeIdx = args.indexOf('--node');
+  if (nodeIdx === -1 || !args[nodeIdx + 1]) {
+    json({ error: 'Missing --node', fix: 'roadmap dag insert --node \'{"id":"x","desc":"...","produces":[],"consumes":[],"deps":["y"]}\' --note "why"' });
+    process.exit(1);
+    return;
+  }
+
+  let nodeSpec: any;
+  try {
+    nodeSpec = JSON.parse(args[nodeIdx + 1]);
+  } catch (e) {
+    json({ error: 'Invalid JSON for --node', fix: 'Ensure --node value is valid JSON' });
+    process.exit(1);
+    return;
+  }
+
+  if (!nodeSpec.id || !nodeSpec.desc) {
+    json({ error: 'Node spec requires at least "id" and "desc"', fix: 'Include id and desc in the node JSON' });
+    process.exit(1);
+    return;
+  }
+
+  const dag = await loadDAGAsync();
+
+  try {
+    const { dag: mutated, receipt } = insertNode(dag, nodeSpec, note);
+    commitMutation(repoRoot, mutated, receipt);
+
+    recordTrail({
+      ts: new Date().toISOString(),
+      cmd: 'dag.insert',
+      note,
+      repo: basename(repoRoot),
+      detail: { nodeId: nodeSpec.id },
+    });
+
+    json({ ok: true, op: 'insert', nodeId: nodeSpec.id, receipt });
+  } catch (e) {
+    if (e instanceof MutationError) {
+      json({ error: e.message, errors: e.errors, receipt: e.receipt });
+      process.exit(1);
+    }
+    throw e;
+  }
+}
+
+async function cmdDagRemove(note: string) {
+  if (!hasLocalDAG) {
+    json({ error: 'No roadmap tracked in this repo', fix: 'Initialize with: roadmap make <spec> --note "..."' });
+    process.exit(1);
+    return;
+  }
+
+  // Runtime origin gate
+  requireValidOrigin(repoRoot);
+
+  const nodeId = args[2];
+  if (!nodeId || nodeId.startsWith('--')) {
+    json({ error: 'Missing node-id', fix: 'roadmap dag remove <node-id> --note "why"' });
+    process.exit(1);
+    return;
+  }
+
+  const cascade = args.includes('--cascade');
+  const dag = await loadDAGAsync();
+
+  try {
+    const { dag: mutated, receipt } = removeNode(dag, nodeId, note, { cascade });
+    commitMutation(repoRoot, mutated, receipt);
+
+    recordTrail({
+      ts: new Date().toISOString(),
+      cmd: 'dag.remove',
+      note,
+      repo: basename(repoRoot),
+      detail: { nodeId, cascade },
+    });
+
+    json({ ok: true, op: 'remove', nodeId, cascade, receipt });
+  } catch (e) {
+    if (e instanceof MutationError) {
+      json({ error: e.message, errors: e.errors, receipt: e.receipt });
+      process.exit(1);
+    }
+    if (e instanceof Error) {
+      json({ error: e.message });
+      process.exit(1);
+    }
+    throw e;
+  }
+}
+
+async function cmdDagModify(note: string) {
+  if (!hasLocalDAG) {
+    json({ error: 'No roadmap tracked in this repo', fix: 'Initialize with: roadmap make <spec> --note "..."' });
+    process.exit(1);
+    return;
+  }
+
+  // Runtime origin gate
+  requireValidOrigin(repoRoot);
+
+  const nodeId = args[2];
+  if (!nodeId || nodeId.startsWith('--')) {
+    json({ error: 'Missing node-id', fix: 'roadmap dag modify <node-id> --set \'{"desc":"..."}\' --note "why"' });
+    process.exit(1);
+    return;
+  }
+
+  const setIdx = args.indexOf('--set');
+  if (setIdx === -1 || !args[setIdx + 1]) {
+    json({ error: 'Missing --set', fix: 'roadmap dag modify <node-id> --set \'{"desc":"new desc"}\' --note "why"' });
+    process.exit(1);
+    return;
+  }
+
+  let changes: any;
+  try {
+    changes = JSON.parse(args[setIdx + 1]);
+  } catch {
+    json({ error: 'Invalid JSON for --set', fix: 'Ensure --set value is valid JSON' });
+    process.exit(1);
+    return;
+  }
+
+  const dag = await loadDAGAsync();
+
+  try {
+    const { dag: mutated, receipt } = modifyNode(dag, nodeId, changes, note);
+    commitMutation(repoRoot, mutated, receipt);
+
+    recordTrail({
+      ts: new Date().toISOString(),
+      cmd: 'dag.modify',
+      note,
+      repo: basename(repoRoot),
+      detail: { nodeId, changes },
+    });
+
+    json({ ok: true, op: 'modify', nodeId, receipt });
+  } catch (e) {
+    if (e instanceof MutationError) {
+      json({ error: e.message, errors: e.errors, receipt: e.receipt });
+      process.exit(1);
+    }
+    if (e instanceof Error) {
+      json({ error: e.message });
+      process.exit(1);
+    }
+    throw e;
+  }
+}
+
+function cmdDagLog() {
+  const log = loadMutationLog(repoRoot);
+  const lastN = args.includes('--last') ? parseInt(args[args.indexOf('--last') + 1] || '10', 10) : undefined;
+  const mutations = lastN ? log.mutations.slice(-lastN) : log.mutations;
+  json({ ok: true, count: mutations.length, total: log.mutations.length, mutations });
 }
 
 // --- Help ---
@@ -920,17 +1103,15 @@ Core commands (mainline execution loop):
 
 Command groups (use 'roadmap <group> help' for details):
   spec <sub>         Spec planning and intake: plan, import, intake, compile, init
-  topology <sub>     Git architecture topology: show, where, validate, enforce
+  dag <sub>          DAG mutations: insert, remove, modify, log
 
-All commands require --note "reason" (except help/orient/topology).
+All commands require --note "reason" (except help/orient).
 Output is JSON. Use jq for filtering.
 
 Examples:
   roadmap orient --note "check position"
   roadmap make spec.json --note "create ideal DAG"
   roadmap advance --note "move to next batch"
-  roadmap topology where
-  roadmap topology enforce --op push --to origin
 `);
 }
 

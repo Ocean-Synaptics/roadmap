@@ -2,6 +2,155 @@
 
 DAG expansion protocol library. Any repo can depend on this package, define a `roadmap.ts`, and get typed governance over its development plan.
 
+---
+
+## 🤖 AGENT GUIDE — System Architecture & Self-Orientation
+
+**Read this first.** This guide helps agents understand what they're building without requiring conversation.
+
+### System Architecture (6 Layers)
+
+```
+Layer 1: DAG Core
+  ├─ define(g)    — validate structure
+  ├─ verify(g)    — validate contracts (consumes satisfied by predecessors)
+  ├─ check(g)     — termination (reachability from init↔term)
+  ├─ orient(g)    — batch position from filesystem
+  └─ advanceBatch — move to next batch
+  Status: ✓ COMPLETE
+
+Layer 2: Batch Execution
+  ├─ parallelOrder(g)  — topological sort → batches (runnable in parallel)
+  ├─ nodeOrder(g)      — full execution sequence
+  └─ Progress tracking  — which nodes are done
+  Status: ✓ COMPLETE
+
+Layer 3: Enforcement & Safety
+  ├─ Pre-commit gates (4 gates)      — branch discipline, gitsafe, DAG edit auth
+  ├─ Gitsafe (gitsafe-loader.ts)     — file access control (denylist, size limits)
+  ├─ Validator framework (5 types)   — artifact-exists, shell, function, schema, manual-approval
+  └─ CheckpointManager (recovery.ts) — snapshots, rollback (EXISTS BUT UNUSED)
+  Status: ✓ MOSTLY COMPLETE (checkpoint unused)
+
+Layer 4: Agent Coordination [PARTIAL]
+  ├─ Worktree spawning          — isolated DAG editing per agent
+  ├─ Feature branch merging     — consolidation via git
+  ├─ Task dispatch              — claim/assign/complete workflow (basic)
+  ├─ Swarm orchestration        — MISSING (no multi-agent coordination)
+  ├─ Load balancing             — MISSING
+  └─ Status synchronization     — MISSING
+  Status: 🟡 PARTIAL (worktrees work, swarm doesn't)
+
+Layer 5: Spec Integration [PARTIAL]
+  ├─ Spec parsing               — JSON IR exists
+  ├─ DAG generation from spec   — basic (exists)
+  ├─ Scenario mapping           — MISSING (Given/When/Then → node mapping)
+  ├─ Conformance validation     — MISSING (validate DAG against scenarios)
+  └─ Coverage tracking          — MISSING
+  Status: 🟡 PARTIAL (parse works, validation missing)
+
+Layer 6: Observability [MISSING]
+  ├─ Trail logging              — .roadmap/trail.jsonl (exists)
+  ├─ Metrics extraction         — MISSING (SLO tracking from trail)
+  ├─ Telemetry/dashboard        — MISSING
+  ├─ Error attribution          — MISSING
+  └─ Audit visualization        — MISSING
+  Status: 🔴 MISSING (only trail exists, no analysis)
+```
+
+### What Exists But Isn't Wired
+
+These are **high-leverage** opportunities — code exists, just needs integration:
+
+1. **CheckpointManager** (src/recovery.ts)
+   - Creates snapshots of DAG state at each node
+   - Records decisions + rollback points
+   - Just needs wiring into `complete()` flow (2-3 days)
+   - Unlocks audit trail for all downstream layers
+
+2. **Trail logging** (.roadmap/trail.jsonl)
+   - Already records every node execution
+   - Extract metrics retroactively (no new instrumentation)
+   - Zero collection cost, data already exists (1-2 days)
+
+3. **Gitsafe validation** (src/lib/gitsafe-loader.ts)
+   - Enforces file access on single repo
+   - Extend to N repos (small change, 1-2 days)
+   - Prerequisite for distributed DAG
+
+### Gap Inventory (What's Missing & Why It Matters)
+
+**🔴 CRITICAL (self-compounding depends on these):**
+- **Metrics/SLO** — Without measurement, system can't teach itself
+- **Spec-conformance** — Without validation, "correct" is subjective
+- **Audit trail** — Without history, patterns can't emerge
+
+**🟡 HIGH (enables distributed work):**
+- **Distributed DAG** — Cross-project patterns (100x stronger signal than single-repo)
+- **Transactional updates** — Safe experimentation + rollback learning
+- **Error recovery** — Graceful failures teach; crashes don't
+
+**🔧 OPERATIONAL (not self-teaching but operational):**
+- **Swarm orchestration** — Multi-agent coordination (40% entropy-fighting power)
+- **Metrics dashboard** — Visualization (nice-to-have)
+
+### Integration Patterns (Learn from These Branches)
+
+Reference these completed branches to understand how to wire systems:
+
+1. **feat/protocol-design** (e535f8f)
+   - How to: Build core DAG operations
+   - Pattern: Define types first, then implementations
+   - Test: Cycles detection, contract validation
+
+2. **feat/hook-installation** (5f4af3f)
+   - How to: Add pre-commit gates
+   - Pattern: Hook into git lifecycle, validate before commit
+   - Test: Bypass detection, gate logic
+
+3. **feat/worktree-spawn-command** (0894831)
+   - How to: Add agent isolation + feature branch support
+   - Pattern: Worktree branching discipline, merge semantics
+   - Test: Branch protection, DAG edit enforcement
+
+4. **feat/consolidation-complete** (48a8eaf)
+   - How to: Merge multiple DAGs
+   - Pattern: Dependency resolution, provenance tracking
+   - Test: Conflicting merges, topological ordering
+
+5. **feat/hardening-verification** (bf5ce57)
+   - How to: Build validator framework
+   - Pattern: Pluggable validators, composable checks
+   - Test: Each validator type, integration with complete()
+
+### Quick Reference Map
+
+**"I need to add observability"**
+→ See: Layer 6, Metrics/SLO gap, integration pattern: trail extraction + CheckpointManager
+
+**"I need to support multiple repos"**
+→ See: Layer 5, Distributed DAG gap, integration pattern: feat/consolidation-complete + gitsafe extension
+
+**"I need agents to generate correct DAGs"**
+→ See: Layer 5, Spec-conformance gap, integration pattern: feat/spec-kit-optimize branch
+
+**"I need the system to teach itself"**
+→ See: All of Layer 6 + Layer 5, foundation: metrics (measurement) + spec-conformance (correctness definition)
+
+### Session Checklist (Before Starting Work)
+
+Before an agent claims a task:
+
+- [ ] Agent has read this AGENT_GUIDE section
+- [ ] Agent understands which layer(s) the task affects
+- [ ] Agent knows what existing code relates to it
+- [ ] Agent has read 1-2 example branches (integration patterns)
+- [ ] Agent can explain: "I'm building X so that Y becomes possible"
+
+If agent can't check all ^, ask for clarification before starting.
+
+---
+
 ## Entry Points
 
 | Import | What |
