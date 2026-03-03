@@ -345,28 +345,8 @@ async function main() {
   }
 
   try {
-    switch (cmd) {
-      // Core commands (mainline execution loop)
-      case 'orient':    return cmdOrient(note);
-      case 'advance':   return await cmdAdvance(note!);
-      case 'show':      return await cmdShow();
-      case 'complete':  return await cmdComplete(note!);
-      case 'chart':     return cmdChart();
-      case 'validate':  return cmdValidate(note!);
-      case 'explore':   return await cmdExplore();
-
-      // Grouped commands
-      case 'dag':       return await cmdDag(note!);
-      case 'team':      return await cmdTeam(note!);
-      case 'spec':      return await cmdSpecGroup(note!);
-      case 'util':      return await cmdUtil(note);
-      case 'help':
-      case '--help':
-      case '-h':        return cmdHelp();
-      default:
-        json({ error: `Unknown command: ${cmd}`, fix: `Mainline: {orient, advance, show, complete, chart, validate, explore}. Groups: {dag, team, spec, util}. Use 'roadmap help' for details.` });
-        process.exit(1);
-    }
+    // Route to core commands or group handlers
+    await routeCommand(cmd, note);
   } catch (e) {
     if (e instanceof RoadmapError) {
       const rej = e.toJSON();
@@ -376,6 +356,34 @@ async function main() {
       emit({ ok: false, cmd: _outputOpts.cmd, error: { code: ErrorCode.INTERNAL_ERROR, message: e instanceof Error ? e.message : String(e) } }, _outputOpts);
       process.exit(2);
     }
+  }
+}
+
+// --- Core Router: 6 mainline commands + 4 group dispatchers ---
+
+async function routeCommand(cmd: string, note: string | undefined): Promise<void> {
+  switch (cmd) {
+    // Core commands (mainline execution loop)
+    case 'orient':    return cmdOrient(note);
+    case 'advance':   return await cmdAdvance(note!);
+    case 'show':      return await cmdShow();
+    case 'complete':  return await cmdComplete(note!);
+    case 'chart':     return cmdChart();
+    case 'validate':  return cmdValidate(note!);
+
+    // Group handlers
+    case 'dag':       return await cmdDag(note!);
+    case 'team':      return await cmdTeam(note!);
+    case 'spec':      return await cmdSpecGroup(note!);
+    case 'util':      return await cmdUtil(note);
+
+    // Help & unknown
+    case 'help':
+    case '--help':
+    case '-h':        return cmdHelp();
+    default:
+      json({ error: `Unknown command: ${cmd}`, fix: `Mainline: {orient, advance, show, complete, chart, validate}. Groups: {dag, team, spec, util}. Use 'roadmap help' for details.` });
+      process.exit(1);
   }
 }
 
@@ -6707,7 +6715,6 @@ Core commands (mainline execution loop):
   complete <node-id>  Atomic: claim → checkpoint → reorient → auto-advance if last in batch
   chart               Pretty-print progress chart with emoji bars
   validate [node]     Run validation rules (all nodes or specific)
-  explore [--api|--run|--eval]  Explore API surface or run explore scripts (roadmap/explore)
 
 Command groups (use 'roadmap <group> help' for details):
   dag <sub>           DAG manipulation: diff, expand, propagate, retire, optimize, switch, spawn
