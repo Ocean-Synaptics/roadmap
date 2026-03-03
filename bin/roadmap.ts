@@ -155,6 +155,7 @@ if (isOrientCheck) {
 
 if (!NOTE_EXEMPT.has(cmd) && !isOrientCheck && !_note) {
   json({ error: 'Missing --note "reason"', fix: `roadmap ${cmd} --note "why you are running this"` });
+  recordTrailError(cmd, 'MISSING_NOTE', 'Missing --note argument');
   process.exit(1);
 }
 
@@ -193,20 +194,39 @@ function getRoadmapSha(): string | undefined {
   return _roadmapSha || undefined;
 }
 
-function recordTrail(entry: any) {
+function stampEntry(entry: any): any {
   const sha = getRoadmapSha();
-  const stamped = sha ? { ...entry, roadmapSha: sha } : entry;
+  return sha ? { ...entry, roadmapSha: sha } : entry;
+}
 
+function appendToTrailFiles(stamped: any) {
   const trailPath = join(repoRoot, '.roadmap', 'trail.jsonl');
   const roadmapDir = join(repoRoot, '.roadmap');
   if (!existsSync(roadmapDir)) mkdirSync(roadmapDir, { recursive: true });
   appendFileSync(trailPath, JSON.stringify(stamped) + '\n', 'utf-8');
 
-  // Also write to global trail
   const globalTrailPath = join(homedir(), '.roadmap', 'trail.jsonl');
   const globalDir = join(homedir(), '.roadmap');
   if (!existsSync(globalDir)) mkdirSync(globalDir, { recursive: true });
   appendFileSync(globalTrailPath, JSON.stringify(stamped) + '\n', 'utf-8');
+}
+
+function recordTrail(entry: any) {
+  appendToTrailFiles(stampEntry(entry));
+}
+
+function recordTrailError(cmd: string, code: string, message: string, note?: string) {
+  try {
+    appendToTrailFiles(stampEntry({
+      ts: new Date().toISOString(),
+      type: 'error',
+      cmd,
+      code,
+      message,
+      note: note ?? '',
+      repo: basename(repoRoot),
+    }));
+  } catch { /* trail write must never crash the CLI */ }
 }
 
 // --- Async section ---
@@ -249,10 +269,15 @@ async function main() {
   } catch (e) {
     if (e instanceof RoadmapError) {
       const rej = e.toJSON();
-      emit({ ok: false, cmd: _outputOpts.cmd, error: { code: rej.code ?? ErrorCode.INTERNAL_ERROR, message: rej.message ?? String(e), fix: rej.context?.fix ? [rej.context.fix] : undefined } }, _outputOpts);
+      const code = rej.code ?? ErrorCode.INTERNAL_ERROR;
+      const message = rej.message ?? String(e);
+      recordTrailError(cmd, code, message, note);
+      emit({ ok: false, cmd: _outputOpts.cmd, error: { code, message, fix: rej.context?.fix ? [rej.context.fix] : undefined } }, _outputOpts);
       process.exit(1);
     } else {
-      emit({ ok: false, cmd: _outputOpts.cmd, error: { code: ErrorCode.INTERNAL_ERROR, message: e instanceof Error ? e.message : String(e) } }, _outputOpts);
+      const message = e instanceof Error ? e.message : String(e);
+      recordTrailError(cmd, ErrorCode.INTERNAL_ERROR, message, note);
+      emit({ ok: false, cmd: _outputOpts.cmd, error: { code: ErrorCode.INTERNAL_ERROR, message } }, _outputOpts);
       process.exit(2);
     }
   }
