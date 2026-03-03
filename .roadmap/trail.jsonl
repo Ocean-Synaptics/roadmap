@@ -18,3 +18,5 @@
 {"ts":"2026-03-03T09:02:52.493Z","cmd":"orient","note":"back to consolidation roadmap","repo":"roadmap","position":[],"level":10,"dagId":"roadmap-dag-consolidation-001","detail":{"done":11,"remaining":0,"complete":true,"batchRemaining":0}}
 {"ts":"2026-03-03T10:52:41.082Z","cmd":"spec-init","note":"initialize specify directory","repo":"roadmap","position":["untracked"],"level":0}
 {"ts":"2026-03-03T10:53:21.896Z","cmd":"spec-import","note":"import spec tasks","repo":"roadmap","position":["setup-database"],"level":0,"dagId":"spec-kit-1772535201896","detail":{"source":"specify","tasksCount":3}}
+{"ts":"2026-03-03T10:56:48.062Z","cmd":"orient","note":"spec-kit foundation complete — preparing for CLI consolidation sprint","repo":"roadmap","position":["implement-export"],"level":1,"dagId":"explore-api-001","detail":{"done":1,"remaining":4,"complete":false,"batchRemaining":1}}
+{"ts":"2026-03-03T10:56:49.200Z","cmd":"orient","note":"spec-kit complete — transitioning to CLI consolidation sprint","repo":"roadmap","position":["implement-export"],"level":1,"dagId":"explore-api-001","detail":{"done":1,"remaining":4,"complete":false,"batchRemaining":1}}
