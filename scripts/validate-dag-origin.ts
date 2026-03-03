@@ -20,7 +20,7 @@ interface SpecOrigin {
 
 export interface ValidateResult {
   ok: boolean;
-  code: 'valid' | 'missing-origin' | 'invalid-format' | 'invalid-hash' | 'dag-id-mismatch';
+  code: 'valid' | 'missing-origin' | 'invalid-format' | 'invalid-hash' | 'dag-id-mismatch' | 'missing-mutation-receipt';
   message: string;
   fix?: string;
 }
@@ -94,6 +94,30 @@ export function validateDagOrigin(repoRoot: string): ValidateResult {
       }
     } catch {
       // head.json parse failure is caught by other gates
+    }
+  }
+
+  // 4. If head.json changed, check for a recent mutation receipt
+  // This detects manual edits that bypass the mutation commands
+  const mutationsPath = join(repoRoot, '.roadmap/mutations.jsonl');
+  if (existsSync(mutationsPath)) {
+    try {
+      const lines = readFileSync(mutationsPath, 'utf-8').split('\n').filter(l => l.trim());
+      if (lines.length > 0) {
+        const last = JSON.parse(lines[lines.length - 1]);
+        const elapsed = Date.now() - new Date(last.timestamp).getTime();
+        // Receipt must be within 60 seconds to count as "corresponding"
+        if (elapsed > 60_000) {
+          return {
+            ok: false,
+            code: 'missing-mutation-receipt',
+            message: 'head.json was modified but no recent mutation receipt found in mutations.jsonl',
+            fix: 'Use roadmap dag {insert,remove,modify} to mutate the DAG, not direct edits',
+          };
+        }
+      }
+    } catch {
+      // mutations.jsonl parse failure — non-fatal, other gates catch corruption
     }
   }
 
