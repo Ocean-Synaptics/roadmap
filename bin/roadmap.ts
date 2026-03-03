@@ -270,7 +270,7 @@ async function main() {
   const note = _note;
 
   // Enforce main branch for all DAG-mutating commands
-  const BRANCH_EXEMPT = new Set(['help', '--help', '-h', 'api', 'orient']);
+  const BRANCH_EXEMPT = new Set(['help', '--help', '-h', 'api', 'orient', 'advance']);
   if (!BRANCH_EXEMPT.has(cmd)) {
     enforceMainBranch();
   }
