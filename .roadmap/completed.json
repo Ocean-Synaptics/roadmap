@@ -1331,5 +1331,44 @@
         "evidence": "Main-read enforcement integrated"
       }
     ]
+  },
+  {
+    "nodeId": "setup-git-refs",
+    "completedAt": "2026-03-03T11:53:19.941Z",
+    "owner": "griffin",
+    "validationChecks": [
+      {
+        "rule": "shell",
+        "command": "git rev-parse --verify hardening-001-baseline",
+        "passed": true,
+        "evidence": "Git tag created"
+      }
+    ]
+  },
+  {
+    "nodeId": "test-immutability",
+    "completedAt": "2026-03-03T11:53:19.941Z",
+    "owner": "griffin",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "path": "tests/gitsafe-loader.test.ts",
+        "passed": true,
+        "evidence": "Immutability test suite exists"
+      }
+    ]
+  },
+  {
+    "nodeId": "hardened-locked",
+    "completedAt": "2026-03-03T11:53:19.941Z",
+    "owner": "griffin",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists",
+        "path": ".roadmap/metaflow/hardening/LOCKED.json",
+        "passed": true,
+        "evidence": "Terminal node: hardening phase complete"
+      }
+    ]
   }
 ]
