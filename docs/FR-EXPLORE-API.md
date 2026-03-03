@@ -68,7 +68,11 @@ roadmap util explore --run my-script.ts --launch "npm start" --port 9222
 ```
 
 #### `roadmap util explore --eval <code>`
-Evaluate inline explore code (future):
+Evaluate inline explore code with managed CDP connection:
+```bash
+roadmap explore --eval "{ checkVisible, safeClick }"
+```
+The CLI wraps the snippet, executes it against the running app, and prints results. Useful for quick one-off checks without a full script file.
 
 ## Proposal
 
@@ -200,7 +204,7 @@ Playwright is a peer dependency of the explore surface — consumer must have `@
 ## Validation
 
 - `import { checkVisible } from 'roadmap/explore'` resolves in a consumer project
-- `roadmap explore --api` outputs all 16 functions with correct signatures
+- `roadmap explore --api` outputs all 36 helpers with correct signatures
 - `roadmap explore --run scripts/validate.ts --launch "npx electron ."` runs end-to-end
 - Existing `complete --explore` still works (no regression)
 
