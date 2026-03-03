@@ -1,11 +1,17 @@
 # FR: Explore API surface — expose helpers to consumer scripts via CLI and package exports
 
+## Status: ✅ IMPLEMENTED
+
+**Package export**: `roadmap/explore` ✓
+**CLI modes**: `--api`, `--run`, `--eval` ✓
+**Helper count**: 36 total (17 observation + 19 interaction + runtime orchestration)
+
 ## Problem
 
-The explore pattern library (9 observation helpers, 7 interaction helpers) lives inside the roadmap package but is not importable by consumer projects. Explore scripts in payload repos must either:
+The explore pattern library (observation + interaction helpers) lives inside the roadmap package but is not importable by consumer projects. Explore scripts in payload repos must either:
 
 1. Inline all helpers (200+ lines of boilerplate per script), or
-2. Import directly from roadmap source paths (`/home/griffin/src/roadmap/src/lib/explore-helpers.ts`) — brittle, non-portable
+2. Import directly from roadmap source paths (`/home/griffin/src/roadmap/src/lib/exploration/*.ts`) — brittle, non-portable
 
 The skill templates (`roadmap-explore-write`, `roadmap-explore-run`) describe the patterns as prose for agents to read, but agents can't `import { checkVisible } from 'roadmap/explore'` because no such export exists.
 
@@ -15,20 +21,54 @@ In the todo-app iter2 validation session, a 120-line explore script was written 
 
 When the helpers were dropped and raw Playwright was used instead, the agent had to discover selector patterns, handle opacity-0 buttons, and manage CDP connection — all problems the helpers already solve.
 
-## Current state
+## Implementation Status
 
-### Exported (via `roadmap` package root)
-- `launchApp`, `runExploreScript`, `mapObservationsToChecks`, `teardown` — runtime orchestration
-- `ObservationResult`, `ExploreResult` — types
+### ✅ Package Export: `roadmap/explore`
 
-### Not exported
-- `checkVisible`, `checkText`, `checkStyle`, `checkSize`, `checkCount`, `checkAttribute`, `checkClass`, `checkContrast`, `checkOverflow` — 9 observation helpers
-- `safeClick`, `typeAndSubmit`, `drag`, `waitFor`, `waitForTransition`, `connectAndFindPage`, `resetState` — 7 interaction helpers
+**Location**: `src/index.explore.ts`
+**Exports**:
+- 17 observation helpers: `checkVisible`, `checkText`, `checkStyle`, `checkSize`, `checkCount`, `checkAttribute`, `checkClass`, `checkContrast`, `checkOverflow`, `checkDisabled`, `checkChecked`, `checkContainsText`, `checkInputValue`, `checkUrl`, `checkTitle`, `checkComputedStyle`, `checkInViewport`
+- 19 interaction helpers: `safeClick`, `typeAndSubmit`, `drag`, `waitFor`, `waitForTransition`, `connectAndFindPage`, `resetState`, `fillForm`, `selectFromDropdown`, `toggleCheckbox`, `getListItems`, `findItemBy`, `getTableData`, `waitForNetwork`, `waitForTextChange`, `capturePageState`, `getConsoleMessages`, `getNetworkCalls`, `screenshot`
+- Runtime orchestration: `launchApp`, `runExploreScript`, `mapObservationsToChecks`, `teardown`
+- Types: `LaunchHandle`, `ExploreScriptResult`, `ObservationResult`, `ExploreResult`
 
-### Not accessible from CLI
-- No `roadmap explore` subcommand exists
-- No way to dump the API surface for agent consumption
-- No way to run an explore script with managed CDP lifecycle from the CLI
+**Usage**:
+```typescript
+import { checkVisible, safeClick, connectAndFindPage } from 'roadmap/explore'
+```
+
+### ✅ CLI Command: `roadmap util explore`
+
+Three modes available:
+
+#### `roadmap util explore --api`
+Dump API surface for agent context injection:
+```bash
+$ roadmap util explore --api
+
+Explore API — import from "roadmap/explore"
+
+Observation helpers (17):
+  checkVisible(page: Page, selector: string, label: string) → ObservationResult
+  ...
+
+Interaction helpers (19):
+  safeClick(page: Page, selector: string) → void
+  ...
+
+Runtime orchestration:
+  launchApp(opts: {...}) → LaunchHandle
+  ...
+```
+
+#### `roadmap util explore --run <script.ts>`
+Execute explore script with managed CDP lifecycle:
+```bash
+roadmap util explore --run my-script.ts --launch "npm start" --port 9222
+```
+
+#### `roadmap util explore --eval <code>`
+Evaluate inline explore code (future):
 
 ## Proposal
 
