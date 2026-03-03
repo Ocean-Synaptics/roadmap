@@ -203,6 +203,10 @@ if (cmd === 'plan' && args[1] === 'status') {
 if (cmd === 'compile-brief' && args.includes('--help')) {
   NOTE_EXEMPT.add('compile-brief');
 }
+// Group help subcommands are read-only
+if ((cmd === 'dag' || cmd === 'team' || cmd === 'spec' || cmd === 'util') && (args[1] === 'help' || args[1] === '--help' || args[1] === '-h')) {
+  NOTE_EXEMPT.add(cmd);
+}
 
 interface TrailEntry {
   ts: string;
@@ -4088,16 +4092,59 @@ function cmdClaim() {
 
 // --- dag: candidate operations (diff, accept, reject) ---
 
-function cmdDag(note: string) {
+async function cmdDag(note: string) {
   const sub = args[1];
   switch (sub) {
-    case 'diff':   return cmdDagDiff();
-    case 'accept': return cmdDagAccept(note);
-    case 'reject': return cmdDagReject(note);
+    case 'help':
+    case '--help':
+    case '-h':
+      return cmdDagHelp();
+    case 'diff':      return cmdDagDiff();
+    case 'accept':    return cmdDagAccept(note);
+    case 'reject':    return cmdDagReject(note);
+    case 'expand':    return await cmdExpand(note);
+    case 'propagate': return cmdPropagate(note);
+    case 'retire':    return cmdRetire(note);
+    case 'optimize':  return cmdOptimize(note);
+    case 'switch':    return await cmdSwitch(note);
+    case 'spawn':     return cmdSpawn(note);
     default:
-      json({ error: `Unknown dag subcommand: ${sub}`, fix: 'roadmap dag diff|accept|reject' });
+      json({ error: `Unknown dag subcommand: ${sub}`, fix: 'roadmap dag diff|expand|propagate|retire|optimize|switch|spawn' });
       process.exit(1);
   }
+}
+
+function cmdDagHelp() {
+  console.log(`roadmap dag — DAG structure and manipulation
+
+Subcommands:
+  diff [<ref>]
+    Structural diff between current DAG and old version
+  expand <script.ts> [--type structural|iteration] [--allow-conflicts]
+    Run expansion script, validate DAG, commit
+  propagate [--from <id>] [--dry-run] [--depth N]
+    Backward constraint propagation — derive upstream validate rules
+  retire <id> [--cascade|--undo|--list]
+    Skip/retire a node (treated as done by orient)
+  optimize
+    Refactor DAG for better structure
+  switch
+    Switch worktree/branch
+  spawn <id>
+    Create worktree for a node
+  accept
+    Accept candidate DAG
+  reject
+    Reject candidate DAG
+
+Examples:
+  roadmap dag diff HEAD~1 --note "review"
+  roadmap dag expand phase-2.ts --note "decompose phase 2"
+  roadmap dag propagate --note "propagate constraints"
+  roadmap dag retire auth-01 --cascade --note "retire obsolete"
+  roadmap dag optimize --note "reduce critical path"
+  roadmap dag spawn auth-01 --note "start work"
+`);
 }
 
 function cmdDagDiff() {
@@ -4276,6 +4323,10 @@ async function cmdSwitch(note: string) {
 async function cmdTeam(note: string) {
   const sub = args[1];
   switch (sub) {
+    case 'help':
+    case '--help':
+    case '-h':
+      return cmdTeamHelp();
     case 'claim':    return cmdClaim();
     case 'dispatch': return await cmdDispatch(note);
     case 'strategy': return await cmdStrategy(note);
@@ -4286,11 +4337,36 @@ async function cmdTeam(note: string) {
   }
 }
 
+function cmdTeamHelp() {
+  console.log(`roadmap team — Multi-agent coordination
+
+Subcommands:
+  claim [<id>] [--owner <name>] [--ttl <sec>] [--renew|--release|--list]
+    Claim node for exclusive work (advisory lock)
+  dispatch
+    Route tasks to agents
+  strategy
+    Multi-agent strategy proposal/selection/status
+  assign [--owners w1,w2,w3] [--ttl <sec>]
+    Round-robin assign batch nodes to owners
+
+Examples:
+  roadmap team claim auth-01 --owner alice --ttl 900
+  roadmap team claim --list
+  roadmap team dispatch --note "dispatch batch"
+  roadmap team assign --owners alice,bob --note "assign batch"
+`);
+}
+
 // --- spec: spec intake pipeline (plan, import, intake, compile) ---
 
 async function cmdSpecGroup(note: string) {
   const sub = args[1];
   switch (sub) {
+    case 'help':
+    case '--help':
+    case '-h':
+      return cmdSpecHelp();
     case 'plan':     return await cmdPlanRouter(note);
     case 'import':   return cmdImport(note);
     case 'intake':   return cmdIntake(note);
@@ -4300,6 +4376,30 @@ async function cmdSpecGroup(note: string) {
       json({ error: `Unknown spec subcommand: ${sub}`, fix: 'roadmap spec plan|import|intake|compile|init' });
       process.exit(1);
   }
+}
+
+function cmdSpecHelp() {
+  console.log(`roadmap spec — Spec intake pipeline
+
+Subcommands:
+  plan [--gallery|select <id>|status|overlay <id>|schedule]
+    Spec planning: gallery, selection, status, overlay, schedule
+  import --from speckit <file.md> --id <dag-id>
+    Parse tasks.md → roadmap DAG
+  intake [absorb|scan|import|certify]
+    Absorb git range → intake JSON
+  compile
+    Parse tasks → spec-compiled.json (roadmap IR)
+  init --id <dag-id> [--engine <name>]
+    Create spec workspace + config
+
+Examples:
+  roadmap spec plan --gallery --note "show gallery"
+  roadmap spec import --from speckit tasks.md --id phase-2 --note "import"
+  roadmap spec plan select auth-spec --note "select spec"
+  roadmap spec compile --note "compile spec"
+  roadmap spec init --id phase-2 --note "init workspace"
+`);
 }
 
 // Route plan to appropriate handler based on subcommand/flags
@@ -4318,6 +4418,10 @@ async function cmdPlanRouter(note: string) {
 async function cmdUtil(note?: string) {
   const sub = args[1];
   switch (sub) {
+    case 'help':
+    case '--help':
+    case '-h':
+      return cmdUtilHelp();
     case 'trail':       return cmdTrail();
     case 'checkpoint':  return cmdCheckpoint(note);
     case 'explore':     return await cmdExplore();
@@ -4327,6 +4431,32 @@ async function cmdUtil(note?: string) {
       json({ error: `Unknown util subcommand: ${sub}`, fix: 'roadmap util trail|checkpoint|explore|install|federation' });
       process.exit(1);
   }
+}
+
+function cmdUtilHelp() {
+  console.log(`roadmap util — Session utilities and introspection
+
+Subcommands:
+  trail [--last N] [--global] [--repo <name>] [--archive] [--archived] [--read <file>]
+    Read invocation trail (local or global)
+  checkpoint [--label <name>] [--list] [--restore]
+    Save/restore state checkpoints
+  explore [--api] [--run <script>] [--launch <cmd>] [--port N]
+    Explore API surface and run exploration scripts
+  install [path]
+    Install protocol into CLAUDE.md
+  federation
+    Cross-repo coordination
+
+Examples:
+  roadmap util trail --last 10
+  roadmap util trail --global
+  roadmap util checkpoint --label "phase 1 done" --note "save"
+  roadmap util checkpoint --restore
+  roadmap util explore --api
+  roadmap util install
+  roadmap util federation --note "sync repos"
+`);
 }
 
 // --- token: issue, list, inspect, revoke, gc ---
