@@ -161,7 +161,8 @@ Example: `--note "auth module — adding JWT refresh token rotation"`
 ```bash
 roadmap orient --note "..."      # Find batch position
 roadmap show <node-id>           # Inspect node spec
-roadmap dag expand script.ts     # Decompose (if needed)
+roadmap explore --api            # Dump explore API surface (if needed)
+roadmap dag expand script.ts     # Decompose DAG (if needed)
 roadmap team claim <id>          # Claim node
 roadmap complete <id> --note ""  # Mark done + advance
 roadmap advance --note "..."     # Move to next batch
