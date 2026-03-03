@@ -8,101 +8,228 @@
     "consolidation-discovery": {
       "id": "consolidation-discovery",
       "desc": "Plan consolidation system: outline merge strategy, index format, caching approach, CLI integration points",
-      "produces": ["docs/CONSOLIDATION-DESIGN.md"],
-      "consumes": [".specify/specs/roadmap-dag-consolidation-001/spec.md"],
+      "produces": [
+        "docs/CONSOLIDATION-DESIGN.md"
+      ],
+      "consumes": [
+        ".specify/specs/roadmap-dag-consolidation-001/spec.md"
+      ],
       "deps": [],
       "mode": "plan",
-      "validate": [{"type": "artifact-exists", "path": "docs/CONSOLIDATION-DESIGN.md"}],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "path": "docs/CONSOLIDATION-DESIGN.md"
+        }
+      ],
       "idempotent": true
     },
     "merge-multi-way": {
       "id": "merge-multi-way",
       "desc": "Implement multi-DAG merge: discover all .roadmap/*.json, link at boundaries, validate merged graph",
-      "produces": ["src/lib/roadmap/dag-consolidator.ts"],
-      "consumes": ["src/roadmap/protocol.ts"],
-      "deps": ["consolidation-discovery"],
-      "validate": [{"type": "shell", "command": "npx tsc --noEmit"}],
+      "produces": [
+        "src/lib/roadmap/dag-consolidator.ts"
+      ],
+      "consumes": [
+        "src/roadmap/protocol.ts"
+      ],
+      "deps": [
+        "consolidation-discovery"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
       "idempotent": true
     },
     "index-extraction": {
       "id": "index-extraction",
       "desc": "Extract metadata index from merged DAG: id, deps, produces, consumes, phase → head-index.json format",
-      "produces": ["src/lib/roadmap/index-extractor.ts"],
-      "consumes": ["src/lib/roadmap/dag-consolidator.ts"],
-      "deps": ["merge-multi-way"],
-      "validate": [{"type": "shell", "command": "npx tsc --noEmit"}],
+      "produces": [
+        "src/lib/roadmap/index-extractor.ts"
+      ],
+      "consumes": [
+        "src/lib/roadmap/dag-consolidator.ts"
+      ],
+      "deps": [
+        "merge-multi-way"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
       "idempotent": true
     },
     "lazy-load-logic": {
       "id": "lazy-load-logic",
       "desc": "Implement intelligent lazy loading: load index always, full specs only for current batch + 1 level ahead",
-      "produces": ["src/lib/roadmap/lazy-graph-loader.ts"],
-      "consumes": ["src/lib/roadmap/index-extractor.ts"],
-      "deps": ["index-extraction"],
-      "validate": [{"type": "shell", "command": "npx tsc --noEmit"}],
+      "produces": [
+        "src/lib/roadmap/lazy-graph-loader.ts"
+      ],
+      "consumes": [
+        "src/lib/roadmap/index-extractor.ts"
+      ],
+      "deps": [
+        "index-extraction"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
       "idempotent": true
     },
     "cli-auto-merge": {
       "id": "cli-auto-merge",
       "desc": "Integrate consolidation into CLI: orient, chart, show, complete use auto-merge transparently",
-      "produces": ["bin/roadmap.ts"],
-      "consumes": ["src/lib/roadmap/lazy-graph-loader.ts"],
-      "deps": ["lazy-load-logic"],
-      "validate": [{"type": "shell", "command": "npx tsc --noEmit"}],
+      "produces": [
+        "bin/roadmap.ts"
+      ],
+      "consumes": [
+        "src/lib/roadmap/lazy-graph-loader.ts"
+      ],
+      "deps": [
+        "lazy-load-logic"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
       "idempotent": true
     },
     "cross-dag-validation": {
       "id": "cross-dag-validation",
       "desc": "Validate inter-DAG dependencies: ensure produces/consumes work across DAG boundaries, validate propagation",
-      "produces": ["src/lib/roadmap/cross-dag-validator.ts"],
-      "consumes": ["src/lib/roadmap/dag-consolidator.ts"],
-      "deps": ["merge-multi-way"],
-      "validate": [{"type": "shell", "command": "npx tsc --noEmit"}],
+      "produces": [
+        "src/lib/roadmap/cross-dag-validator.ts"
+      ],
+      "consumes": [
+        "src/lib/roadmap/dag-consolidator.ts"
+      ],
+      "deps": [
+        "merge-multi-way"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
       "idempotent": true
     },
     "consolidation-tests": {
       "id": "consolidation-tests",
       "desc": "Unit + integration tests: merge logic, index extraction, lazy loading, cross-DAG validation, CLI transparent behavior",
-      "produces": ["tests/roadmap/consolidation.test.ts"],
-      "consumes": ["src/lib/roadmap/dag-consolidator.ts", "src/lib/roadmap/lazy-graph-loader.ts", "src/lib/roadmap/cross-dag-validator.ts"],
-      "deps": ["cli-auto-merge", "cross-dag-validation"],
-      "validate": [{"type": "shell", "command": "npx tsc --noEmit"}, {"type": "shell", "command": "npx vitest run tests/roadmap/consolidation.test.ts 2>&1 | grep -q 'passed'"}],
+      "produces": [
+        "tests/roadmap/consolidation.test.ts"
+      ],
+      "consumes": [
+        "src/lib/roadmap/dag-consolidator.ts",
+        "src/lib/roadmap/lazy-graph-loader.ts",
+        "src/lib/roadmap/cross-dag-validator.ts"
+      ],
+      "deps": [
+        "cli-auto-merge",
+        "cross-dag-validation"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        },
+        {
+          "type": "shell",
+          "command": "npx vitest run tests/roadmap/consolidation.test.ts 2>&1 | grep -q 'passed'"
+        }
+      ],
       "idempotent": true
     },
     "migration-script": {
       "id": "migration-script",
       "desc": "Script to consolidate existing separate DAGs into single head.json, preserve baseSha, validate result",
-      "produces": ["scripts/consolidate-existing-dags.ts"],
-      "consumes": [".roadmap/head.json", ".roadmap/head-dispatch-system.json", ".roadmap/head-artifact-gates-001.json"],
-      "deps": ["consolidation-tests"],
-      "validate": [{"type": "shell", "command": "npx tsc --noEmit"}],
+      "produces": [
+        "scripts/consolidate-existing-dags.ts"
+      ],
+      "consumes": [
+        ".roadmap/head.json",
+        ".roadmap/head-dispatch-system.json",
+        ".roadmap/head-artifact-gates-001.json"
+      ],
+      "deps": [
+        "consolidation-tests"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "npx tsc --noEmit"
+        }
+      ],
       "idempotent": true
     },
     "git-hook-invalidation": {
       "id": "git-hook-invalidation",
       "desc": "Add pre-commit hook: detect .roadmap/ changes, regenerate index, ensure merged DAG is valid, prevent stale state commits",
-      "produces": [".git/hooks/pre-commit", "scripts/validate-roadmap-state.ts"],
-      "consumes": [".roadmap/head.json"],
-      "deps": ["migration-script"],
-      "validate": [{"type": "artifact-exists", "path": ".git/hooks/pre-commit"}],
+      "produces": [
+        ".git/hooks/pre-commit",
+        "scripts/validate-roadmap-state.ts"
+      ],
+      "consumes": [
+        ".roadmap/head.json"
+      ],
+      "deps": [
+        "migration-script"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "path": ".git/hooks/pre-commit"
+        }
+      ],
       "idempotent": true
     },
     "consolidation-documentation": {
       "id": "consolidation-documentation",
       "desc": "Update docs: explain auto-merge behavior, index format, lazy loading, how to add new DAGs, troubleshooting",
-      "produces": ["docs/CONSOLIDATION.md"],
-      "consumes": ["docs/CONSOLIDATION-DESIGN.md"],
-      "deps": ["git-hook-invalidation"],
-      "validate": [{"type": "artifact-exists", "path": "docs/CONSOLIDATION.md"}],
+      "produces": [
+        "docs/CONSOLIDATION.md"
+      ],
+      "consumes": [
+        "docs/CONSOLIDATION-DESIGN.md"
+      ],
+      "deps": [
+        "git-hook-invalidation"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "path": "docs/CONSOLIDATION.md"
+        }
+      ],
       "idempotent": true
     },
     "consolidation-complete": {
       "id": "consolidation-complete",
       "desc": "Consolidation system complete: all tests pass, docs updated, existing DAGs migrated, single source of truth operational",
-      "produces": [".consolidation/system-ready.json"],
+      "produces": [
+        ".consolidation/system-ready.json"
+      ],
       "consumes": [],
-      "deps": ["consolidation-documentation"],
-      "validate": [{"type": "artifact-exists", "path": ".consolidation/system-ready.json"}],
+      "deps": [
+        "consolidation-documentation"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "path": ".consolidation/system-ready.json"
+        }
+      ],
       "idempotent": true
     }
   }
