@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "engine": "spec-kit",
   "version": "1.0.0",
-  "compile_hash": "e73a1cf0bfe74887deb99f4361ee795eb1546df12b2e5e8bc7b2ab41e2a30b16",
-  "spec_sha": "5a9fad406aad2f2cccb2f9668137c9be4d953cb5afa113624bf5d7c685a1fc73",
-  "importedAt": "2026-03-03T22:39:21.203Z",
-  "dagId": "friction-fix-003"
+  "compile_hash": "fd3e9724bd469bc1a47cd08b865d45763e56971a0662b0ed52da9f4b99a785b9",
+  "spec_sha": "941d96774904cc9818e4e248da2a46dcc5462d805d9216979d6652bf5efe2cd8",
+  "importedAt": "2026-03-03T22:57:54.253Z",
+  "dagId": "hardening-004"
 }
