@@ -52,6 +52,7 @@ import { resolveWidth } from '../src/lib/render/layout.ts';
 import { renderOrient, renderPlanGallery, renderPlanSelect, renderPlanStatus } from '../src/lib/cli-human.ts';
 import type { OrientData, GalleryData, PlanSelectData, PlanStatusData } from '../src/lib/cli-human.ts';
 import { specKitInit, SPEC_KIT_INIT_HELP } from '../src/commands/spec-init.ts';
+import { lookupSchema, listCommands, schemaToJsonSchema } from '../src/lib/schemas.ts';
 
 const rawArgs = process.argv.slice(2);
 const repoRoot = process.cwd();
@@ -147,7 +148,7 @@ if (_humanRenderers[_outputOpts.cmd]) {
 }
 
 // Commands that don't require a note
-const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'spec', 'dag']);
+const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'spec', 'dag', 'api']);
 const isOrientCheck = (cmd === 'orient') && args.includes('--check');
 if (isOrientCheck) {
   NOTE_EXEMPT.add('orient');
@@ -229,6 +230,22 @@ function recordTrailError(cmd: string, code: string, message: string, note?: str
   } catch { /* trail write must never crash the CLI */ }
 }
 
+// --- Schema key derivation (maps cmd + subcmd to schemas registry key) ---
+function deriveSchemaKey(): string {
+  if (cmd === 'dag' && args[1]) return `dag.${args[1]}`;
+  if (cmd === 'spec' && args[1]) return `spec.${args[1]}`;
+  return cmd;
+}
+
+/** Build schema + example fields for a given schema key. Returns empty object if no schema registered. */
+function schemaFields(key: string): { schema?: object; example?: object } {
+  const s = lookupSchema(key);
+  if (!s?.input) return {};
+  const result: { schema?: object; example?: object } = { schema: schemaToJsonSchema(s.input) };
+  if (s.examples?.[0]?.input) result.example = s.examples[0].input;
+  return result;
+}
+
 // --- Async section ---
 async function crossOrientWithState(dag: Graph<string>) {
   const completion = CompletionStore.loadOrEmpty(repoRoot);
@@ -272,7 +289,17 @@ async function main() {
       const code = rej.code ?? ErrorCode.INTERNAL_ERROR;
       const message = rej.message ?? String(e);
       recordTrailError(cmd, code, message, note);
-      emit({ ok: false, cmd: _outputOpts.cmd, error: { code, message, fix: rej.context?.fix ? [rej.context.fix] : undefined } }, _outputOpts);
+
+      // Centralized schema attachment: enrich VALIDATION_FAILED errors with schema + example
+      const errorPayload: import('../src/lib/cli-envelope.ts').CliError = {
+        code, message,
+        fix: rej.context?.fix ? [rej.context.fix] : undefined,
+      };
+      if (code === 'VALIDATION_FAILED') {
+        Object.assign(errorPayload, schemaFields(deriveSchemaKey()));
+      }
+
+      emit({ ok: false, cmd: _outputOpts.cmd, error: errorPayload }, _outputOpts);
       process.exit(1);
     } else {
       const message = e instanceof Error ? e.message : String(e);
@@ -296,6 +323,9 @@ async function routeCommand(cmd: string, note: string | undefined): Promise<void
 
     // DAG mutation group
     case 'dag':       return await cmdDagGroup(note);
+
+    // Schema discovery
+    case 'api':       return cmdApi();
 
     // Help & unknown
     case 'help':
@@ -1010,7 +1040,10 @@ async function cmdDagInsert(note: string) {
     json({ ok: true, op: 'insert', nodeId: nodeSpec.id, receipt });
   } catch (e) {
     if (e instanceof MutationError) {
-      json({ error: e.message, errors: e.errors, receipt: e.receipt });
+      emit({ ok: false, cmd: _outputOpts.cmd, error: {
+        code: ErrorCode.VALIDATION_FAILED, message: e.message,
+        fix: e.errors, ...schemaFields('dag.insert'),
+      }}, _outputOpts);
       process.exit(1);
     }
     throw e;
@@ -1052,7 +1085,10 @@ async function cmdDagRemove(note: string) {
     json({ ok: true, op: 'remove', nodeId, cascade, receipt });
   } catch (e) {
     if (e instanceof MutationError) {
-      json({ error: e.message, errors: e.errors, receipt: e.receipt });
+      emit({ ok: false, cmd: _outputOpts.cmd, error: {
+        code: ErrorCode.VALIDATION_FAILED, message: e.message,
+        fix: e.errors, ...schemaFields('dag.remove'),
+      }}, _outputOpts);
       process.exit(1);
     }
     if (e instanceof Error) {
@@ -1113,7 +1149,10 @@ async function cmdDagModify(note: string) {
     json({ ok: true, op: 'modify', nodeId, receipt });
   } catch (e) {
     if (e instanceof MutationError) {
-      json({ error: e.message, errors: e.errors, receipt: e.receipt });
+      emit({ ok: false, cmd: _outputOpts.cmd, error: {
+        code: ErrorCode.VALIDATION_FAILED, message: e.message,
+        fix: e.errors, ...schemaFields('dag.modify'),
+      }}, _outputOpts);
       process.exit(1);
     }
     if (e instanceof Error) {
@@ -1131,6 +1170,54 @@ function cmdDagLog() {
   json({ ok: true, count: mutations.length, total: log.mutations.length, mutations });
 }
 
+// --- API schema discovery ---
+function cmdApi() {
+  const target = args[1]; // command name or --all
+  const all = args.includes('--all');
+
+  if (all || !target) {
+    // List all commands or dump full registry
+    const commands = listCommands();
+    if (all) {
+      const registry: Record<string, unknown> = {};
+      for (const { command } of commands) {
+        const s = lookupSchema(command);
+        if (!s) continue;
+        registry[command] = {
+          description: s.description,
+          input: s.input ? schemaToJsonSchema(s.input) : null,
+          output: s.output ? schemaToJsonSchema(s.output) : null,
+          examples: s.examples,
+        };
+      }
+      emit({ ok: true, cmd: 'api', data: { commands: registry } }, _outputOpts);
+    } else {
+      emit({ ok: true, cmd: 'api', data: { commands } }, _outputOpts);
+    }
+    return;
+  }
+
+  const schema = lookupSchema(target);
+  if (!schema) {
+    const available = listCommands().map(c => c.command);
+    emit({ ok: false, cmd: 'api', error: {
+      code: ErrorCode.NODE_NOT_FOUND,
+      message: `No schema registered for command: ${target}`,
+      fix: [`Available commands: ${available.join(', ')}`],
+    }}, _outputOpts);
+    process.exit(1);
+    return;
+  }
+
+  emit({ ok: true, cmd: 'api', data: {
+    command: target,
+    description: schema.description,
+    input: schema.input ? schemaToJsonSchema(schema.input) : null,
+    output: schema.output ? schemaToJsonSchema(schema.output) : null,
+    examples: schema.examples,
+  }}, _outputOpts);
+}
+
 // --- Help ---
 function cmdHelp() {
   console.log(`roadmap — DAG expansion protocol CLI
@@ -1144,13 +1231,18 @@ Command groups (use 'roadmap <group> help' for details):
   spec <sub>         Spec planning and intake: plan, import, intake, compile, init
   dag <sub>          DAG mutations: insert, remove, modify, log
 
-All commands require --note "reason" (except help/orient).
+Discovery:
+  api [<command>]    Schema discovery (input/output JSON Schema + examples)
+  api --all          Full registry dump
+
+All commands require --note "reason" (except help/orient/api).
 Output is JSON. Use jq for filtering.
 
 Examples:
   roadmap orient --note "check position"
   roadmap make spec.json --note "create ideal DAG"
   roadmap advance --note "move to next batch"
+  roadmap api make
 `);
 }
 

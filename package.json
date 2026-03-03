@@ -29,5 +29,8 @@
     "husky": "^9.1.7",
     "typescript": "^5.8.0",
     "vitest": "^4.0.0"
+  },
+  "dependencies": {
+    "zod": "^4.3.6"
   }
 }

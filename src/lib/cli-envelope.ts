@@ -43,6 +43,8 @@ export interface CliError {
   code: string;
   message: string;
   fix?: string[];
+  schema?: object;    // JSON Schema of expected input (when VALIDATION_FAILED)
+  example?: object;   // One valid example input
 }
 
 export type OutputFormat = 'json' | 'human';
