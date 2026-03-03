@@ -1,10 +1,13 @@
 // @module orient-forward
-// @exports findPendingSpecs
+// @exports scanPendingSpecs, PendingSpec
 // @types PendingSpec
 
-import { readdirSync, readFileSync, existsSync } from 'fs';
-import { join } from 'path';
+import { readFileSync, readdirSync } from 'fs';
+import { resolve } from 'path';
 
+/**
+ * PendingSpec — A spec file (.roadmap/*-spec.json) that hasn't been loaded into head.json yet.
+ */
 export interface PendingSpec {
   path: string;
   dagId: string;
@@ -12,69 +15,51 @@ export interface PendingSpec {
 }
 
 /**
- * Scan for unloaded spec files in .roadmap directory.
- * Returns specs that have dag_id fields not matching currentDagId and not in head-index.json.
+ * Scan .roadmap directory for unloaded specs.
+ *
+ * Compares DAG IDs in spec files with the current head.json dag_id.
+ * Returns array of specs not yet loaded.
+ *
+ * @param repoRoot — repository root (contains .roadmap/)
+ * @param currentHeadDagId — current DAG ID from head.json
+ * @returns Array of pending specs
  */
-export function findPendingSpecs(
+export function scanPendingSpecs(
   repoRoot: string,
-  currentDagId: string
+  currentHeadDagId: string,
 ): PendingSpec[] {
-  const roadmapDir = join(repoRoot, '.roadmap');
-
-  // Load historical dag IDs from head-index.json if it exists
-  const historicalDagIds = new Set<string>();
-  const headIndexPath = join(roadmapDir, 'head-index.json');
-  if (existsSync(headIndexPath)) {
-    try {
-      const indexData = JSON.parse(readFileSync(headIndexPath, 'utf-8'));
-      if (indexData.id) {
-        historicalDagIds.add(indexData.id);
-      }
-    } catch {
-      // If head-index.json is malformed, skip it
-    }
-  }
-
+  const roadmapDir = resolve(repoRoot, '.roadmap');
   const pending: PendingSpec[] = [];
 
-  // Glob for spec files: *-spec.json and *spec*.json
-  let files: string[] = [];
   try {
-    files = readdirSync(roadmapDir);
-  } catch {
-    // Directory doesn't exist or can't be read
-    return [];
-  }
+    const files = readdirSync(roadmapDir);
+    const specFiles = files.filter(f => f.endsWith('-spec.json') && f !== 'spec-origin.json');
 
-  const specFiles = files.filter(
-    (f) => f.endsWith('-spec.json') || f.includes('spec') && f.endsWith('.json')
-  );
+    for (const file of specFiles) {
+      const specPath = resolve(roadmapDir, file);
+      try {
+        const content = readFileSync(specPath, 'utf-8');
+        const spec = JSON.parse(content);
 
-  for (const file of specFiles) {
-    const filePath = join(roadmapDir, file);
-    try {
-      const content = readFileSync(filePath, 'utf-8');
-      const spec = JSON.parse(content);
-      const dagId = spec.dag_id;
+        // Only consider valid spec format
+        if (typeof spec === 'object' && spec !== null && 'dag_id' in spec) {
+          const dagId = spec.dag_id;
 
-      if (!dagId) {
-        // Skip specs without dag_id
-        continue;
+          // Only include if not already in head.json
+          if (dagId !== currentHeadDagId) {
+            pending.push({
+              path: `.roadmap/${file}`,
+              dagId,
+              desc: spec.dag_desc || undefined,
+            });
+          }
+        }
+      } catch (e) {
+        // Skip specs that can't be parsed
       }
-
-      // Exclude if it matches current DAG or is in history
-      if (dagId === currentDagId || historicalDagIds.has(dagId)) {
-        continue;
-      }
-
-      pending.push({
-        path: join('.roadmap', file),
-        dagId,
-        desc: spec.dag_desc,
-      });
-    } catch {
-      // Skip malformed spec files
     }
+  } catch (e) {
+    // If .roadmap dir doesn't exist or can't be read, return empty
   }
 
   return pending;
