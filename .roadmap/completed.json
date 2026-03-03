@@ -108,5 +108,15 @@
     "nodeId": "runtime-origin-gate",
     "completedAt": "2026-03-03T15:08:13+01:00",
     "evidence": "requireValidOrigin() in bin/roadmap.ts committed b2fea81"
+  },
+  {
+    "nodeId": "implement-distributed-dag",
+    "completedAt": "2026-03-03T20:50:00+00:00",
+    "evidence": "src/protocol-distributed.ts + tests/distributed-dag.test.ts (12/12 pass) committed f1e4a86"
+  },
+  {
+    "nodeId": "self-teaching-enabled",
+    "completedAt": "2026-03-03T20:55:00+00:00",
+    "evidence": "All validators pass: metrics.jsonl exists, spec-conformance.ts exists, checkpoint-runtime.ts exists, ENABLED.json written"
   }
 ]

@@ -456,13 +456,13 @@ async function cmdAdvance(note: string) {
   }
 
   // Validate all produce artifacts exist for current batch
-  const completions = await loadCompletionsWithEvidence(repoRoot);
+  const completion = CompletionStore.loadOrEmpty(repoRoot);
   for (const nodeId of pos.position) {
     const node = dag.nodes[nodeId as keyof typeof dag.nodes] as any;
     if (!node) continue;
 
     const produces = node.produces ?? [];
-    if (!completions.has(nodeId) && produces.length > 0) {
+    if (!completion.hasPassing(nodeId) && produces.length > 0) {
       json({
         error: `Missing completion for ${nodeId}`,
         produces,
@@ -488,7 +488,7 @@ async function cmdAdvance(note: string) {
   }
 
   // Move to next batch using advanceBatch
-  const next = await advanceBatch(dag, completions as any, retiredSet());
+  const next = await advanceBatch(dag, completion, retiredSet());
 
   if (!next || next.position.length === 0) {
     // Terminal: all work complete

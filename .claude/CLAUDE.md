@@ -27,10 +27,12 @@ Layer 2: Batch Execution
 
 Layer 3: Enforcement & Safety
   ├─ Pre-commit gates (4 gates)      — branch discipline, gitsafe, DAG edit auth
-  ├─ Gitsafe (gitsafe-loader.ts)     — file access control (denylist, size limits)
+  ├─ Gitsafe (gitsafe-loader.ts)     — file access control (denylist, size limits, multi-repo)
   ├─ Validator framework (5 types)   — artifact-exists, shell, function, schema, manual-approval
-  └─ CheckpointManager (recovery.ts) — snapshots, rollback (EXISTS BUT UNUSED)
-  Status: ✓ MOSTLY COMPLETE (checkpoint unused)
+  ├─ CheckpointManager (recovery.ts) — snapshots, rollback, wired into runtime
+  ├─ DAG intake pipeline             — origin enforcement, blocks manual DAG construction
+  └─ DAG mutator (dag-mutator.ts)    — insert/remove/modify with provenance receipts
+  Status: ✓ COMPLETE
 
 Layer 4: Agent Coordination [PARTIAL]
   ├─ Worktree spawning          — isolated DAG editing per agent
@@ -41,58 +43,42 @@ Layer 4: Agent Coordination [PARTIAL]
   └─ Status synchronization     — MISSING
   Status: 🟡 PARTIAL (worktrees work, swarm doesn't)
 
-Layer 5: Spec Integration [PARTIAL]
+Layer 5: Spec Integration
   ├─ Spec parsing               — JSON IR exists
   ├─ DAG generation from spec   — basic (exists)
-  ├─ Scenario mapping           — MISSING (Given/When/Then → node mapping)
-  ├─ Conformance validation     — MISSING (validate DAG against scenarios)
-  └─ Coverage tracking          — MISSING
-  Status: 🟡 PARTIAL (parse works, validation missing)
+  ├─ Scenario mapping           — spec-conformance.ts (Given/When/Then → node mapping)
+  ├─ Conformance validation     — spec-conformance validator (validates DAG against scenarios)
+  ├─ LLM feedback loop          — llm-feedback.ts (metrics → improvement prompts)
+  └─ Distributed DAG            — protocol-distributed.ts (multi-repo DAG state + pattern mining)
+  Status: ✓ COMPLETE
 
-Layer 6: Observability [MISSING]
+Layer 6: Observability
   ├─ Trail logging              — .roadmap/trail.jsonl (exists)
-  ├─ Metrics extraction         — MISSING (SLO tracking from trail)
-  ├─ Telemetry/dashboard        — MISSING
-  ├─ Error attribution          — MISSING
-  └─ Audit visualization        — MISSING
-  Status: 🔴 MISSING (only trail exists, no analysis)
+  ├─ Metrics extraction         — metrics-extractor.ts (SLO tracking from trail)
+  ├─ Checkpoint runtime         — checkpoint-runtime.ts (snapshots + audit trail)
+  ├─ Error attribution          — trail error recording with structured codes
+  └─ Telemetry/dashboard        — MISSING
+  Status: ✓ MOSTLY COMPLETE (dashboard missing)
 ```
 
-### What Exists But Isn't Wired
+### Self-Compounding Stack (Implemented)
 
-These are **high-leverage** opportunities — code exists, just needs integration:
+These modules form the self-teaching pipeline:
 
-1. **CheckpointManager** (src/recovery.ts)
-   - Creates snapshots of DAG state at each node
-   - Records decisions + rollback points
-   - Just needs wiring into `complete()` flow (2-3 days)
-   - Unlocks audit trail for all downstream layers
+1. **CheckpointManager** (src/checkpoint-runtime.ts) — wired into runtime, snapshots + rollback
+2. **Metrics extraction** (src/metrics-extractor.ts) — SLO tracking from trail.jsonl
+3. **Gitsafe multi-repo** (src/lib/gitsafe-loader.ts) — file access control across N repos
+4. **Spec-conformance** (src/validators/spec-conformance.ts) — Given/When/Then → node validation
+5. **LLM feedback** (src/llm-feedback.ts) — metrics + audit → improvement prompts
+6. **Distributed DAG** (src/protocol-distributed.ts) — multi-repo DAG merge + pattern mining
+7. **DAG mutator** (src/lib/dag-mutator.ts) — insert/remove/modify with provenance
+8. **Intake pipeline** (src/lib/intake/index.ts) — enforced spec origin for all DAGs
 
-2. **Trail logging** (.roadmap/trail.jsonl)
-   - Already records every node execution
-   - Extract metrics retroactively (no new instrumentation)
-   - Zero collection cost, data already exists (1-2 days)
-
-3. **Gitsafe validation** (src/lib/gitsafe-loader.ts)
-   - Enforces file access on single repo
-   - Extend to N repos (small change, 1-2 days)
-   - Prerequisite for distributed DAG
-
-### Gap Inventory (What's Missing & Why It Matters)
-
-**🔴 CRITICAL (self-compounding depends on these):**
-- **Metrics/SLO** — Without measurement, system can't teach itself
-- **Spec-conformance** — Without validation, "correct" is subjective
-- **Audit trail** — Without history, patterns can't emerge
+### Gap Inventory
 
 **🟡 HIGH (enables distributed work):**
-- **Distributed DAG** — Cross-project patterns (100x stronger signal than single-repo)
-- **Transactional updates** — Safe experimentation + rollback learning
-- **Error recovery** — Graceful failures teach; crashes don't
-
-**🔧 OPERATIONAL (not self-teaching but operational):**
-- **Swarm orchestration** — Multi-agent coordination (40% entropy-fighting power)
-- **Metrics dashboard** — Visualization (nice-to-have)
+- **Swarm orchestration** — Multi-agent coordination (worktrees work, no swarm layer)
+- **Metrics dashboard** — Visualization of trail/metrics data
 
 ### Integration Patterns (Learn from These Branches)
 
@@ -126,16 +112,16 @@ Reference these completed branches to understand how to wire systems:
 ### Quick Reference Map
 
 **"I need to add observability"**
-→ See: Layer 6, Metrics/SLO gap, integration pattern: trail extraction + CheckpointManager
+→ Layer 6: metrics-extractor.ts, checkpoint-runtime.ts, trail.jsonl. Gap: dashboard/visualization.
 
 **"I need to support multiple repos"**
-→ See: Layer 5, Distributed DAG gap, integration pattern: feat/consolidation-complete + gitsafe extension
+→ Layer 5: protocol-distributed.ts (multi-repo merge), gitsafe-loader.ts (multi-repo access control).
 
 **"I need agents to generate correct DAGs"**
-→ See: Layer 5, Spec-conformance gap, integration pattern: feat/spec-kit-optimize branch
+→ Layer 5: spec-conformance.ts (scenario → node validation), intake pipeline (origin enforcement).
 
 **"I need the system to teach itself"**
-→ See: All of Layer 6 + Layer 5, foundation: metrics (measurement) + spec-conformance (correctness definition)
+→ Full pipeline: metrics-extractor → llm-feedback → spec-conformance → distributed DAG pattern mining.
 
 ### Session Checklist (Before Starting Work)
 
@@ -162,7 +148,7 @@ If agent can't check all ^, ask for clarification before starting.
 | `roadmap/validation` | validateNode, validateGraph, validateBatch |
 | `roadmap/versioning` | loadDAG, migration, compatibility |
 
-Full file-by-file map: `docs/MODULE-MAP.md`
+Use `roadmap api --all` for full schema map, or grep `@exports` across src/ for API surface.
 
 ## Core API
 
@@ -224,7 +210,7 @@ Nodes can declare `mode: 'plan'` to signal decomposition rather than execution.
 - **`expanded` validation rule**: checks that nodes with `expandedFrom === nodeId` exist in the graph
 - **Brief.mode**: agents receive `'plan'` or `'execute'` in their sealed brief and branch on it
 
-Chart legend: `📋` = plan node, `🔍` = pre-gate workable, `👉` = current batch, `✅` = done
+Orient output includes `preGate` array for plan nodes workable before deps close.
 
 ## Validation Stack
 
@@ -280,25 +266,25 @@ Multiple DAGs are consolidated via:
 ## CLI
 
 ```
-bin/roadmap orient    --note "..."   Batch position + produces/consumes + preGate (JSON)
-bin/roadmap advance   --note "..."   Advance to next batch (requires current batch complete)
-bin/roadmap describe  --note "..."   Full API surface + project state
-bin/roadmap validate  --note "..."   Run validation rules (all or single node)
-bin/roadmap parallel  --note "..."   Batched execution groups
-bin/roadmap expand    --note "..."   Run expansion script, validate, commit
-bin/roadmap branch    --note "..."   Create git branch with optional DAG
-bin/roadmap chart                    Pretty-print progress chart with emoji bars
-bin/roadmap chart --deps             Cross-repo chart with dependency positions
-bin/roadmap retire <id> --note "..." Skip/retire a node (--cascade, --undo, --list)
-bin/roadmap trail [--last N]         Read invocation trail (local)
-bin/roadmap trail --global           Cross-project trail (~/.roadmap/trail.jsonl)
-bin/roadmap trail --repo <name>      Filter by repo name
-bin/roadmap trail --archive          Commit (local) or truncate (global)
-bin/roadmap dig [path]               Browse/restore archived files from git history
-bin/roadmap help                     Usage
+Core (mainline execution loop):
+  bin/roadmap make <spec>  --note "..."   Create ideal DAG from spec
+  bin/roadmap orient       --note "..."   Batch position + produces/consumes (JSON)
+  bin/roadmap advance      --note "..."   Advance to next batch (requires batch complete)
+
+Groups:
+  bin/roadmap dag insert   --note "..."   Insert node into DAG
+  bin/roadmap dag remove   --note "..."   Remove node (--cascade for dependents)
+  bin/roadmap dag modify   --note "..."   Modify node fields
+  bin/roadmap dag log                     Show mutation history
+  bin/roadmap spec plan    --note "..."   Spec planning (--gallery, select <id>, status)
+
+Discovery:
+  bin/roadmap api [<cmd>]                 Schema discovery (JSON Schema + examples)
+  bin/roadmap api --all                   Full registry dump
+  bin/roadmap help                        Usage
 ```
 
-All commands except help/trail/chart/install/dig require `--note "reason"`. Every invocation appends to both `~/.roadmap/trail.jsonl` (global) and `.roadmap/trail.jsonl` (local, if DAG exists). Trail entries include batch position (string[]) and level.
+All commands require `--note "reason"` (except help, orient, api). Output is JSON. Every invocation appends to both `~/.roadmap/trail.jsonl` (global) and `.roadmap/trail.jsonl` (local).
 
 ## Session Protocol
 
@@ -309,23 +295,19 @@ Example: `--note "auth module — adding JWT refresh token rotation"`
 **Core mainline:**
 ```bash
 roadmap orient --note "..."      # Find batch position
-roadmap show <node-id>           # Inspect node spec
-roadmap explore --api            # Dump explore API surface (if needed)
-roadmap dag expand script.ts     # Decompose DAG (if needed)
-roadmap team claim <id>          # Claim node
-roadmap complete <id> --note ""  # Mark done + advance
+roadmap api <cmd>                # Schema discovery (if needed)
 roadmap advance --note "..."     # Move to next batch
 ```
 
-**Group reference:** `roadmap <group> help` (dag, team, spec, util)
+**Group reference:** `roadmap <group> help` (dag, spec)
 
-**During work**: Orient after completing logical units. Use `roadmap chart` to see progress.
+**During work**: Orient after completing logical units.
 
-**At session end**: `roadmap util trail --archive` if trail has entries.
+**Completion tracking**: `.roadmap/completed.json` stores node completion records. Update directly or via `saveCompletionWithEvidence()` from `src/lib/evidence/completion-evidence.ts`.
 
 ## This Repo's Own Roadmap
 
-DAG stored in `.roadmap/head.json`. 127 nodes across 17 phases. Position at `term` (99% complete). Legacy query via `roadmap.ts` still works but prefer `bin/roadmap`.
+DAG stored in `.roadmap/head.json`. 24 nodes (self-compounding-001). Position at terminal node `self-teaching-enabled` — 23/24 complete, 1 remaining.
 
 ## Expansion Protocol
 
@@ -353,30 +335,19 @@ Grep for `@exports` across src/ to get the full API map without reading function
 
 ---
 
-## CLI Consolidation (v0.3.0+)
+## CLI Surface (v0.3.0+)
 
-Consolidated 41 commands → **10 total** (6 core + 4 groups).
+3 core commands + 2 groups + discovery.
 
-### Mainline (6 Core Commands)
-Execute primary DAG operations in sequence:
+### Core
+- `make <spec>` — Create ideal DAG from spec (validates: define, verify, check)
 - `orient` — Batch position from filesystem
-- `advance` — Move to next batch (validates current)
-- `show <id>` — Full node spec
-- `complete <id>` — Claim → checkpoint → advance
-- `chart` — Progress visualization
-- `validate [id]` — Validation rule checks
+- `advance` — Move to next batch (validates current batch complete)
 
-### Groups (4 Command Groups)
-Operational tasks clustered by domain:
-- `dag {diff,expand,propagate,retire,optimize,switch,spawn}` — DAG manipulation
-- `team {claim,dispatch,strategy,assign}` — Multi-agent coordination
+### Groups
+- `dag {insert,remove,modify,log}` — DAG mutations with provenance
 - `spec {plan}` — Spec planning (gallery, select, status)
-- `util {trail,checkpoint,install,federation}` — Session utilities
 
-### Surface
-- **Help**: 33 lines (<40 target)
-- **No backward compat**: clean break from 41-command surface
-- **Enforcement**: pre-commit branch discipline + validation gates
-- **Status**: Minimal, production-ready
-
-Migrations: See `docs/MIGRATION.md` for command mappings.
+### Discovery
+- `api [<cmd>]` — JSON Schema for any command's input/output
+- `api --all` — Full schema registry
