@@ -313,28 +313,28 @@ export function tasksToDAG(tasks: ParsedTask[], opts: ImportOptions): Graph<stri
   // Build nodes
   const nodes: Record<string, NodeSpec<string, string>> = {};
 
-  // Init node: first priority level, no deps
-  const initTasks = sorted.filter(t => t.priority === sorted[0].priority && t.depends.length === 0);
-  if (initTasks.length === 0) throw new Error('No root tasks found (P0 with no dependencies)');
+  // Init node: all tasks with no dependencies are roots
+  const rootTasks = sorted.filter(t => t.depends.length === 0);
+  if (rootTasks.length === 0) throw new Error('No root tasks found (tasks with no dependencies)');
 
-  // If multiple P0 tasks, synthesize an init node
+  // If single root, use it as init; otherwise synthesize
   let initId: string;
-  if (initTasks.length === 1 && initTasks[0].depends.length === 0) {
-    initId = initTasks[0].id;
+  if (rootTasks.length === 1) {
+    initId = rootTasks[0].id;
   } else {
     initId = 'init';
     if (taskIds.has('init')) initId = '_init';
     nodes[initId] = {
       id: initId,
-      desc: 'Synthetic init — roots all P0 tasks',
+      desc: 'Synthetic init — roots all independent tasks',
       produces: [`${initId}.marker`],
       consumes: [],
       deps: [],
       validate: [],
       idempotent: true,
     } as any;
-    // Make all P0 tasks depend on synthetic init
-    for (const t of initTasks) {
+    // Wire all root tasks to synthetic init
+    for (const t of rootTasks) {
       if (!t.depends.includes(initId)) t.depends.push(initId);
       if (!t.consumes.includes(`${initId}.marker`)) t.consumes.push(`${initId}.marker`);
     }

@@ -759,8 +759,11 @@ async function cmdMake(note: string) {
     const verifyErrors = verify(dag);
     const checkResult = check(dag);
 
-    if (!checkResult.done || verifyErrors.length > 0) {
-      throw new Error(`${verifyErrors.length} verification errors`);
+    if (verifyErrors.length > 0) {
+      throw new Error(`${verifyErrors.length} verification errors: ${verifyErrors.map((e: any) => e.message ?? e).join('; ')}`);
+    }
+    if (!checkResult.done) {
+      throw new Error(`Reachability check failed: ${checkResult.orphans.join('; ')}`);
     }
   } catch (e) {
     throw new RoadmapError('VALIDATION_FAILED', {
