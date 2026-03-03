@@ -1,96 +1,101 @@
 {
-  "id": "dag-recursion-001",
-  "desc": "Recursive DAG pattern: every DAG level enforces make→validate→brief→execute→advance loop. Mainline: 3 commands (make, orient, advance).",
-  "init": "baseline",
-  "term": "recursive-locked",
+  "id": "hardening-001",
+  "desc": "Minimal + Safe: tree-shake main, enforce via gitsafe + branch protections, archive full codebase.",
+  "init": "start",
+  "term": "hardened-locked",
   "nodes": {
-    "baseline": {
-      "id": "baseline",
-      "desc": "Current: 5-core + spec. Target: 3-core with recursive DAG enforcement.",
+    "start": {
+      "id": "start",
+      "desc": "Baseline: current recursive-locked state. Target: hardened main with gitsafe enforcement.",
       "produces": [],
       "consumes": [],
       "deps": [],
       "validate": [],
       "idempotent": false
     },
-    "redesign-dag-schema": {
-      "id": "redesign-dag-schema",
-      "desc": "Update DAG schema: every node/DAG must declare phase (make|validate|brief|execute|term). Cycles forbidden. Init↔term mandatory.",
-      "produces": [".roadmap/dag-schema.json", "src/protocol.ts"],
+    "archive-full-codebase": {
+      "id": "archive-full-codebase",
+      "desc": "Create archive/full-codebase branch from current HEAD. Preserves entire codebase for reference.",
+      "produces": [],
       "consumes": [],
-      "deps": ["baseline"],
-      "validate": [{"type": "shell", "command": "npx tsc --noEmit src/protocol.ts"}],
+      "deps": ["start"],
+      "validate": [{"type": "shell", "command": "git rev-parse --verify archive/full-codebase"}],
       "idempotent": true
     },
-    "implement-brief-sealing": {
-      "id": "implement-brief-sealing",
-      "desc": "Seal node briefs: agent gets deterministic, read-only spec (produces, validate rules, mode). No DAG introspection.",
-      "produces": ["src/lib/compile-brief.ts", "tests/brief-sealing.test.ts"],
+    "create-enforcement-config": {
+      "id": "create-enforcement-config",
+      "desc": "Create .roadmap/enforcement.json: gitsafe denylist, branch rules, allowed files, audit trail.",
+      "produces": [".roadmap/enforcement.json"],
       "consumes": [],
-      "deps": ["redesign-dag-schema"],
-      "validate": [{"type": "shell", "command": "npm test tests/brief-sealing.test.ts"}],
+      "deps": ["start"],
+      "validate": [{"type": "shell", "command": "jq '.version' .roadmap/enforcement.json"}],
       "idempotent": true
     },
-    "implement-recursive-validation": {
-      "id": "implement-recursive-validation",
-      "desc": "Validate at every DAG level: cycles, init↔term, reachability, phase ordering (make→validate→brief→execute→term).",
-      "produces": ["src/lib/validate-dag.ts", "tests/recursive-validation.test.ts"],
+    "tree-shake-main": {
+      "id": "tree-shake-main",
+      "desc": "Delete non-essential files from main: docs/, tests/, examples/, legacy src/lib/ subdirs. Keep only 10-15 core files.",
+      "produces": [],
       "consumes": [],
-      "deps": ["redesign-dag-schema"],
-      "validate": [{"type": "shell", "command": "npm test tests/recursive-validation.test.ts"}],
+      "deps": ["archive-full-codebase"],
+      "validate": [
+        {"type": "shell", "command": "! test -d docs"},
+        {"type": "shell", "command": "! test -d tests"},
+        {"type": "shell", "command": "test -f bin/roadmap.ts"},
+        {"type": "shell", "command": "test -f src/protocol.ts"}
+      ],
       "idempotent": true
     },
-    "refactor-mainline-cli": {
-      "id": "refactor-mainline-cli",
-      "desc": "Mainline: make, orient, advance. Remove: expand, spawn, switch, diff, retire, optimize, complete, chart, validate, hallucinate. Keep: spec group.",
-      "produces": ["bin/roadmap.ts"],
-      "consumes": [],
-      "deps": ["implement-brief-sealing"],
+    "integrate-gitsafe": {
+      "id": "integrate-gitsafe",
+      "desc": "Load enforcement.json in CLI. Route all file reads through gitsafe with denylist + size limits.",
+      "produces": ["bin/roadmap.ts", "src/lib/gitsafe-loader.ts"],
+      "consumes": [".roadmap/enforcement.json"],
+      "deps": ["create-enforcement-config"],
       "validate": [{"type": "shell", "command": "npx tsc --noEmit bin/roadmap.ts"}],
       "idempotent": true
     },
-    "update-help-surface": {
-      "id": "update-help-surface",
-      "desc": "Update help: 3 core commands (make, orient, advance) + spec group. Help < 20 lines.",
-      "produces": ["bin/roadmap.ts"],
+    "test-gitsafe-enforcement": {
+      "id": "test-gitsafe-enforcement",
+      "desc": "Tests: gitsafe rejects denylist paths, enforces maxBytes, validates on main branch only.",
+      "produces": ["tests/gitsafe-enforcement.test.ts"],
       "consumes": [],
-      "deps": ["refactor-mainline-cli"],
-      "validate": [{"type": "shell", "command": "test $(npx ts-node bin/roadmap.ts help | wc -l) -lt 20"}],
+      "deps": ["integrate-gitsafe"],
+      "validate": [{"type": "shell", "command": "npm test tests/gitsafe-enforcement.test.ts"}],
       "idempotent": true
     },
-    "test-make": {
-      "id": "test-make",
-      "desc": "Test make: LLM generates DAG from spec, validation rules enforced, briefs sealed.",
-      "produces": ["tests/make.test.ts"],
+    "setup-branch-protections": {
+      "id": "setup-branch-protections",
+      "desc": "Configure GitHub: main immutable, require status checks, require reviews, auto-delete branches after merge.",
+      "produces": [".github/branch-protections.yml"],
       "consumes": [],
-      "deps": ["refactor-mainline-cli"],
-      "validate": [{"type": "shell", "command": "npm test tests/make.test.ts"}],
+      "deps": ["tree-shake-main"],
+      "validate": [{"type": "artifact-exists", "target": ".github/branch-protections.yml"}],
       "idempotent": true
     },
-    "test-orient-briefs": {
-      "id": "test-orient-briefs",
-      "desc": "Test orient: returns batch position + sealed briefs only (no DAG introspection).",
-      "produces": ["tests/orient-briefs.test.ts"],
+    "verify-minimal-surface": {
+      "id": "verify-minimal-surface",
+      "desc": "Verify main has only essential files (< 50 files total, gitsafe can enumerate all).",
+      "produces": [".roadmap/metaflow/hardening/SURFACE.json"],
       "consumes": [],
-      "deps": ["refactor-mainline-cli"],
-      "validate": [{"type": "shell", "command": "npm test tests/orient-briefs.test.ts"}],
+      "deps": ["tree-shake-main"],
+      "validate": [{"type": "shell", "command": "test $(git ls-tree -r HEAD --name-only | wc -l) -lt 50"}],
       "idempotent": true
     },
-    "test-advance-loop": {
-      "id": "test-advance-loop",
-      "desc": "Test advance: validates work, checks phase gates, moves through make→validate→brief→execute→term.",
-      "produces": ["tests/advance-loop.test.ts"],
+    "test-immutability": {
+      "id": "test-immutability",
+      "desc": "Verify main cannot be pushed to directly, only via PR. Pre-commit hook blocks DAG edits outside feat/wip.",
+      "produces": ["tests/immutability.test.ts"],
       "consumes": [],
-      "deps": ["refactor-mainline-cli"],
-      "validate": [{"type": "shell", "command": "npm test tests/advance-loop.test.ts"}],
+      "deps": ["setup-branch-protections"],
+      "validate": [{"type": "shell", "command": "npm test tests/immutability.test.ts"}],
       "idempotent": true
     },
-    "recursive-locked": {
-      "id": "recursive-locked",
-      "desc": "Recursive DAG pattern locked: 3-core mainline (make, orient, advance), mandatory validation, briefs sealed, no escapes.",
-      "produces": [".roadmap/metaflow/recursion/LOCKED.json"],
+    "hardened-locked": {
+      "id": "hardened-locked",
+      "desc": "Hardening complete: minimal main (15 files), gitsafe enforced, branch protections active, archive preserved.",
+      "produces": [".roadmap/metaflow/hardening/LOCKED.json"],
       "consumes": [],
-      "deps": ["implement-recursive-validation", "update-help-surface", "test-make", "test-orient-briefs", "test-advance-loop"],
+      "deps": ["tree-shake-main", "integrate-gitsafe", "test-gitsafe-enforcement", "verify-minimal-surface", "test-immutability"],
       "validate": [],
       "idempotent": false
     }
