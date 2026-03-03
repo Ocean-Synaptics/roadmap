@@ -802,10 +802,8 @@ Core commands (mainline execution loop):
 Command groups (use 'roadmap <group> help' for details):
   spec <sub>         Spec planning and intake: plan, import, intake, compile, init
 
-Global flags:
-  --json, -j         Machine-readable JSON output
-
 All commands require --note "reason" (except help/orient).
+Output is JSON. Use jq for filtering.
 
 Examples:
   roadmap orient --note "check position"
