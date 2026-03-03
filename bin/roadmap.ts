@@ -789,11 +789,19 @@ async function cmdMake(note: string) {
   const dagJson = JSON.stringify(dag);
   const dagHash = createHash('sha256').update(dagJson).digest('hex');
   const specHash = createHash('sha256').update(specContent).digest('hex');
+
+  // Auto-compute compile_hash from tasks if missing or set to 'auto'
+  let compileHash = parsed.metadata?.compile_hash;
+  if (!compileHash || compileHash === 'auto') {
+    const tasksJson = JSON.stringify(parsed.tasks || []);
+    compileHash = createHash('sha256').update(tasksJson).digest('hex');
+  }
+
   const origin: SpecOrigin = {
     schemaVersion: 1,
     engine: parsed.engine?.name ?? 'spec-kit',
     version: parsed.engine?.version ?? '0.0.0',
-    compile_hash: parsed.metadata?.compile_hash ?? dagHash,
+    compile_hash: compileHash,
     spec_sha: specHash,
     importedAt: new Date().toISOString(),
     dagId: parsed.dag_id ?? parsed.id ?? 'ideal-dag',
