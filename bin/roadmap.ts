@@ -4373,7 +4373,7 @@ async function cmdSpecGroup(note: string) {
     case '-h':
       return cmdSpecHelp();
     case 'plan':     return await cmdPlanRouter(note);
-    case 'import':   return cmdImport(note);
+    case 'import':   return args.some((a, i) => a === '--from' && args[i + 1] === 'specify') ? cmdSpecImport(note) : cmdImport(note);
     case 'intake':   return cmdIntake(note);
     case 'compile':  return cmdSpecCompile(note);
     case 'init':     return cmdSpecInit(note);
@@ -5450,7 +5450,7 @@ function cmdSpecInit(note: string) {
   });
 }
 
-async function cmdSpecImport(note: string) {
+function cmdSpecImport(note: string) {
   const fromIdx = args.indexOf('--from');
   const source = fromIdx !== -1 ? args[fromIdx + 1] : 'specify';
 

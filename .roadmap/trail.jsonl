@@ -16,3 +16,5 @@
 {"ts":"2026-03-03T09:01:52.588Z","cmd":"orient","note":"canonical-state-flow-001 session start — implementing god metaflow","repo":"roadmap","position":[],"level":10,"dagId":"roadmap-dag-consolidation-001","detail":{"done":11,"remaining":0,"complete":true,"batchRemaining":0}}
 {"ts":"2026-03-03T09:01:55.516Z","cmd":"orient","note":"canonical-state-flow-001 session start","repo":"roadmap","position":["canonical-state-planning"],"level":0,"dagId":"roadmap-canonical-state-flow-001","detail":{"done":0,"remaining":12,"complete":false,"batchRemaining":1}}
 {"ts":"2026-03-03T09:02:52.493Z","cmd":"orient","note":"back to consolidation roadmap","repo":"roadmap","position":[],"level":10,"dagId":"roadmap-dag-consolidation-001","detail":{"done":11,"remaining":0,"complete":true,"batchRemaining":0}}
+{"ts":"2026-03-03T10:52:41.082Z","cmd":"spec-init","note":"initialize specify directory","repo":"roadmap","position":["untracked"],"level":0}
+{"ts":"2026-03-03T10:53:21.896Z","cmd":"spec-import","note":"import spec tasks","repo":"roadmap","position":["setup-database"],"level":0,"dagId":"spec-kit-1772535201896","detail":{"source":"specify","tasksCount":3}}
