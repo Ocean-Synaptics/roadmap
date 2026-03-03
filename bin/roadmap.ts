@@ -338,86 +338,24 @@ async function main() {
 
   try {
     switch (cmd) {
+      // Core commands (mainline execution loop)
       case 'orient':    return cmdOrient(note);
       case 'advance':   return await cmdAdvance(note!);
-      case 'describe':  return cmdDescribe(note!);
-      case 'validate':  return cmdValidate(note!);
-      case 'verify':    return await cmdVerify(note!);
-      case 'check':     return await cmdCheck(note!);
-      case 'expand':    return await cmdExpand(note!);
-      case 'branch':    return cmdBranch(note!);
-      case 'spawn':     return cmdSpawn(note!);
-      case 'position':  return cmdOrient(note); // alias
-      case 'parallel':  return cmdParallel(note!);
-      case 'optimize':  return cmdOptimize(note!);
-      case 'locate':    return cmdLocate(note!);
-      case 'sync':      return cmdSync(note!);
-      case 'trail':     return cmdTrail();
-      case 'chart':     return cmdChart();
-      case 'install':        return cmdInstall();
-      case 'install-hooks':  return cmdInstallHooks(note!);
-      case 'merge':     return await cmdMergeFrom();
-      case 'merge-batch': return await cmdMergeBatch(note!);
-      // case 'cleanup-worktrees': return cmdCleanupWorktrees(); // TODO: implement in future node
-      case 'claim':     return cmdClaim();
-      case 'dag':       return cmdDag(note!);
-      case 'switch':    return await cmdSwitch(note!);
-      case 'token':     return await cmdToken(note!);
-      case 'import':    return cmdImport(note!);
-      case 'intake':    return cmdIntake(note!);
-      case 'federation': return cmdFederation(note!);
-      case 'dispatch':  return await cmdDispatch(note!);
-      case 'spec':      return cmdSpec(note!);
-      case 'spec-kit':  return cmdSpecKit(note!);
-      case 'init':      return cmdInit(note!);
-      case 'report':    return await cmdReport(note!);
-      case 'scaffold':  return await cmdScaffold(note!);
-      case 'cluster':   return cmdCluster(note!);
-      case 'schedule':  return cmdSchedule(note!);
       case 'show':      return await cmdShow();
-      case 'commit':    return cmdCommit(note!);
       case 'complete':  return await cmdComplete(note!);
-      case 'certify':   return await cmdCertify(note!);
-      case 'checkpoint': return cmdCheckpoint(note);
-      case 'diff':      return cmdDiff();
-      case 'iter-id':   return cmdIterId();
-      case 'dig':       return cmdDig();
-      case 'propagate': return cmdPropagate(note!);
-      case 'remaining': return cmdRemaining();
-      case 'doctor':    return cmdDoctor();
-      case 'status':    return cmdStatus();
-      case 'explain':   return cmdExplain();
-      case 'receipts':  return cmdReceipts();
-      case 'completion': return cmdCompletion();
-      case 'artifacts': return cmdArtifacts();
-      case 'gallery':   return cmdGallery();
-      case 'blend':     return cmdBlend();
-      case 'explore':   return await cmdExplore();
-      case 'contract':  return cmdContract(note!);
-      case 'env-audit': return cmdEnvAudit();
-      case 'profile':   return cmdProfile(note!);
-      case 'audit':     return cmdAudit(note!);
-      case 'patch':     return cmdPatch(note!);
-      case 'compile-prompts': return cmdCompilePrompts(note!);
-      case 'compile-brief': return cmdCompileBrief(note!);
-      case 'gate':      return cmdGate(note!);
-      case 'plan':
-        if (args.includes('--gallery')) return await cmdPlanGallery(note!);
-        if (args[1] === 'select') return await cmdPlanSelect(note!);
-        if (args[1] === 'status') return await cmdPlanStatus();
-        if (args[1] === 'overlay') return cmdPlanOverlay(note!);
-        if (args[1] === 'schedule') return cmdPlanScheduleFromOverlay(note!);
-        json({ error: 'Unknown plan subcommand', fix: 'roadmap plan --gallery | plan select <id> --note "..." | plan status | plan overlay --select <id> --note "..." | plan schedule --note "..."' });
-        process.exit(1);
-        return;
-      case 'strategy':  return await cmdStrategy(note!);
-      case 'mf':        return await cmdMf(note!);
-      case 'internal':  return await cmdInternal(note!);
+      case 'chart':     return cmdChart();
+      case 'validate':  return cmdValidate(note!);
+
+      // Grouped commands
+      case 'dag':       return await cmdDag(note!);
+      case 'team':      return await cmdTeam(note!);
+      case 'spec':      return await cmdSpecGroup(note!);
+      case 'util':      return await cmdUtil(note);
       case 'help':
       case '--help':
       case '-h':        return cmdHelp();
       default:
-        json({ error: `Unknown command: ${cmd}`, fix: 'roadmap help' });
+        json({ error: `Unknown command: ${cmd}`, fix: `Mainline: {orient, advance, show, complete, chart, validate}. Groups: {dag, team, spec, util}. Use 'roadmap help' for details.` });
         process.exit(1);
     }
   } catch (e) {
@@ -4333,6 +4271,64 @@ async function cmdSwitch(note: string) {
   }
 }
 
+// --- team: multi-agent coordination (claim, dispatch, strategy, assign) ---
+
+async function cmdTeam(note: string) {
+  const sub = args[1];
+  switch (sub) {
+    case 'claim':    return cmdClaim();
+    case 'dispatch': return await cmdDispatch(note);
+    case 'strategy': return await cmdStrategy(note);
+    case 'assign':   return cmdOrient(note); // Team assign is implemented via orient --assign
+    default:
+      json({ error: `Unknown team subcommand: ${sub}`, fix: 'roadmap team claim|dispatch|strategy|assign' });
+      process.exit(1);
+  }
+}
+
+// --- spec: spec intake pipeline (plan, import, intake, compile) ---
+
+async function cmdSpecGroup(note: string) {
+  const sub = args[1];
+  switch (sub) {
+    case 'plan':     return await cmdPlanRouter(note);
+    case 'import':   return cmdImport(note);
+    case 'intake':   return cmdIntake(note);
+    case 'compile':  return cmdSpecCompile(note);
+    case 'init':     return cmdSpecInit(note);
+    default:
+      json({ error: `Unknown spec subcommand: ${sub}`, fix: 'roadmap spec plan|import|intake|compile|init' });
+      process.exit(1);
+  }
+}
+
+// Route plan to appropriate handler based on subcommand/flags
+async function cmdPlanRouter(note: string) {
+  if (args.includes('--gallery')) return await cmdPlanGallery(note);
+  if (args[1] === 'select') return await cmdPlanSelect(note);
+  if (args[1] === 'status') return await cmdPlanStatus();
+  if (args[1] === 'overlay') return cmdPlanOverlay(note);
+  if (args[1] === 'schedule') return cmdPlanScheduleFromOverlay(note);
+  json({ error: 'Unknown plan subcommand', fix: 'roadmap spec plan --gallery | spec plan select <id> --note "..." | spec plan status | spec plan overlay --select <id> --note "..." | spec plan schedule --note "..."' });
+  process.exit(1);
+}
+
+// --- util: session utilities (trail, checkpoint, explore, install, federation) ---
+
+async function cmdUtil(note?: string) {
+  const sub = args[1];
+  switch (sub) {
+    case 'trail':       return cmdTrail();
+    case 'checkpoint':  return cmdCheckpoint(note);
+    case 'explore':     return await cmdExplore();
+    case 'install':     return cmdInstall();
+    case 'federation':  return cmdFederation(note!);
+    default:
+      json({ error: `Unknown util subcommand: ${sub}`, fix: 'roadmap util trail|checkpoint|explore|install|federation' });
+      process.exit(1);
+  }
+}
+
 // --- token: issue, list, inspect, revoke, gc ---
 
 async function cmdToken(note: string) {
@@ -6492,197 +6488,39 @@ function enforceReceipt(): void {
 function cmdHelp() {
   console.log(`roadmap — DAG expansion protocol CLI
 
-Commands:
+Core commands (mainline execution loop):
   orient              Current batch position + produces/consumes + claims (JSON)
-  orient --check      Same as orient but no trail entry (for frequent polling)
-  orient --ready      Eager dispatch: nodes beyond current batch whose deps are met
-  orient --next       Next batch lookahead with pre-checked conflicts
-  orient --staged     Per-node isomorphism check: do staged files match a node's produces?
-  orient --json       Machine-canonical v1 envelope (schema_version, workspace, exit code)
-  orient --json --dag Full DAG structure: nodes, edges, toposort, blocked, executable
-  orient --assign     Round-robin assign batchRemaining to --owners (JSON)
   advance             Advance to next batch — runs validate[] on all nodes (JSON)
-  advance --structural-only  Skip quality gates, advance on artifact existence only
-  advance --allow-conflicts  Override batch conflict enforcement (receipted)
-  commit --node <id>  Stage node's produces, commit with [node: X] trailer, update git-state
-  complete <node-id>  Atomic: claim → checkpoint → reorient → auto-advance if last in batch (--no-advance to suppress)
-  checkpoint --label <name>  Save checkpoint (--note optional when --label given)
-  checkpoint --list   List all checkpoints
-  checkpoint --restore  Restore from latest valid checkpoint
-  describe            Full API surface + project state (JSON)
-  validate [node]     Run validation rules (all nodes or specific)
-  expand <script.ts>  Run expansion script, validate DAG, commit
-  expand <script> --type structural|iteration  Structural (idempotent) vs iteration (one-shot)
-  expand <script> --allow-conflicts  Override batch conflict enforcement (receipted)
-  branch <name> [dag] Create git branch with optional separate DAG
-  parallel            Show parallel execution batches (current repo)
-  parallel --cross-repo  Show parallel structure with sibling repos
-  parallel --graph    Include full DAG structure in output
-  locate --all        Discover all .roadmap/head.json files on machine
-  sync [--format fmt] Aggregate tasks from all discovered roadmaps (json|tree)
-  chart               Pretty-print progress chart with emoji bars
-  chart --deps        Cross-repo chart: show dependency repo positions
-  chart --critical-path  Annotate critical path nodes with ⚡ + footer
   show <node-id>      Full node spec as JSON (produces, consumes, deps, validate, status)
-  show --batch [level] All nodes at a batch level (default: current batch)
-  diff <ref|path>     Structural diff between current DAG and old version
-  diff <ref> --verbose  Include desc changes in diff output
-  merge --from <path> Diagnostic: show artifact connections to sibling DAG
-  cleanup-worktrees   Remove stale/orphaned worktrees from .claude/worktrees/
-  cleanup-worktrees --dry-run  Preview what would be removed without deleting
-  retire <node-id>    Skip/retire a node (treated as done by orient)
-  retire <id> --cascade  Retire node + all transitively dependent nodes
-  retire <id> --undo  Un-retire a previously retired node
-  retire --list       Show all retired nodes
-  claim <node-id>     Claim a node for exclusive work (advisory lock)
-  claim <id> --owner <name>  Claim with explicit owner (default: $AGENT_ID or $USER)
-  claim <id> --ttl <sec>     Claim TTL in seconds (default: 300)
-  claim <id> --renew         Extend TTL; fails if claim expired or owner mismatch
-  claim <id> --release       Release a claim
-  claim --list        Show all claims with expiry status
-  import --from speckit <file.md> --id <dag-id>  Parse tasks.md → roadmap DAG (receipted: input hash + DAG hash)
-  import --spec-compiled <path>  Import from spec-compiled IR (engine-agnostic, receipted)
-  import ... --allow-drift  Acknowledge and overwrite when same inputs produce different DAG
-  spec init --id <dag-id>  Create spec workspace + config (.roadmap/spec/)
-  spec init --engine <name>  Use alternate backend engine (default: spec-kit)
-  spec generate             Hash + receipt spec inputs via configured engine
-  spec compile              Parse tasks → spec-compiled.json (roadmap IR) + receipt
-  intake absorb --from <sha> [--to <sha>]  Absorb git range → .roadmap/intake/<id>.json
-  init <dag-id>       Add plan clarity gate to existing DAG
-  init <id> --statement "..." --threshold 0.95  Custom intent statement and confidence threshold
-  report                      Aggregate validation gap report across all nodes
-  trail [--last N]    Read the invocation trail (local or global)
-  trail --global      Cross-project trail (~/.roadmap/trail.jsonl)
-  trail --repo <name> Filter trail by repo name
-  trail --archive     Commit trail (local) or rotate to archive (global)
-  trail --archived    List archived global trail files
-  trail --archived --read <file>  Read a specific archive
-  install [path]      Install protocol into CLAUDE.md (default: .claude/CLAUDE.md)
-  install-hooks       Install git hooks (pre-commit, post-commit, commit-msg, prepare-commit-msg)
-  iter-id             Current loop iteration number (--increment to bump, --reset to zero)
-  propagate           Backward constraint propagation — derive upstream validate rules from downstream
-  propagate --dry-run Show what would be propagated without mutating the DAG
-  propagate --from <id>  Start propagation from a specific node (not term)
-  propagate --depth N Limit propagation hop count
-  explore --api         Show explore API surface (observation + interaction helpers)
-  explore --api --json  Machine-readable API surface for agent context injection
-  explore --run <script> [--launch <cmd>] [--port N] [--keep-alive]  Run explore script with managed lifecycle
-  compile-brief --node <id> [--env path]  Generate agent-ready work brief from node spec + environment + spec-kit context
-  compile-prompts --node <id> [--env path] Generate agent prompts from DAG nodes
-  plan overlay --from-intake <id>  Write candidate nodes to .roadmap/overlays/ (no head.json mutation)
-  gate merge [--target <branch>]  Local merge gate: verify required receipts before merge
-  env-audit           Fail if deprecated bypass env vars (SKIP_PLAN_GATE etc.) are set at runtime
-  profile [--node <id>] [--last-n <n>]  Aggregate audit sessions → profile-report.json
-  audit ingest <path>  Parse transcript → .roadmap/audit/<sessionId>.json
-  dig [path]          Browse archived files in git history
-  patch stack --nodes <ids> --base <sha>  Create branch stack per node from baseSha
-  dig <path> --restore  Recover archived file to working tree
-  help                This message
+  complete <node-id>  Atomic: claim → checkpoint → reorient → auto-advance if last in batch
+  chart               Pretty-print progress chart with emoji bars
+  validate [node]     Run validation rules (all nodes or specific)
 
-Global flags (FR-CLI-001):
-  --human             Human-readable formatted output instead of JSON
-  --json, -j          Force JSON output (overrides --human)
+Command groups (use 'roadmap <group> help' for details):
+  dag <sub>           DAG manipulation: diff, expand, propagate, retire, optimize, switch, spawn
+  team <sub>          Multi-agent coordination: claim, dispatch, strategy, assign
+  spec <sub>          Spec pipeline: plan, import, intake, compile, init
+  util <sub>          Session utilities: trail, checkpoint, explore, install, federation
+
+Global flags:
   --quiet, -q         Suppress non-fatal output
   --global, -g        Access global trail (~/.roadmap/trail.jsonl)
   --dry-run, --dryrun Show what would happen without executing
   --depth, -d         Dependency traversal depth
 
-All commands (except help/trail/chart/install/dig/claim/diff/show/orient/explore) require --note "reason".
-  orient --check is note-exempt for swarm agents that reorient without trail pollution.
+All commands (except help/orient/chart/show) require --note "reason".
 
-Agent Workflow:
-  1. orient --note "..."             → find current batch (position[], produces[], consumes[])
-  2. claim <node> / orient --assign  → take ownership of node(s) in the batch
-  3. show <node>                     → get full node spec (no head.json read needed)
-  4. do work                         → produce the artifacts listed in produces[]
-  5. commit --node <id> --message "" → stage produces, commit with [node: X] trailer
-  6. complete <node-id> --note "..." → atomic claim + checkpoint + reorient (preferred over steps 2+7)
-  7. advance --note "..."            → validate batch complete, move to next batch
-
-  For polling without trail clutter: orient --check (no --note required, no trail entry)
-  orient --ready includes myClaims[] — current-batch nodes you already hold, so no extra claim call needed.
-
-  orient is the entry point. Run it first. It returns:
-    position[]       current batch (nodes runnable in parallel)
-    level            batch index (0 = init)
-    produces[]       artifacts this batch must create
-    consumes[]       artifacts available from prior batches
-    batchRemaining[] nodes in batch whose artifacts are still missing
-    batchComplete    true if all batch artifacts exist
-    claims           per-node { owner, claimedAt, claimExpiry, expired }
-    preGate[]        plan nodes workable before their deps close
-    planNodes        { nodeId: 'plan' } for plan-mode nodes in batch
-    blockedBy[]      cross-repo deps not yet satisfied
-    ready[]          (--ready) future nodes with deps met: { id, level, produces, consumes, mode, claimable }
-
-  orient --ready
-    Returns nodes beyond the current batch whose specific deps are all satisfied.
-    Enables eager dispatch: start work on unblocked future nodes without waiting
-    for the full batch to complete. Read-only — does not advance batch state.
-    Each node includes claimable: true/false based on active claims.
-
-  orient --next
-    Returns the next batch (after current) for orchestrator pre-warming.
-    Includes nodes[], level, produces[], and conflicts[] (pre-checked).
-    Always returned regardless of current batch completeness — orchestrator decides.
-    Returns null if current batch is the final batch.
-
-  orient --assign --owners w1,w2,w3 [--ttl 900]
-    Round-robin assigns batchRemaining nodes to owners. Respects active claims
-    and avoids co-assigning nodes that share produced files (batchConflicts).
-    Returns assignments { nodeId: owner } and assignSkipped { nodeId: reason }.
-
-  claim semantics:
-    Advisory locks — expired claims are ignored, not enforced.
-    Claims scoped to current batch only (can't claim ahead of frontier).
-    Owner resolution: --owner flag > $AGENT_ID > $USER > 'unknown'.
-    --renew fails if claim expired (prevents stale agent re-claiming).
-    Default TTL: 300s. For long tasks, use --ttl or renew on a timer.
-
-  advance validates every node in the current batch before moving forward.
-  If any artifact is missing, advance fails with the list of incomplete nodes.
-
-Batch Model:
-  Position is a batch (string[]), not a single node.
-  parallelOrder() computes all batches; orient() finds the first incomplete one.
-  Plan nodes (mode: 'plan') complete when expansion children exist, not artifacts.
-  Trail entries record position as string[] with level index.
-
-Notes:
-  --note is the trail's information content. Write what you're doing and why,
-  not ceremony. The note is what you'll read in trail --last 10 next week.
-  Bad:  --note "session start"
-  Good: --note "auth module — adding JWT refresh token rotation"
-
-Example workflows:
-
-  # Example 1: Start a new phase
-  roadmap orient --note "auth module — investigating token expiry bug"
+Examples:
+  roadmap orient --note "starting auth work"
   roadmap show init
-  roadmap advance --note "ready to start auth phase"
-
-  # Example 2: Execute a parallel batch
-  roadmap orient --note "batch execution"
-  roadmap claim auth-impl --owner worker-1 --ttl 600
-  roadmap claim db-migration --owner worker-2 --ttl 600
-  roadmap complete auth-impl --note "tokens implemented"
-  roadmap complete db-migration --note "migration done"
-  roadmap chart
-
-  # Example 3: Debug and iterate
-  roadmap validate --note "check current state"
-  roadmap show auth-impl
-  roadmap retire auth-impl --cascade --note "reworking approach" --undo
-  roadmap advance --note "L12 artifacts verified"
-
-Additional examples:
-  roadmap orient --assign --owners w1,w2,w3 --ttl 900 --note "dispatch L12 — api,db,cache workers"
-  roadmap orient --check
-  roadmap chart --critical-path
-  roadmap trail --global --last 5
-  roadmap trail --archived --read 2026-02-26
-  roadmap dig docs/API.md --restore`);
+  roadmap dag expand schema.ts --note "expanding phase 1"
+  roadmap team claim auth-01
+  roadmap spec plan --gallery
+  roadmap util trail --last 5
+  roadmap advance --note "batch complete"
+`);
 }
+
 
 // --- propagate: backward constraint propagation ---
 
