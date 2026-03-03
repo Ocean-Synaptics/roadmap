@@ -153,11 +153,25 @@ All commands except help/trail/chart/install/dig require `--note "reason"`. Ever
 
 ## Session Protocol
 
-**At session start**: `bin/roadmap orient --note "<what you're doing and why>"`. This is mandatory — it finds position and leaves a breadcrumb. Do not infer position from memory or file reads. The note is trail content — write what matters, not ceremony. Example: `--note "auth module — adding JWT refresh token rotation"`.
+**At session start**: `roadmap orient --note "<what you're doing and why>"`. This is mandatory — it finds position and leaves a breadcrumb. Do not infer position from memory or file reads. The note is trail content — write what matters, not ceremony.
 
-**During work**: Orient after completing logical units to record breadcrumbs.
+Example: `--note "auth module — adding JWT refresh token rotation"`
 
-**At session end**: `bin/roadmap trail --archive` if trail has entries.
+**Core mainline:**
+```bash
+roadmap orient --note "..."      # Find batch position
+roadmap show <node-id>           # Inspect node spec
+roadmap dag expand script.ts     # Decompose (if needed)
+roadmap team claim <id>          # Claim node
+roadmap complete <id> --note ""  # Mark done + advance
+roadmap advance --note "..."     # Move to next batch
+```
+
+**Group reference:** `roadmap <group> help` (dag, team, spec, util)
+
+**During work**: Orient after completing logical units. Use `roadmap chart` to see progress.
+
+**At session end**: `roadmap util trail --archive` if trail has entries.
 
 ## This Repo's Own Roadmap
 
