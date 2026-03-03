@@ -545,27 +545,24 @@ async function cmdSpecGroup(note: string | undefined) {
 }
 
 function cmdSpecHelp() {
-  console.log(`roadmap spec — Spec intake pipeline
-
-Subcommands:
-  plan [--gallery|select <id>|status]
-    Spec planning: gallery, selection, status
-  import --from speckit <file.md> --id <dag-id>
-    Parse tasks.md → roadmap DAG
-  intake [absorb|scan|import|certify]
-    Absorb git range → intake JSON
-  compile
-    Parse tasks → spec-compiled.json (roadmap IR)
-  init --id <dag-id> [--engine <name>]
-    Create spec workspace + config
-
-Examples:
-  roadmap spec plan --gallery --note "show gallery"
-  roadmap spec import --from speckit tasks.md --id phase-2 --note "import"
-  roadmap spec plan select auth-spec --note "select spec"
-  roadmap spec compile --note "compile spec"
-  roadmap spec init --id phase-2 --note "init workspace"
-`);
+  json({
+    command: 'spec',
+    description: 'Spec intake pipeline',
+    subcommands: [
+      { name: 'plan', args: '[--gallery|select <id>|status]', description: 'Spec planning: gallery, selection, status' },
+      { name: 'import', args: '--from speckit <file.md> --id <dag-id>', description: 'Parse tasks.md → roadmap DAG' },
+      { name: 'intake', args: '[absorb|scan|import|certify]', description: 'Absorb git range → intake JSON' },
+      { name: 'compile', args: '', description: 'Parse tasks → spec-compiled.json (roadmap IR)' },
+      { name: 'init', args: '--id <dag-id> [--engine <name>]', description: 'Create spec workspace + config' },
+    ],
+    examples: [
+      'roadmap spec plan --gallery --note "show gallery"',
+      'roadmap spec import --from speckit tasks.md --id phase-2 --note "import"',
+      'roadmap spec plan select auth-spec --note "select spec"',
+      'roadmap spec compile --note "compile spec"',
+      'roadmap spec init --id phase-2 --note "init workspace"',
+    ],
+  });
 }
 
 // Route plan to appropriate handler based on subcommand/flags
