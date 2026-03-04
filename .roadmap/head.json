@@ -1,8 +1,8 @@
 {
-  "id": "pipeline-005",
-  "desc": "Fix 6 pipeline issues from hardening-004 session: DAG-scoped completion, agent retry noise, artifact status command, evidence branch awareness, compile_hash self-reference, parallel edit safety",
+  "id": "swarm-friction-006",
+  "desc": "Fix 7 friction points from swarm-dispatch session: sub-DAG dead-end, stale input hashes, single-DAG head.json, haiku gitsafe confusion, advance on feature branches, completed.json main-branch commit block, legacy spec migration",
   "init": "init",
-  "term": "pipeline-verified",
+  "term": "swarm-friction-verified",
   "nodes": {
     "init": {
       "id": "init",
@@ -15,13 +15,12 @@
       "validate": [],
       "idempotent": true
     },
-    "dag-scoped-completion": {
-      "id": "dag-scoped-completion",
-      "desc": "Scope completion receipts by dag_id. completed.json entries must include dagId field. orient() should only count receipts matching current head.json dag id. Old receipts from prior DAGs are ignored (not deleted). saveCompletionWithEvidence writes dagId from current head.json.",
+    "orient-parent-dag": {
+      "id": "orient-parent-dag",
+      "desc": "When orient returns complete:true on a sub-DAG, scan .roadmap/head.*.json for parent/sibling DAGs and surface them in orient output as 'parentDags[]' with path, dagId, completionStatus. Currently orient only shows pendingSpecs (unloaded spec files) — it misses alternate head.json files that represent larger DAGs. Agent in donjon session hit dead-end: sub-DAG complete, no forward pointer to head.donjon-main-final.json.",
       "produces": [
-        "src/lib/evidence/completion-evidence.ts",
-        "src/lib/protocol/operations.ts",
-        "test/dag-scoped-completion.test.ts"
+        "src/lib/orient-forward.ts",
+        "test/orient-parent-dag.test.ts"
       ],
       "consumes": [
         "init.marker"
@@ -32,54 +31,25 @@
       "validate": [
         {
           "type": "intent",
-          "statement": "Plan clarity: completion receipts are scoped by dagId — orient ignores receipts from other DAGs, no cross-DAG leakage",
+          "statement": "Plan clarity: orient surfaces sibling head.*.json DAGs when current DAG is complete — agents never hit dead-end",
           "expandOnFail": true,
           "confidence": 0.9,
           "evaluator": "self"
         },
         {
           "type": "shell",
-          "command": "npx tsx test/dag-scoped-completion.test.ts",
+          "command": "npx tsx test/orient-parent-dag.test.ts",
           "expectExitCode": 0
         }
       ],
       "idempotent": true
     },
-    "agent-retry-dedup": {
-      "id": "agent-retry-dedup",
-      "desc": "When pre-commit or commit-msg hook fails and agent retries, the duplicate commits create noise. Add a git helper that checks if HEAD already contains the same tree diff before committing — if so, skip the commit and return success. Export as deduplicatedCommit(message, files) from a new module.",
-      "produces": [
-        "src/lib/git-helpers.ts",
-        "test/git-dedup.test.ts"
-      ],
-      "consumes": [
-        "init.marker"
-      ],
-      "deps": [
-        "init"
-      ],
-      "validate": [
-        {
-          "type": "intent",
-          "statement": "Plan clarity: deduplicatedCommit skips commit when HEAD already has identical changes — prevents retry noise",
-          "expandOnFail": true,
-          "confidence": 0.9,
-          "evaluator": "self"
-        },
-        {
-          "type": "shell",
-          "command": "npx tsx test/git-dedup.test.ts",
-          "expectExitCode": 0
-        }
-      ],
-      "idempotent": true
-    },
-    "roadmap-status-command": {
-      "id": "roadmap-status-command",
-      "desc": "Add 'roadmap status' command: for each node in current batch, show { nodeId, produces, producesExist (bool per file), hasReceipt (bool), validators (count) }. Quick artifact check without running advance. Wire into CLI router + api registry.",
+    "make-rehash": {
+      "id": "make-rehash",
+      "desc": "Add --rehash flag to 'roadmap make'. When set, auto-update input sha256 hashes to match current file contents instead of failing on mismatch. Every code change to bin/roadmap.ts invalidates all specs referencing it — agents can't load specs without manual hash fixup. Rehash computes sha256 of each input.path, updates the in-memory spec, then proceeds with normal validation. Also write updated hashes back to the spec file.",
       "produces": [
         "bin/roadmap.ts",
-        "test/roadmap-status.test.ts"
+        "test/make-rehash.test.ts"
       ],
       "consumes": [
         "init.marker"
@@ -90,54 +60,25 @@
       "validate": [
         {
           "type": "intent",
-          "statement": "Plan clarity: roadmap status shows per-node artifact existence and receipt status for current batch — no side effects",
+          "statement": "Plan clarity: make --rehash auto-fixes stale input hashes — no manual sha256 fixup needed",
           "expandOnFail": true,
           "confidence": 0.9,
           "evaluator": "self"
         },
         {
           "type": "shell",
-          "command": "npx tsx test/roadmap-status.test.ts",
+          "command": "npx tsx test/make-rehash.test.ts",
           "expectExitCode": 0
         }
       ],
       "idempotent": true
     },
-    "evidence-branch-aware": {
-      "id": "evidence-branch-aware",
-      "desc": "saveCompletionWithEvidence should record the branch name in the receipt. advanceNode on a feature branch writes evidence to .roadmap/completed.json on that branch. After merge to main, receipts are available. orient reads receipts from the current branch's completed.json — no merge needed to see evidence.",
-      "produces": [
-        "src/lib/evidence/completion-evidence.ts",
-        "test/evidence-branch.test.ts"
-      ],
-      "consumes": [
-        "init.marker"
-      ],
-      "deps": [
-        "init"
-      ],
-      "validate": [
-        {
-          "type": "intent",
-          "statement": "Plan clarity: completion receipts include branch field — evidence is written wherever advance runs, merges naturally via git",
-          "expandOnFail": true,
-          "confidence": 0.9,
-          "evaluator": "self"
-        },
-        {
-          "type": "shell",
-          "command": "npx tsx test/evidence-branch.test.ts",
-          "expectExitCode": 0
-        }
-      ],
-      "idempotent": true
-    },
-    "compile-hash-auto": {
-      "id": "compile-hash-auto",
-      "desc": "Eliminate the compile_hash circular dependency. If metadata.compile_hash is missing or the literal string 'auto', make computes it as sha256(JSON.stringify(tasks)) — hashing the tasks array, not the whole spec file. This is stable (tasks don't change when compile_hash changes) and removes the two-step dance.",
+    "gitsafe-worktree-context": {
+      "id": "gitsafe-worktree-context",
+      "desc": "gitsafe main-branch gate should detect worktree context and adjust error messages. When running in a git worktree (git rev-parse --git-common-dir != .git), the 'only allowed from main' error should instead say 'you are in a worktree on branch X — this is expected, proceed with your feature branch workflow.' Also: make should be allowed from worktrees (worktrees ARE the isolation mechanism). The enforceMainBranch check should pass when isWorktree() returns true.",
       "produces": [
         "bin/roadmap.ts",
-        "test/compile-hash-auto.test.ts"
+        "test/gitsafe-worktree.test.ts"
       ],
       "consumes": [
         "init.marker"
@@ -148,25 +89,25 @@
       "validate": [
         {
           "type": "intent",
-          "statement": "Plan clarity: compile_hash='auto' or missing → computed from sha256(tasks JSON) — no circular dependency, single-step spec creation",
+          "statement": "Plan clarity: gitsafe exempts worktrees from main-branch gate — make/advance work in worktrees without confusion",
           "expandOnFail": true,
           "confidence": 0.9,
           "evaluator": "self"
         },
         {
           "type": "shell",
-          "command": "npx tsx test/compile-hash-auto.test.ts",
+          "command": "npx tsx test/gitsafe-worktree.test.ts",
           "expectExitCode": 0
         }
       ],
       "idempotent": true
     },
-    "parallel-edit-guard": {
-      "id": "parallel-edit-guard",
-      "desc": "When multiple agents share a branch, git auto-merge can silently combine their changes. Add a pre-advance check: if completed.json shows another agent advanced a different node within the last 60s on the same branch, emit a warning about potential merge conflicts. Also document the worktree protocol as the recommended pattern for parallel agents.",
+    "advance-feature-branch": {
+      "id": "advance-feature-branch",
+      "desc": "Allow 'roadmap advance' on feat/* and wip/* branches. advance is read-only (validates + records evidence to completed.json) — it should not be gated to main. Only make and dag-mutate commands need the main-branch gate. Check if friction-fix-003 advance-on-branches node already shipped this fix; if so, verify it works in worktree context too. If not shipped, implement: exempt 'advance' from enforceMainBranch in bin/roadmap.ts.",
       "produces": [
         "bin/roadmap.ts",
-        "test/parallel-edit-guard.test.ts"
+        "test/advance-feature-branch.test.ts"
       ],
       "consumes": [
         "init.marker"
@@ -177,48 +118,137 @@
       "validate": [
         {
           "type": "intent",
-          "statement": "Plan clarity: advance warns when concurrent agents share a branch — nudges toward worktree isolation",
+          "statement": "Plan clarity: advance works on feat/wip branches and in worktrees — only make/dag-mutate require main",
           "expandOnFail": true,
           "confidence": 0.9,
           "evaluator": "self"
         },
         {
           "type": "shell",
-          "command": "npx tsx test/parallel-edit-guard.test.ts",
+          "command": "npx tsx test/advance-feature-branch.test.ts",
           "expectExitCode": 0
         }
       ],
       "idempotent": true
     },
-    "pipeline-verified": {
-      "id": "pipeline-verified",
-      "desc": "Integration: all 6 pipeline fixes verified. Completion is DAG-scoped, retries are deduped, status command works, evidence records branch, compile_hash is auto-computable, parallel edits warn.",
+    "completed-json-exempt": {
+      "id": "completed-json-exempt",
+      "desc": "Exempt .roadmap/completed.json from the main-branch pre-commit write guard. completed.json is written by 'advance' as evidence — it must be committable on main without creating a throwaway feature branch. The pre-commit hook should allow staging completed.json on main (alongside head.json which remains protected). Modify scripts/hooks/pre-commit to whitelist completed.json.",
       "produces": [
-        "test/pipeline-integration.test.ts"
+        "scripts/hooks/pre-commit",
+        "test/completed-json-commit.test.ts"
+      ],
+      "consumes": [
+        "init.marker"
+      ],
+      "deps": [
+        "init"
+      ],
+      "validate": [
+        {
+          "type": "intent",
+          "statement": "Plan clarity: completed.json is committable on main — only head.json remains write-protected",
+          "expandOnFail": true,
+          "confidence": 0.9,
+          "evaluator": "self"
+        },
+        {
+          "type": "shell",
+          "command": "npx tsx test/completed-json-commit.test.ts",
+          "expectExitCode": 0
+        }
+      ],
+      "idempotent": true
+    },
+    "spec-migrate": {
+      "id": "spec-migrate",
+      "desc": "Add 'roadmap spec migrate <path>' command. Detects missing/outdated fields in spec files and fixes them: adds empty inputs[] with role 'spec' if missing, adds metadata.compile_hash as 'auto' if missing, adds engine block with defaults if missing, adds dag_desc if missing (copies from first task desc). Reports what was fixed. Allows legacy specs like spec-rebuild.json to load without manual editing.",
+      "produces": [
+        "bin/roadmap.ts",
+        "test/spec-migrate.test.ts"
+      ],
+      "consumes": [
+        "init.marker"
+      ],
+      "deps": [
+        "init"
+      ],
+      "validate": [
+        {
+          "type": "intent",
+          "statement": "Plan clarity: spec migrate auto-fixes legacy specs — adds missing required fields with sensible defaults",
+          "expandOnFail": true,
+          "confidence": 0.9,
+          "evaluator": "self"
+        },
+        {
+          "type": "shell",
+          "command": "npx tsx test/spec-migrate.test.ts",
+          "expectExitCode": 0
+        }
+      ],
+      "idempotent": true
+    },
+    "multi-dag-head": {
+      "id": "multi-dag-head",
+      "desc": "Support multiple active DAGs. Replace single .roadmap/head.json with .roadmap/heads/<dagId>.json. orient() unions across all head files (or accepts --dag <id> filter). make writes to heads/<dagId>.json instead of overwriting head.json. Backward compat: if head.json exists and no heads/ dir, migrate on first access. This unblocks true parallel DAG execution — loading spec A then B no longer destroys A.",
+      "produces": [
+        "src/lib/multi-dag.ts",
+        "bin/roadmap.ts",
+        "test/multi-dag.test.ts"
+      ],
+      "consumes": [
+        "src/lib/orient-forward.ts"
+      ],
+      "deps": [
+        "orient-parent-dag"
+      ],
+      "validate": [
+        {
+          "type": "intent",
+          "statement": "Plan clarity: multiple DAGs coexist in heads/ dir — make doesn't overwrite, orient unions or filters",
+          "expandOnFail": true,
+          "confidence": 0.9,
+          "evaluator": "self"
+        },
+        {
+          "type": "shell",
+          "command": "npx tsx test/multi-dag.test.ts",
+          "expectExitCode": 0
+        }
+      ],
+      "idempotent": true
+    },
+    "swarm-friction-verified": {
+      "id": "swarm-friction-verified",
+      "desc": "Integration: all 7 friction fixes work together. orient surfaces parent DAGs, make --rehash fixes hashes, multiple DAGs coexist, worktrees bypass gitsafe, advance works on feature branches, completed.json commits on main, legacy specs migrate.",
+      "produces": [
+        "test/swarm-friction-integration.test.ts"
       ],
       "consumes": [
         "bin/roadmap.ts",
-        "src/lib/evidence/completion-evidence.ts",
-        "src/lib/protocol/operations.ts",
-        "src/lib/git-helpers.ts"
+        "src/lib/orient-forward.ts",
+        "src/lib/multi-dag.ts",
+        "scripts/hooks/pre-commit"
       ],
       "deps": [
-        "dag-scoped-completion",
-        "agent-retry-dedup",
-        "roadmap-status-command",
-        "evidence-branch-aware",
-        "compile-hash-auto",
-        "parallel-edit-guard"
+        "orient-parent-dag",
+        "make-rehash",
+        "multi-dag-head",
+        "gitsafe-worktree-context",
+        "advance-feature-branch",
+        "completed-json-exempt",
+        "spec-migrate"
       ],
       "validate": [
         {
           "type": "shell",
-          "command": "npx tsx test/pipeline-integration.test.ts",
+          "command": "npx tsx test/swarm-friction-integration.test.ts",
           "expectExitCode": 0
         },
         {
           "type": "intent",
-          "statement": "All 6 pipeline issues resolved — completion is DAG-scoped, agents don't create retry noise, status shows artifact state, evidence is branch-aware, compile_hash has no circular dep, parallel edits are guarded",
+          "statement": "All 7 swarm friction points resolved — agents can execute parallel DAGs in worktrees without manual intervention",
           "expandOnFail": true,
           "confidence": 0.9,
           "evaluator": "self"

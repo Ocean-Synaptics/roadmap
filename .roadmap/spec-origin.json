@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "engine": "spec-kit",
   "version": "1.0.0",
-  "compile_hash": "929260ad9b9ea9fe0f3553dd964f4ff3deb5792efd031a2b90f573fe91f012bb",
-  "spec_sha": "081b7d9eb4bbf78e4de0b89cc848b0bcaada63118dca9cb1f4090c8b01b8e9b2",
-  "importedAt": "2026-03-03T23:18:22.438Z",
-  "dagId": "pipeline-005"
+  "compile_hash": "c2d819c9f629675affad35aac95eaae97088b9f6691a69dfbf8020aa2626edbd",
+  "spec_sha": "4ada1761294c0d495f063aa22bb070a1c79b85e3577d50f69be514780592e907",
+  "importedAt": "2026-03-04T00:25:10.063Z",
+  "dagId": "swarm-friction-006"
 }
