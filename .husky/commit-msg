@@ -23,6 +23,11 @@ fi
 
 MSG=$(cat "$COMMIT_MSG_FILE")
 
+# Merge commits pass (auto-generated message)
+if git rev-parse MERGE_HEAD >/dev/null 2>&1; then
+  exit 0
+fi
+
 # "roadmap:" prefix always passes
 if echo "$MSG" | grep -q '^roadmap:'; then
   exit 0
