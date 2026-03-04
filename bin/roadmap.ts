@@ -186,7 +186,8 @@ if (!NOTE_EXEMPT.has(cmd) && !isOrientCheck && !_note) {
 let hasLocalDAG = false;
 try {
   const headPath = join(repoRoot, '.roadmap', 'head.json');
-  hasLocalDAG = existsSync(headPath);
+  const headsDir = join(repoRoot, '.roadmap', 'heads');
+  hasLocalDAG = existsSync(headPath) || (existsSync(headsDir) && readdirSync(headsDir).some(f => f.endsWith('.json')));
 } catch {}
 
 // --- Helper: Load completions ---
@@ -371,6 +372,12 @@ async function routeCommand(cmd: string, note: string | undefined): Promise<void
 // --- Commands ---
 
 async function cmdOrient(note: string | undefined) {
+  // Migrate single head.json to heads/ if needed
+  migrateSingleHead(repoRoot);
+
+  // Support --dag <id> filter
+  const dagFilter = getFlagValue('--dag', args);
+
   const isCheck = args.includes('--check');
   if (!hasLocalDAG) {
     if (!isCheck) {
@@ -415,7 +422,19 @@ async function cmdOrient(note: string | undefined) {
   const origin = requireValidOrigin(repoRoot);
   const drift = checkSpecDrift(repoRoot);
 
-  const dag = await loadDAGAsync();
+  // Load DAG: if --dag filter specified, load from heads/, otherwise use default
+  let dag: Graph<string>;
+  if (dagFilter) {
+    const filteredDag = loadDag(repoRoot, dagFilter);
+    if (!filteredDag) {
+      const available = Array.from(loadAllDags(repoRoot).keys());
+      json({ error: `DAG not found: ${dagFilter}`, available });
+      return;
+    }
+    dag = filteredDag;
+  } else {
+    dag = await loadDAGAsync();
+  }
 
   const pos = await crossOrientWithState(dag);
 
@@ -435,6 +454,16 @@ async function cmdOrient(note: string | undefined) {
   const claimStore = loadClaims(repoRoot);
   const claimAnnotations = annotateWithClaims(nextPosition, claimStore);
 
+  // Build per-node briefs for batch position
+  const briefs: Record<string, any> = {};
+  for (const nodeId of nextPosition) {
+    try {
+      briefs[nodeId] = await getBrief(dag, nodeId, repoRoot);
+    } catch {
+      // Brief generation is best-effort
+    }
+  }
+
   const result: Record<string, unknown> = {
     position: nextPosition,
     level: nextLevel,
@@ -447,6 +476,7 @@ async function cmdOrient(note: string | undefined) {
     complete: pos.remaining.length === 0,
     branch: getCurrentBranch(),
     worktree: isWorktree(),
+    briefs,
   };
 
   // When DAG is complete, surface unloaded specs as next action
@@ -637,14 +667,40 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
   // Re-orient to check if batch is now complete
   const newPos = await crossOrientWithState(dag);
 
+  // Extract intent gates as structured prompts (not rubber stamps)
+  const intentGates: Array<{ statement: string; shellResults: Array<{ rule: string; passed: boolean }>; assessmentPrompt: string }> = [];
+  for (const c of validationResult.checks) {
+    if (c.rule.type === 'intent') {
+      const statement = (c.rule as any).statement ?? '';
+      const shellResults = checks
+        .filter(sc => sc.rule.startsWith('shell:'))
+        .map(sc => ({ rule: sc.rule, passed: sc.passed }));
+      intentGates.push({
+        statement,
+        shellResults,
+        assessmentPrompt: `Evaluate whether "${statement}" is satisfied given ${shellResults.filter(r => r.passed).length}/${shellResults.length} shell validators passing.`,
+      });
+    }
+  }
+
   const result: any = {
     completed: nodeId,
     checks,
     batchComplete: newPos.batchComplete,
     remaining: newPos.batchRemaining,
+    ...(intentGates.length > 0 ? { intentGates } : {}),
     ...(attributionWarning ? { attributionWarning } : {}),
     ...(parallelEditWarning ? { parallelEditWarning } : {}),
   };
+
+  // Include next node's brief if batch has remaining work
+  if (newPos.batchRemaining.length > 0) {
+    try {
+      result.nextBrief = await getBrief(dag, newPos.batchRemaining[0], repoRoot);
+    } catch {
+      // Brief generation is best-effort
+    }
+  }
 
   // If batch is now complete, auto-advance
   if (newPos.batchComplete) {
@@ -660,6 +716,12 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
       result.nextLevel = next.level;
       result.nextProduces = next.produces;
       result.nextConsumes = next.consumes;
+      // Include brief for first node of next batch
+      try {
+        result.nextBrief = await getBrief(dag, next.position[0], repoRoot);
+      } catch {
+        // Brief generation is best-effort
+      }
     }
   }
 
@@ -946,6 +1008,10 @@ async function cmdMake(note: string) {
   if (!existsSync(roadmapDir)) mkdirSync(roadmapDir, { recursive: true });
   writeFileSync(headPath, JSON.stringify(dag, null, 2) + '\n');
 
+  // Also write to heads/ for multi-dag support
+  const dagId = dag.id ?? parsed.dag_id ?? parsed.id ?? 'ideal-dag';
+  saveDagHead(repoRoot, dagId, dag);
+
   // Write spec-origin receipt for provenance tracking
   const dagJson = JSON.stringify(dag);
   const dagHash = createHash('sha256').update(dagJson).digest('hex');
@@ -965,14 +1031,14 @@ async function cmdMake(note: string) {
     compile_hash: compileHash,
     spec_sha: specHash,
     importedAt: new Date().toISOString(),
-    dagId: parsed.dag_id ?? parsed.id ?? 'ideal-dag',
+    dagId,
   };
   writeSpecOrigin(repoRoot, origin);
 
   // Commit
   let commitWarning: string | undefined;
   try {
-    execSync('git add .roadmap/head.json .roadmap/spec-origin.json', { cwd: repoRoot, stdio: 'pipe' });
+    execSync('git add .roadmap/head.json .roadmap/heads/ .roadmap/spec-origin.json', { cwd: repoRoot, stdio: 'pipe' });
     execSync(`git commit -m "make: ideal DAG from ${specPath}"`, {
       cwd: repoRoot,
       stdio: 'pipe',

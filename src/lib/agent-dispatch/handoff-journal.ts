@@ -32,7 +32,7 @@ export class HandoffJournal {
 
   constructor(repoRoot: string) {
     this.repoRoot = repoRoot;
-    this.baseDir = join(repoRoot, '.dispatch', 'handoffs');
+    this.baseDir = join(repoRoot, '.roadmap', '.handoff');
   }
 
   /**
@@ -168,7 +168,7 @@ export class HandoffJournal {
  * Get journal directory path
  */
 export function journalDir(repoRoot: string): string {
-  return join(repoRoot, '.dispatch', 'handoffs');
+  return join(repoRoot, '.roadmap', '.handoff');
 }
 
 /**
