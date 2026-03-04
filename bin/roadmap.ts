@@ -535,17 +535,34 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
   });
 
   // Map ValidationCheck to EvidenceRecord format
-  const checks: EvidenceRecord[] = validationResult.checks.map(c => ({
-    rule: c.rule.type === 'artifact-exists'
+  // Intent validators get enriched evidence (not rubber-stamped "unevaluated")
+  const checks: EvidenceRecord[] = validationResult.checks.map(c => {
+    const ruleKey = c.rule.type === 'artifact-exists'
       ? `artifact-exists:${(c.rule.target ?? c.rule.path) || 'produces'}`
       : c.rule.type === 'shell'
       ? `shell:${((c.rule as any).command ?? (c.rule as any).argv?.join(' ') ?? 'unknown')}`
       : c.rule.type === 'intent'
       ? `intent:${c.rule.statement?.slice(0, 60) || 'ok'}`
-      : `${c.rule.type}:${(c.rule as any).target || (c.rule as any).command || 'unknown'}`,
-    passed: c.passed,
-    evidence: c.evidence ?? (c.passed ? 'passed' : 'failed'),
-  }));
+      : `${c.rule.type}:${(c.rule as any).target || (c.rule as any).command || 'unknown'}`;
+
+    // Replace "unevaluated" with structured context for intent validators
+    let evidence = c.evidence ?? (c.passed ? 'passed' : 'failed');
+    if (c.rule.type === 'intent' && (evidence === 'unevaluated' || (c as any).intentStatus === 'unevaluated')) {
+      const stmt = (c.rule as any).statement ?? '';
+      const shellPassing = validationResult.checks
+        .filter(sc => sc.rule.type === 'shell' && sc.passed)
+        .map(sc => (sc.rule as any).command ?? 'unknown');
+      evidence = [
+        `INTENT GATE: "${stmt}"`,
+        `Node: ${nodeId} — ${node.desc ?? ''}`,
+        `Shell evidence: ${shellPassing.length > 0 ? shellPassing.join('; ') : 'none'}`,
+        `Produces: ${(node.produces ?? []).join(', ') || 'none'}`,
+        `Agent must evaluate: does the completed work satisfy this intent?`,
+      ].join(' | ');
+    }
+
+    return { rule: ruleKey, passed: c.passed, evidence };
+  });
 
   // Also check produces artifacts (separate from validate rules)
   const produces = node.produces ?? [];
@@ -642,17 +659,46 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
   const newPos = await crossOrientWithState(dag);
 
   // Extract intent gates as structured prompts (not rubber stamps)
-  const intentGates: Array<{ statement: string; shellResults: Array<{ rule: string; passed: boolean }>; assessmentPrompt: string }> = [];
+  const intentGates: Array<{
+    statement: string;
+    nodeDescription: string;
+    produces: string[];
+    shellEvidence: Array<{ command: string; passed: boolean; evidence: string }>;
+    artifactEvidence: Array<{ artifact: string; exists: boolean }>;
+    assessmentPrompt: string;
+  }> = [];
   for (const c of validationResult.checks) {
     if (c.rule.type === 'intent') {
       const statement = (c.rule as any).statement ?? '';
-      const shellResults = checks
-        .filter(sc => sc.rule.startsWith('shell:'))
-        .map(sc => ({ rule: sc.rule, passed: sc.passed }));
+      const shellEvidence = validationResult.checks
+        .filter(sc => sc.rule.type === 'shell')
+        .map(sc => ({
+          command: (sc.rule as any).command ?? (sc.rule as any).argv?.join(' ') ?? 'unknown',
+          passed: sc.passed,
+          evidence: sc.evidence ?? (sc.passed ? 'exit 0' : 'failed'),
+        }));
+      const artifactEvidence = (node.produces ?? []).map((a: string) => ({
+        artifact: a,
+        exists: existsSync(join(repoRoot, a)),
+      }));
+      const passCount = shellEvidence.filter(s => s.passed).length;
+      const artifactCount = artifactEvidence.filter((a: { artifact: string; exists: boolean }) => a.exists).length;
       intentGates.push({
         statement,
-        shellResults,
-        assessmentPrompt: `Evaluate whether "${statement}" is satisfied given ${shellResults.filter(r => r.passed).length}/${shellResults.length} shell validators passing.`,
+        nodeDescription: node.desc ?? '',
+        produces: node.produces ?? [],
+        shellEvidence,
+        artifactEvidence,
+        assessmentPrompt: [
+          `INTENT: "${statement}"`,
+          `Node ${nodeId}: ${node.desc ?? ''}`,
+          `Shell validators: ${passCount}/${shellEvidence.length} passing`,
+          `Artifacts: ${artifactCount}/${artifactEvidence.length} present`,
+          shellEvidence.length > 0
+            ? `Commands run: ${shellEvidence.map(s => `${s.command} → ${s.passed ? 'PASS' : 'FAIL'}`).join('; ')}`
+            : 'No shell validators configured',
+          `Does the completed work satisfy this intent?`,
+        ].join('\n'),
       });
     }
   }
