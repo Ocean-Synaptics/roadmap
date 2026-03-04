@@ -40,6 +40,10 @@ import { listNodeReceipts, completionDoctor, completionCompact } from '../src/li
 import { readPackageVersion } from '../src/lib/install-skills.ts';
 import { loadDAGWithAutoMerge, ensureIndexExists } from '../src/lib/roadmap/cli-auto-merge.ts';
 import { ensureConsolidated } from '../src/lib/roadmap/cli-consolidation-init.ts';
+import { saveDagHead, migrateSingleHead, loadDag, loadAllDags } from '../src/lib/multi-dag.ts';
+import { getBrief } from '../src/lib/brief.ts';
+import type { FinalHandoff, InterimHandoff } from '../src/lib/brief.ts';
+import { saveFinal, saveInterim } from '../src/lib/agent-dispatch/handoff-journal.ts';
 import type { Graph, Orientation } from '../src/protocol.ts';
 import type { SiblingStatus } from '../src/lib/cross-orient.ts';
 import type { OrientV1, OrientDag, OrientDagNode, OrientDagEdge, OrientBlockedNode } from '../src/lib/core/orient-schema.ts';
@@ -118,6 +122,14 @@ function hasFlag(flags: string[], haystack: string[]): boolean {
     if (haystack.includes(flag)) return true;
   }
   return false;
+}
+
+function getFlagValue(flag: string, haystack: string[]): string | undefined {
+  const idx = haystack.indexOf(flag);
+  if (idx >= 0 && idx + 1 < haystack.length) {
+    return haystack[idx + 1];
+  }
+  return undefined;
 }
 
 const { note: _note, positional: args } = extractNote(rawArgs);
@@ -546,6 +558,21 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
   const allPassed = validationResult.passed && checks.every(c => c.passed);
 
   if (!allPassed) {
+    // Write interim handoff on failure
+    const failedChecks = checks.filter(c => !c.passed);
+    const interim: InterimHandoff = {
+      timestamp: new Date().toISOString(),
+      progress: 0.5,
+      discovered: [],
+      blockers: failedChecks.map(c => c.rule),
+      currentFile: '',
+    };
+    try {
+      await saveInterim(repoRoot, nodeId, interim);
+    } catch (e) {
+      // Log but don't block on handoff write failure
+    }
+
     json({
       error: `Validation failed for ${nodeId}`,
       checks,
@@ -585,6 +612,27 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
 
   // Record completion with evidence
   saveCompletionWithEvidence(repoRoot, nodeId, checks);
+
+  // Write final handoff on success
+  const final: FinalHandoff = {
+    timestamp: new Date().toISOString(),
+    progress: 1.0,
+    discovered: [],
+    blockers: [],
+    currentFile: '',
+    summary: note ? note.slice(0, 100) : 'Node completed',
+    keyDecisions: [],
+    gotchas: [],
+    nextNodeEntry: {
+      consumes: node.produces ?? [],
+      ready: true,
+    },
+  };
+  try {
+    await saveFinal(repoRoot, nodeId, final);
+  } catch (e) {
+    // Log but don't block on handoff write failure
+  }
 
   // Re-orient to check if batch is now complete
   const newPos = await crossOrientWithState(dag);
