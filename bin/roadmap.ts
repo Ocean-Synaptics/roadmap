@@ -74,6 +74,11 @@ function isWorktree(): boolean {
 }
 
 function enforceMainBranch(): void {
+  // Worktrees are isolated execution contexts — exempt from main-branch requirement
+  if (isWorktree()) {
+    return;
+  }
+
   const branch = getCurrentBranch();
   if (branch !== 'main' && branch !== 'HEAD') {
     console.error(JSON.stringify({
@@ -282,7 +287,7 @@ async function main() {
   const note = _note;
 
   // Enforce main branch for all DAG-mutating commands
-  const BRANCH_EXEMPT = new Set(['help', '--help', '-h', 'api', 'orient', 'advance']);
+  const BRANCH_EXEMPT = new Set(['help', '--help', '-h', 'api', 'orient', 'advance', 'status']);
   // --dry-run flag exempts make from branch enforcement
   if (!BRANCH_EXEMPT.has(cmd) && !(cmd === 'make' && args.includes('--dry-run'))) {
     enforceMainBranch();
@@ -771,6 +776,7 @@ async function cmdMake(note: string) {
   }
 
   // Input artifact verification (skip with --skip-input-verification)
+  const shouldRehash = args.includes('--rehash');
   if (!args.includes('--skip-input-verification')) {
     if (!Array.isArray(parsed.inputs) || parsed.inputs.length === 0) {
       throw new RoadmapError('VALIDATION_FAILED', {
@@ -804,6 +810,7 @@ async function cmdMake(note: string) {
 
     // Verify sha256 for inputs that exist on disk
     const warnings: string[] = [];
+    const rehashes: string[] = [];
     for (const inp of parsed.inputs) {
       const inputPath = resolve(repoRoot, inp.path);
       if (!existsSync(inputPath)) {
@@ -813,18 +820,29 @@ async function cmdMake(note: string) {
       const content = readFileSync(inputPath, 'utf-8');
       const actual = createHash('sha256').update(content).digest('hex');
       if (actual !== inp.sha256) {
-        throw new RoadmapError('VALIDATION_FAILED', {
-          fix: `Hash mismatch for "${inp.path}". Expected: ${inp.sha256}, actual: ${actual}. Re-read the file and recompute the hash.`,
-          path: inp.path,
-          expected: inp.sha256,
-          actual,
-        }, `Input hash mismatch: ${inp.path}`);
+        if (shouldRehash) {
+          inp.sha256 = actual;
+          rehashes.push(`${inp.path}: updated hash to ${actual}`);
+        } else {
+          throw new RoadmapError('VALIDATION_FAILED', {
+            fix: `Hash mismatch for "${inp.path}". Expected: ${inp.sha256}, actual: ${actual}. Re-read the file and recompute the hash.`,
+            path: inp.path,
+            expected: inp.sha256,
+            actual,
+          }, `Input hash mismatch: ${inp.path}`);
+        }
       }
     }
 
     if (warnings.length > 0) {
       // Attach warnings to output (non-fatal)
       (parsed as any)._inputWarnings = warnings;
+    }
+
+    if (rehashes.length > 0) {
+      // Write updated spec back to the original file
+      writeFileSync(resolved, JSON.stringify(parsed, null, 2) + '\n');
+      (parsed as any)._rehashed = rehashes;
     }
   }
 
@@ -942,8 +960,6 @@ async function cmdStatus(note: string | undefined) {
     return;
   }
 
-  enforceMainBranch();
-
   const dag = await loadDAGAsync();
   const completion = CompletionStore.loadOrEmpty(repoRoot);
   const pos = await crossOrientWithState(dag);
@@ -998,8 +1014,9 @@ async function cmdSpecGroup(note: string | undefined) {
     case '-h':
       return cmdSpecHelp();
     case 'plan':     return await cmdPlanRouter(note!);
+    case 'migrate':  return await cmdSpecMigrate(note!);
     default:
-      json({ error: `Unknown spec subcommand: ${sub}`, fix: 'roadmap spec plan [--gallery | select <id> | status]' });
+      json({ error: `Unknown spec subcommand: ${sub}`, fix: 'roadmap spec [plan | migrate] ...' });
       process.exit(1);
   }
 }
@@ -1010,11 +1027,13 @@ function cmdSpecHelp() {
     description: 'Spec planning pipeline',
     subcommands: [
       { name: 'plan', args: '[--gallery|select <id>|status]', description: 'Spec planning: gallery, selection, status' },
+      { name: 'migrate', args: '<path>', description: 'Auto-fix legacy spec files with missing required fields' },
     ],
     examples: [
       'roadmap spec plan --gallery --note "show gallery"',
       'roadmap spec plan select auth-spec --note "select spec"',
       'roadmap spec plan status',
+      'roadmap spec migrate legacy-spec.json --note "fix legacy spec"',
     ],
   });
 }
