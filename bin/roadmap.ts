@@ -1242,6 +1242,83 @@ async function cmdPlanStatus() {
   });
 }
 
+// Auto-fix legacy spec files by adding missing required fields
+async function cmdSpecMigrate(note: string) {
+  const specPath = args[2];
+
+  if (!specPath) {
+    json({ error: 'Missing spec path', fix: 'roadmap spec migrate <path> --note "reason"' });
+    process.exit(1);
+  }
+
+  if (!existsSync(specPath)) {
+    json({ error: `Spec file not found: ${specPath}` });
+    process.exit(1);
+  }
+
+  try {
+    const content = readFileSync(specPath, 'utf-8');
+    const spec = JSON.parse(content) as any;
+
+    const fixed: string[] = [];
+
+    // Fix: inputs[] — if missing/empty, add with computed sha256
+    if (!spec.inputs || !Array.isArray(spec.inputs) || spec.inputs.length === 0) {
+      const sha256 = createHash('sha256').update(content).digest('hex');
+      spec.inputs = [{ path: specPath, sha256, role: 'spec' }];
+      fixed.push('inputs');
+    }
+
+    // Fix: metadata.compile_hash — if missing, set to "auto"
+    if (!spec.metadata) spec.metadata = {};
+    if (!spec.metadata.compile_hash) {
+      spec.metadata.compile_hash = 'auto';
+      fixed.push('metadata.compile_hash');
+    }
+
+    // Fix: metadata.generated — if missing, set to current ISO timestamp
+    if (!spec.metadata.generated) {
+      spec.metadata.generated = new Date().toISOString();
+      fixed.push('metadata.generated');
+    }
+
+    // Fix: engine — if missing, add spec-kit v1.0.0
+    if (!spec.engine) {
+      spec.engine = { name: 'spec-kit', version: '1.0.0', config_hash: null };
+      fixed.push('engine');
+    }
+
+    // Fix: dag_desc — if missing, copy from first task's desc
+    if (!spec.dag_desc && spec.tasks && spec.tasks.length > 0) {
+      spec.dag_desc = spec.tasks[0].desc;
+      fixed.push('dag_desc');
+    }
+
+    // Fix: schema_version — if missing, set to 1
+    if (!spec.schema_version) {
+      spec.schema_version = 1;
+      fixed.push('schema_version');
+    }
+
+    // Write fixed spec back to file
+    writeFileSync(specPath, JSON.stringify(spec, null, 2) + '\n');
+
+    recordTrail({
+      ts: new Date().toISOString(),
+      cmd: 'spec.migrate',
+      note,
+      repo: basename(repoRoot),
+      detail: { path: specPath, fixed },
+    });
+
+    json({ ok: true, fixed, path: specPath });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    json({ error: `Failed to migrate spec: ${message}`, path: specPath });
+    process.exit(1);
+  }
+}
+
 // --- Spec import/intake/compile/init stubs ---
 
 
