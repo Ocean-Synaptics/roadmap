@@ -60,6 +60,24 @@ const repoRoot = process.cwd();
 // --- GitSafe enforcement ---
 const gitsafe = createGitSafeLoader(repoRoot);
 
+/** Read the `goal` block from whichever *-spec.json has a matching dag_id. Returns null if not found. */
+function loadSpecGoal(dagId: string): { statement: string; satisfied_when?: string; known_remaining?: string[] } | null {
+  const roadmapDir = join(repoRoot, '.roadmap');
+  if (!existsSync(roadmapDir)) return null;
+  try {
+    for (const file of readdirSync(roadmapDir)) {
+      if (!file.endsWith('-spec.json') || file === 'spec-origin.json') continue;
+      try {
+        const spec = JSON.parse(readFileSync(join(roadmapDir, file), 'utf-8'));
+        if (spec?.dag_id === dagId && spec?.goal && typeof spec.goal.statement === 'string') {
+          return spec.goal;
+        }
+      } catch { /* skip */ }
+    }
+  } catch { /* roadmap dir unreadable */ }
+  return null;
+}
+
 function getCurrentBranch(): string {
   try {
     return execSync('git rev-parse --abbrev-ref HEAD', { cwd: repoRoot, stdio: 'pipe' }).toString().trim();
@@ -739,6 +757,15 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
       result.advanced = true;
       result.done = true;
       result.message = 'All work complete';
+      const goal = loadSpecGoal(dag.id ?? '');
+      if (goal) {
+        result.goalAssessment = {
+          goal: goal.statement,
+          ...(goal.satisfied_when ? { satisfiedWhen: goal.satisfied_when } : {}),
+          ...(goal.known_remaining?.length ? { knownRemaining: goal.known_remaining } : {}),
+          requiredAction: 'Assess whether the goal is satisfied before closing session. Surface any known_remaining items to the user.',
+        };
+      }
     } else {
       result.advanced = true;
       result.nextPosition = next.position;
@@ -803,8 +830,16 @@ async function advanceBatchCmd(dag: Graph<string>, note: string) {
   const next = advanceBatch(dag, completion, retiredSet());
 
   if (!next || next.position.length === 0) {
+    const goal = loadSpecGoal(dag.id ?? '');
+    const goalAssessment = goal ? {
+      goal: goal.statement,
+      ...(goal.satisfied_when ? { satisfiedWhen: goal.satisfied_when } : {}),
+      ...(goal.known_remaining?.length ? { knownRemaining: goal.known_remaining } : {}),
+      requiredAction: 'Assess whether the goal is satisfied before closing session. Surface any known_remaining items to the user.',
+    } : undefined;
     emit({ ok: true, cmd: _outputOpts.cmd, data: {
       advanced: true, level: pos.level + 1, position: [], message: 'All work complete', done: true,
+      ...(goalAssessment ? { goalAssessment } : {}),
     }}, _outputOpts);
 
     recordTrail({
