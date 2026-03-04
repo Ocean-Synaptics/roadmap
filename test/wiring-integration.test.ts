@@ -9,17 +9,18 @@ import { saveDagHead, loadDag, migrateSingleHead } from '../src/lib/multi-dag.ts
 import { optimize } from '../src/lib/optimize.ts';
 import type { FinalHandoff, InterimHandoff } from '../src/lib/brief.ts';
 
-// -- 1. validator-strength: terminal without shell rejected --
-test('make rejects terminal node without shell validator', () => {
+// -- 1. terminal intent gate enforced (shell not required) --
+test('make enforces terminal-intent gate, not terminal-shell', () => {
   const dag = {
-    id: 'bad', desc: 'test', init: 'init', term: 'term',
+    id: 'no-intent', desc: 'test', init: 'init', term: 'term',
     nodes: {
-      init: { id: 'init', desc: 'start', produces: [], consumes: [], deps: [], validate: [{ type: 'intent', statement: 'begin', expandOnFail: true }] },
-      term: { id: 'term', desc: 'end', produces: [], consumes: [], deps: ['init'], validate: [{ type: 'intent', statement: 'done', expandOnFail: true }] },
+      init: { id: 'init', desc: 'start', produces: [], consumes: [], deps: [], validate: [] },
+      term: { id: 'term', desc: 'end', produces: [], consumes: [], deps: ['init'], validate: [] },
     },
   };
-  const errors = collectMakeErrors(dag, { skipTerminalIntent: true });
-  assert(errors.some(e => e.gate === 'terminal-shell'));
+  const errors = collectMakeErrors(dag);
+  assert(errors.some(e => e.gate === 'terminal-intent'), 'Should require intent on terminal');
+  assert(!errors.some(e => e.gate === 'terminal-shell'), 'Should NOT require shell on terminal');
 });
 
 // -- 2. orient returns briefs --
