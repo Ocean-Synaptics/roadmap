@@ -181,9 +181,22 @@ if (_humanRenderers[_outputOpts.cmd]) {
 // Known commands — reject unknown before checking --note
 const KNOWN_COMMANDS = new Set(['orient', 'advance', 'make', 'status', 'spec', 'dag', 'api', 'help', '--help', '-h']);
 if (!KNOWN_COMMANDS.has(cmd)) {
-  json({ error: `Unknown command: ${cmd}`, fix: `Mainline: {make, orient, advance, status}. Group: {spec, dag}. Discovery: {api, help}.` });
+  const available = listCommands().map(c => c.command);
+  emit({ ok: false, cmd: _outputOpts.cmd, error: {
+    code: 'UNKNOWN_COMMAND',
+    message: `Unknown command: ${cmd}`,
+    fix: [`Mainline: {make, orient, advance, status}. Group: {spec, dag}. Discovery: {api, help}.`],
+    hint: `Run 'roadmap api --all' to see full command registry with schemas.`,
+    available,
+  }}, _outputOpts);
   recordTrailError(cmd, 'UNKNOWN_COMMAND', `Unknown command: ${cmd}`);
   process.exit(1);
+}
+
+// Handle --help for any known command before the --note gate
+if (args.slice(1).some(a => a === '--help' || a === '-h')) {
+  showCommandHelp();
+  process.exit(0);
 }
 
 // Commands that don't require a note
@@ -344,6 +357,8 @@ async function main() {
       };
       if (code === 'VALIDATION_FAILED') {
         Object.assign(errorPayload, schemaFields(deriveSchemaKey()));
+        const apiTarget = deriveSchemaKey();
+        (errorPayload as any).hint = `Run 'roadmap api ${apiTarget}' to see full schema, invariants, and skip flags.`;
       }
 
       emit({ ok: false, cmd: _outputOpts.cmd, error: errorPayload }, _outputOpts);
@@ -1186,7 +1201,7 @@ async function cmdSpecGroup(note: string | undefined) {
     case 'plan':     return await cmdPlanRouter(note!);
     case 'migrate':  return await cmdSpecMigrate(note!);
     default:
-      json({ error: `Unknown spec subcommand: ${sub}`, fix: 'roadmap spec [plan | migrate] ...' });
+      json({ error: `Unknown spec subcommand: ${sub}`, fix: 'roadmap spec [plan | migrate] ...', hint: "Run 'roadmap api --all' to see full command registry." });
       process.exit(1);
   }
 }
@@ -1527,7 +1542,7 @@ Examples:
     case 'modify': return await cmdDagModify(note!);
     case 'log':    return cmdDagLog();
     default:
-      json({ error: `Unknown dag subcommand: ${sub}`, fix: 'roadmap dag help' });
+      json({ error: `Unknown dag subcommand: ${sub}`, fix: 'roadmap dag help', hint: "Run 'roadmap api --all' to see full command registry." });
       process.exit(1);
   }
 }
@@ -1765,6 +1780,29 @@ function cmdApi() {
   emit({ ok: true, cmd: 'api', data }, _outputOpts);
 }
 
+// --- Command help (--help on any command) ---
+function showCommandHelp() {
+  const key = deriveSchemaKey();
+  const schema = lookupSchema(key);
+  const out: any = {
+    command: key,
+    hint: `roadmap api ${key}  — full schema + examples`,
+  };
+  if (schema) {
+    out.description = schema.description;
+    out.input = schema.input ? schemaToJsonSchema(schema.input) : null;
+    out.examples = schema.examples ?? [];
+  }
+  if (cmd === 'make') {
+    const invariants = getMakeInvariants();
+    out.skipFlags = invariants
+      .filter(i => i.skipFlag)
+      .map(i => ({ flag: i.skipFlag, skips: i.requirement }));
+    out.invariants = invariants;
+  }
+  emit({ ok: true, cmd: 'api', data: out }, _outputOpts);
+}
+
 // --- Help ---
 function cmdHelp() {
   console.log(`roadmap — DAG expansion protocol CLI
@@ -1779,11 +1817,15 @@ Command groups (use 'roadmap <group> help' for details):
   dag <sub>          DAG mutations: insert, remove, modify, log
 
 Discovery:
-  api [<command>]    Schema discovery (input/output JSON Schema + examples)
+  api [<command>]    Schema discovery (input/output JSON Schema + examples + invariants)
   api --all          Full registry dump
+  help               This message
 
 All commands require --note "reason" (except help/orient/api).
-Output is JSON.
+Output is JSON. Add --help to any command for its full schema:
+  roadmap make --help
+  roadmap advance --help
+  roadmap dag insert --help
 
 Examples:
   roadmap orient --note "check position"
