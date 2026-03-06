@@ -8,7 +8,7 @@
 // Depth 1 = full cached context. Depth 2+ = convention summary only.
 
 import type { Graph, NodeSpec } from '../protocol.ts';
-import { readNodeCache, type NodeContextCache } from './brief-cache.ts';
+import { readNodeCache, extractFileSummary, type NodeContextCache, type FileSummary } from './brief-cache.ts';
 
 export interface SpecContext {
   /** Full task description from spec (no truncation) */
@@ -45,6 +45,8 @@ export interface BriefSlice {
     consumes: string[];
     validate: readonly unknown[];
   };
+  /** Layer 4: Produces preview — current state of files this node will create/modify */
+  producesPreview: FileSummary[];
   /** Topology metadata */
   topology: {
     depth: number;
@@ -253,6 +255,14 @@ export function briefSlice(
     validate: node.validate,
   };
 
+  // Layer 4: Produces preview — sample existing files the node will create/modify.
+  // Critical for init nodes (no ancestors) and modification nodes.
+  const producesPreview: FileSummary[] = [];
+  for (const produce of node.produces) {
+    const summary = extractFileSummary(produce, repoRoot);
+    if (summary) producesPreview.push(summary);
+  }
+
   // Topology metadata
   const topology = {
     depth: Math.max(...Array.from(cone.keys()), 0),
@@ -260,5 +270,5 @@ export function briefSlice(
     batchSiblings: findBatchSiblings(nodeId, dag),
   };
 
-  return { specContext, ancestorContext, nodeContract, topology };
+  return { specContext, ancestorContext, nodeContract, producesPreview, topology };
 }

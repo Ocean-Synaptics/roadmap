@@ -42,7 +42,7 @@ function isCodeFile(path: string): boolean {
   return CODE_EXTENSIONS.has(extname(path));
 }
 
-function extractFileSummary(filePath: string, repoRoot: string): FileSummary | null {
+export function extractFileSummary(filePath: string, repoRoot: string): FileSummary | null {
   const abs = join(repoRoot, filePath);
   if (!existsSync(abs)) return null;
   if (!isCodeFile(filePath)) return null;

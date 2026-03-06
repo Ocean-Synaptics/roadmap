@@ -5,6 +5,7 @@
 
 import type { Graph } from '../protocol.ts';
 import { briefSlice, type BriefSlice, type AncestorContext, type SpecContext } from './brief-slice.ts';
+import type { FileSummary } from './brief-cache.ts';
 
 export interface InterimHandoff {
   /** ISO 8601 timestamp when checkpoint was created */
@@ -64,6 +65,8 @@ export interface Brief {
   codeContext?: AncestorContext;
   /** Topology: depth, descendant count, batch siblings */
   topology?: BriefSlice['topology'];
+  /** Produces preview: current state of files this node will create/modify */
+  producesPreview?: FileSummary[];
 }
 
 /**
@@ -143,6 +146,7 @@ export async function getBrief(
       ? { codeContext: slice.ancestorContext }
       : {}),
     ...(slice?.topology ? { topology: slice.topology } : {}),
+    ...(slice?.producesPreview?.length ? { producesPreview: slice.producesPreview } : {}),
   } as Brief;
 }
 

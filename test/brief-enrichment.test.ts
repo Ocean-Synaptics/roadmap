@@ -198,6 +198,62 @@ describe('briefSlice', () => {
   });
 });
 
+describe('produces preview', () => {
+  it('includes file summaries for produces that exist on disk', () => {
+    const dag = makeTestDAG();
+    writeTestFile('src/index.ts', [
+      'import { readFileSync } from "node:fs";',
+      'export function main(): void {}',
+      'export const VERSION = "1.0.0";',
+    ].join('\n'));
+
+    const slice = briefSlice('setup', dag, TMP);
+
+    // setup produces src/index.ts (exists) and tsconfig.json (not a code file)
+    expect(slice.producesPreview.length).toBe(1);
+    expect(slice.producesPreview[0].path).toBe('src/index.ts');
+    expect(slice.producesPreview[0].exports.length).toBeGreaterThan(0);
+  });
+
+  it('returns empty preview when produces files do not exist', () => {
+    const dag = makeTestDAG();
+    // Don't create any files
+    const slice = briefSlice('setup', dag, TMP);
+    expect(slice.producesPreview.length).toBe(0);
+  });
+
+  it('is included in getBrief output when files exist', async () => {
+    const dag = makeTestDAG();
+    writeTestFile('src/auth.ts', [
+      'import { verify } from "jsonwebtoken";',
+      'export function validateToken(token: string): boolean {',
+      '  return verify(token, "secret") !== null;',
+      '}',
+    ].join('\n'));
+
+    const brief = await getBrief(dag, 'implement', TMP);
+    expect(brief.producesPreview).toBeDefined();
+    expect(brief.producesPreview!.length).toBe(1);
+    expect(brief.producesPreview![0].path).toBe('src/auth.ts');
+  });
+
+  it('gives init nodes context even with no ancestors', () => {
+    const dag = makeTestDAG();
+    writeTestFile('src/index.ts', [
+      'import { readFileSync } from "node:fs";',
+      'export function main(): void {}',
+    ].join('\n'));
+
+    const slice = briefSlice('setup', dag, TMP);
+
+    // Init node: no ancestors (empty cone), but produces preview exists
+    expect(slice.ancestorContext.immediate.length).toBe(0);
+    expect(slice.ancestorContext.heritage.length).toBe(0);
+    expect(slice.producesPreview.length).toBe(1);
+    expect(slice.producesPreview[0].headLines[0]).toBe('import { readFileSync } from "node:fs";');
+  });
+});
+
 describe('getBrief (enriched)', () => {
   it('returns full description not truncated', async () => {
     const dag = makeTestDAG();
