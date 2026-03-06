@@ -478,6 +478,30 @@ async function cmdOrient(note: string | undefined) {
     } catch {
       // Brief generation is best-effort
     }
+    // Surface intent gate requirements so agents know what advance will need
+    const node = (dag.nodes as any)[nodeId];
+    if (node) {
+      const intentRules = (node.validate ?? []).filter((r: any) => r.type === 'intent');
+      if (intentRules.length > 0) {
+        const templates = intentRules.map((r: any) => {
+          const t: any = {
+            statement: r.statement,
+            confidence: r.confidence,
+            reasoning: '<one paragraph: does the completed work satisfy this intent?>',
+          };
+          if (r.prompt && r.prompt.length > 0) {
+            t.promptAnswers = r.prompt.map(() => '<answer here>');
+          }
+          return t;
+        });
+        if (!briefs[nodeId]) briefs[nodeId] = {};
+        briefs[nodeId].intentGate = {
+          hint: 'This node has an intent gate. When you advance, pass --evaluate-file <path> with a JSON file containing:',
+          template: templates,
+          prompts: intentRules.flatMap((r: any) => r.prompt ?? []),
+        };
+      }
+    }
   }
 
   const result: Record<string, unknown> = {

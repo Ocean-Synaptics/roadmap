@@ -310,12 +310,22 @@ export async function validateNode<T extends string>(
         checks.push({ rule, passed, evidence, judgment, intentStatus: 'evaluated' });
         if (!passed) allPassed = false;
       } else {
-        // Unevaluated — BLOCKING. Agent must provide judgment via --evaluate.
+        // Unevaluated — BLOCKING. Agent must provide judgment via --evaluate-file.
         passed = false;
-        const promptHint = rule.prompt && rule.prompt.length > 0
-          ? ` Reflection prompts: ${JSON.stringify(rule.prompt)}`
-          : '';
-        evidence = `unevaluated — judgment required via --evaluate.${promptHint}`;
+        const template: any = {
+          statement: rule.statement,
+          confidence: rule.confidence,
+          reasoning: '<one paragraph: does the completed work satisfy this intent?>',
+        };
+        if (rule.prompt && rule.prompt.length > 0) {
+          template.promptAnswers = rule.prompt.map((_p: string, i: number) =>
+            `<answer prompt ${i + 1} here — include all required section headers>`
+          );
+        }
+        evidence = [
+          `unevaluated — write a JSON file and pass via --evaluate-file <path>.`,
+          `Template: ${JSON.stringify([template])}`,
+        ].join(' ');
         checks.push({ rule, passed, evidence, intentStatus: 'unevaluated' });
         allPassed = false;
       }

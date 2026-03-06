@@ -156,6 +156,6 @@ describe('E2E: intent gate hardening', () => {
     expect(result.passed).toBe(false);
     const intentCheck = result.checks.find(c => c.rule.type === 'intent');
     expect(intentCheck!.intentStatus).toBe('unevaluated');
-    expect(intentCheck!.evidence).toContain('judgment required');
+    expect(intentCheck!.evidence).toContain('--evaluate-file');
   });
 });
