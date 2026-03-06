@@ -4,6 +4,7 @@
 // @entry roadmap/agent
 
 import type { Graph } from '../protocol.ts';
+import { briefSlice, type BriefSlice, type AncestorContext, type SpecContext } from './brief-slice.ts';
 
 export interface InterimHandoff {
   /** ISO 8601 timestamp when checkpoint was created */
@@ -47,9 +48,9 @@ export interface Brief {
   produces: string[];
   /** Files available from predecessors (≤5) */
   consumes: string[];
-  /** What to build: 1–2 sentences (≤150 chars) */
+  /** What to build — full spec description (no truncation) */
   description: string;
-  /** How to build it: pattern/approach (≤150 chars) */
+  /** How to build it: pattern/approach */
   pattern: string;
   /** Previous node's final handoff (if exists) */
   handoff?: FinalHandoff;
@@ -57,6 +58,12 @@ export interface Brief {
   handoffJournal: (InterimHandoff | FinalHandoff)[];
   /** Remaining nodes in roadmap */
   remaining: number;
+  /** Spec context: ambient files and full description */
+  specContext?: SpecContext;
+  /** Ancestor code context: convention samples from backward cone */
+  codeContext?: AncestorContext;
+  /** Topology: depth, descendant count, batch siblings */
+  topology?: BriefSlice['topology'];
 }
 
 /**
@@ -112,17 +119,30 @@ export async function getBrief(
       })
     : [];
 
+  // Compute backward cone slice for enriched context
+  let slice: BriefSlice | undefined;
+  try {
+    slice = briefSlice(position, dag, repoRoot);
+  } catch {
+    // Slice is best-effort enrichment
+  }
+
   return {
     position,
     mode: node.mode ?? 'execute',
     produces: node.produces.slice(0, 5),
     consumes: node.consumes.map(c => typeof c === 'string' ? c : c.artifact).slice(0, 5),
-    description: node.desc.slice(0, 150),
+    description: slice?.specContext.description ?? node.desc,
     pattern: inferPattern(node.id, node.mode),
     handoff: prevHandoff,
     handoffJournal: journal,
     remaining,
     ...(pendingDeps.length > 0 ? { pendingDeps } : {}),
+    ...(slice?.specContext ? { specContext: slice.specContext } : {}),
+    ...(slice?.ancestorContext.immediate.length || slice?.ancestorContext.heritage.length
+      ? { codeContext: slice.ancestorContext }
+      : {}),
+    ...(slice?.topology ? { topology: slice.topology } : {}),
   } as Brief;
 }
 
