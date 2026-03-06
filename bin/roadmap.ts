@@ -569,14 +569,29 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
     return;
   }
 
-  // Parse --evaluate for intent judgments
+  // Parse --evaluate or --evaluate-file for intent judgments
   const evalIdx = args.indexOf('--evaluate');
+  const evalFileIdx = args.indexOf('--evaluate-file');
   let intentJudgments: import('../src/protocol.ts').IntentJudgment[] | undefined;
-  if (evalIdx !== -1 && args[evalIdx + 1]) {
+  if (evalFileIdx !== -1 && args[evalFileIdx + 1]) {
+    const evalPath = resolve(repoRoot, args[evalFileIdx + 1]);
+    if (!existsSync(evalPath)) {
+      json({ error: `--evaluate-file not found: ${evalPath}`, fix: 'Provide path to a JSON file containing intent judgments array' });
+      process.exit(1);
+      return;
+    }
+    try {
+      intentJudgments = JSON.parse(readFileSync(evalPath, 'utf-8'));
+    } catch {
+      json({ error: `Invalid JSON in --evaluate-file: ${evalPath}`, fix: 'File must contain a valid JSON array of IntentJudgment objects' });
+      process.exit(1);
+      return;
+    }
+  } else if (evalIdx !== -1 && args[evalIdx + 1]) {
     try {
       intentJudgments = JSON.parse(args[evalIdx + 1]);
     } catch {
-      json({ error: 'Invalid --evaluate JSON', fix: 'Pass valid JSON array: --evaluate \'[{"statement":"...","confidence":0.9,"reasoning":"..."}]\'' });
+      json({ error: 'Invalid --evaluate JSON', fix: 'Pass valid JSON array: --evaluate \'[...]\' or use --evaluate-file <path>' });
       process.exit(1);
       return;
     }
@@ -1053,19 +1068,23 @@ async function cmdMake(note: string) {
 
   // Validate the DAG — collect all errors before reporting
   const isDryRun = args.includes('--dry-run');
-  const errors = collectMakeErrors(dag, { skipTerminalIntent: args.includes('--skip-terminal-intent') });
+  const allErrors = collectMakeErrors(dag, { skipTerminalIntent: args.includes('--skip-terminal-intent') });
+  const errors = allErrors.filter((e: any) => e.severity !== 'warning');
+  const warnings = allErrors.filter((e: any) => e.severity === 'warning');
   if (errors.length > 0) {
     if (isDryRun) {
       json({
         ok: false,
         dryRun: true,
         errors,
+        warnings,
         message: `${errors.length} validation error(s) found`,
       });
       return;
     }
     throw new RoadmapError('VALIDATION_FAILED', {
       errors,
+      warnings,
       fix: errors.map(e => `[${e.gate}] ${e.fix}`).join('\n'),
     }, `${errors.length} validation error(s) found`);
   }

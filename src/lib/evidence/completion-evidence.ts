@@ -90,9 +90,12 @@ export function loadCompletionsWithEvidence(repoRoot: string): Map<string, Compl
         const record = validateEntry(entry) ? entry : migrateEntry(entry as Record<string, unknown>);
         records.set(record.nodeId, record);
       }
+    } else {
+      console.error(`WARNING: ${completionPath} is not a JSON array (got ${typeof data}). Completion data ignored — orient will show all nodes as incomplete. Fix: delete the file and re-advance nodes.`);
     }
     return records;
-  } catch {
+  } catch (e) {
+    console.error(`WARNING: Failed to parse ${completionPath}: ${e instanceof Error ? e.message : String(e)}`);
     return new Map();
   }
 }

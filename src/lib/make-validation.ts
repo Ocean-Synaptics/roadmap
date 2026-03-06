@@ -103,23 +103,27 @@ export function collectMakeErrors(
     }
   }
 
-  // 5. Init intent gate validation
+  // 5. Init intent gate validation (warning only — not a hard block)
+  // Init-boundary nodes with concrete produces don't need a plan-clarity affirmation.
+  // The terminal reflection prompt is the real checkpoint.
   try {
     const initError = validateInitIntentGate(dag);
     if (initError) {
       errors.push({
-        gate: 'init-intent',
+        gate: 'init-intent' as any,
         node: initError.node,
         message: initError.message,
         fix: initError.fix,
-      });
+        severity: 'warning',
+      } as any);
     }
   } catch (e) {
     errors.push({
-      gate: 'init-intent',
+      gate: 'init-intent' as any,
       message: e instanceof Error ? e.message : String(e),
       fix: 'Fix init intent gate errors',
-    });
+      severity: 'warning',
+    } as any);
   }
 
   return errors;
