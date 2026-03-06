@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "engine": "spec-kit",
   "version": "1.0.0",
-  "compile_hash": "9244ad257e8144f094e8f742812744bd99641d70ef9707341ae4a1b156114a9d",
-  "spec_sha": "b6151beaeacf96783ff5bbc2e174cc9ee3f167cb43f300f2ae34a68fd503afea",
-  "importedAt": "2026-03-06T19:56:17.722Z",
-  "dagId": "terminal-audit"
+  "compile_hash": "2f4725b518c63309dd1cfa49c1b5e40bcda60ec6f75bf6e88c7cce5c96845041",
+  "spec_sha": "718d9bb2660a00eacf74cbf9615ab3bd9b5335930c96979699612e1672838ec8",
+  "importedAt": "2026-03-06T22:39:50.473Z",
+  "dagId": "brief-enrichment"
 }
