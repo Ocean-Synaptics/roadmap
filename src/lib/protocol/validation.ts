@@ -3,7 +3,7 @@
 
 import type {
   Graph, ValidationCheck, ValidationResult, IntentFailure,
-  IntentJudgment, ExploreResult, ObservationResult,
+  IntentJudgment, ExploreResult,
 } from './types.ts';
 import { define, check, verify } from './operations.ts';
 

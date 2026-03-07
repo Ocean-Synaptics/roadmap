@@ -120,10 +120,6 @@ export type { TerminalIntentError, InitIntentError } from './lib/validate-dag.ts
 export { validatePlanClarity } from './lib/validate-plan-clarity.ts';
 export type { PlanClarityGap, PlanClarityResult } from './lib/validate-plan-clarity.ts';
 
-// Runtime exploration (CDP-based behavioral observation)
-export { launchApp, runExploreScript, mapObservationsToChecks, teardown } from './lib/exploration/runtime.ts';
-export type { LaunchHandle, ExploreScriptResult } from './lib/exploration/runtime.ts';
-
 export type {
   GitState,
   Checkpoint,
