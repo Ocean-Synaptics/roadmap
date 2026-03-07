@@ -65,6 +65,9 @@ export function expandGaps(
 
   for (let i = 0; i < uniqueGaps.length; i++) {
     const gap = uniqueGaps[i];
+    // Skip gaps on the terminal node — inserting a fix node that depends on
+    // terminal and then wiring terminal to depend on the fix creates a cycle.
+    if (gap.nodeId === dag.term) continue;
     const fixNode = gapToFixNode(gap, i, mutatedDag);
     if (!fixNode) continue;
 
