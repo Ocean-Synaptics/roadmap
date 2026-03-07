@@ -14,7 +14,8 @@
       "deps": [],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": "src/lib/protocol/validation.ts"
         },
         {
           "type": "shell",
@@ -37,7 +38,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": ".roadmap/tasks/delete-exploration-module.artifact.json"
         },
         {
           "type": "shell",
@@ -74,7 +76,8 @@
       ],
       "validate": [
         {
-          "type": "artifact-exists"
+          "type": "artifact-exists",
+          "path": ".roadmap/tasks/verify-type-surface.artifact.json"
         },
         {
           "type": "shell",
