@@ -219,10 +219,14 @@ export async function validateNode<T extends string>(
           passed = false;
           evidence = `explore failed: ${result.error ?? 'unknown error'}`;
         } else if (result.result) {
-          // Map observations to individual checks
-          const { mapObservationsToChecks } = await import('../exploration/runtime.ts');
-          const obsChecks = mapObservationsToChecks(result.result.observations, rule);
-          for (const oc of obsChecks) {
+          // Map observations to individual checks (inlined — no exploration runtime dependency)
+          for (const obs of result.result.observations) {
+            const oc: ValidationCheck = {
+              rule,
+              passed: obs.pass,
+              evidence: `[${obs.id}] ${obs.evidence}${obs.value !== undefined ? ` (value: ${obs.value})` : ''}`,
+              observations: [obs],
+            };
             checks.push(oc);
             if (!oc.passed) allPassed = false;
           }
