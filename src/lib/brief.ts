@@ -41,6 +41,8 @@ export interface FinalHandoff extends InterimHandoff {
 }
 
 export interface Brief {
+  /** Why this roadmap exists — one-line DAG purpose */
+  dagIntent: string;
   /** Current position in roadmap */
   position: string;
   /** Execution mode: 'execute' = produce artifacts, 'plan' = decompose into sub-tasks */
@@ -131,6 +133,7 @@ export async function getBrief(
   }
 
   return {
+    dagIntent: dag.desc,
     position,
     mode: node.mode ?? 'execute',
     produces: node.produces.slice(0, 5),

@@ -140,6 +140,7 @@ export class DispatchCoordinator {
           agentId,
           nodeId,
           brief: {
+            dagIntent: this.dag.desc,
             position: nodeId,
             mode: 'execute',
             produces: [],
