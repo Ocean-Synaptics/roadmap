@@ -1,1 +1,23 @@
-{"node":"term","dag":"hardening","timestamp":"2026-03-08T00:00:00Z","results":{"completion":{"atomicWrite":true,"legacyWarning":true,"testCount":29},"protocolPurity":{"fsImportsRemoved":true,"readFilePredicate":true},"reconcileTypeSafety":{"asAnyCastCount":0,"buildGraphHelper":true,"testCount":40},"suite":{"total":356,"allPassing":true,"tscClean":true}}}
+{
+  "node": "term",
+  "dag": "surface-coverage",
+  "timestamp": "2026-03-08T22:40:30.000Z",
+  "results": {
+    "deadCodeCull": {
+      "filesRemoved": 5,
+      "locRemoved": 849,
+      "depsRemoved": ["@types/commander"]
+    },
+    "testSuites": {
+      "render": { "file": "tests/render.test.ts", "cases": 62 },
+      "briefGate": { "file": "tests/brief-gate.test.ts", "cases": 78 },
+      "handoffJournal": { "file": "tests/handoff-journal.test.ts", "cases": 32 },
+      "agentExecutor": { "file": "tests/agent-executor.test.ts", "cases": 19 }
+    },
+    "suite": {
+      "total": 547,
+      "allPassing": true,
+      "tscClean": true
+    }
+  }
+}
