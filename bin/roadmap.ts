@@ -502,22 +502,20 @@ async function cmdOrient(note: string | undefined) {
     }
   }
 
-  // Chain context from chain.jsonl
-  let chainContext: { iteration: number; predecessorId: string | null; dagId: string; rootIntent: string } | undefined;
+  // Chain context from chain.jsonl (always emitted, even at iteration 0)
+  let chainContext: { iteration: number; predecessorId: string | null; dagId: string; rootIntent: string };
   try {
     const chain = loadChain(repoRoot);
-    if (chain.length > 0) {
-      const iteration = currentIteration(repoRoot);
-      const lastLink = chain[chain.length - 1];
-      chainContext = {
-        iteration,
-        predecessorId: lastLink.predecessorId,
-        dagId: dag.id ?? 'unknown',
-        rootIntent: getRootIntent(repoRoot),
-      };
-    }
+    const iteration = currentIteration(repoRoot);
+    const lastLink = chain.length > 0 ? chain[chain.length - 1] : null;
+    chainContext = {
+      iteration,
+      predecessorId: lastLink?.predecessorId ?? null,
+      dagId: dag.id ?? 'unknown',
+      rootIntent: chain.length > 0 ? getRootIntent(repoRoot) : (dag.desc ?? 'unknown'),
+    };
   } catch {
-    // Chain context is best-effort
+    chainContext = { iteration: 0, predecessorId: null, dagId: dag.id ?? 'unknown', rootIntent: dag.desc ?? 'unknown' };
   }
 
   const result: Record<string, unknown> = {
@@ -533,7 +531,7 @@ async function cmdOrient(note: string | undefined) {
     branch: getCurrentBranch(),
     worktree: isWorktree(),
     briefs,
-    ...(chainContext ? { chain: chainContext } : {}),
+    chain: chainContext,
   };
 
   // When DAG is complete, surface unloaded specs as next action
