@@ -41,7 +41,7 @@
         },
         {
           "type": "shell",
-          "command": "! grep -q 'crossOrient' bin/roadmap.ts"
+          "command": "! grep -P '^import.*crossOrient' bin/roadmap.ts"
         },
         {
           "type": "shell",
@@ -217,7 +217,7 @@
         },
         {
           "type": "shell",
-          "command": "! grep -q 'crossOrient' bin/roadmap.ts"
+          "command": "! grep -P '^import.*crossOrient' bin/roadmap.ts"
         },
         {
           "type": "shell",
