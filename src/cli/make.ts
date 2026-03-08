@@ -1,30 +1,250 @@
 // @module cli/make
-// @description Thin dispatch: parse args, load spec, build DAG, validate, return result.
+// @description Make command: create ideal DAG from spec, validate, commit.
 // @exports run
-import { readFileSync, existsSync } from 'node:fs';
-import { resolve } from 'node:path';
-import { define, verify, check } from '../lib/protocol/index.ts';
-import { orient } from '../core/orient.ts';
-import { loadContext } from '../runtime/context.ts';
-import { tasksToDAG } from '../lib/intake/speckit-import.ts';
 
-/** Thin make dispatch. Returns JSON-serialisable result. */
-export function run(args: string[], repoRoot: string): object {
-  const specPath = args[0];
-  if (!specPath) return { error: 'Missing spec path', fix: 'roadmap make <spec-path>' };
+import { readFileSync, existsSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join, resolve, basename } from 'node:path';
+import { createHash } from 'node:crypto';
+import { execSync } from 'node:child_process';
+import { tasksToDAG } from '../lib/intake/speckit-import.ts';
+import { collectMakeErrors } from '../lib/make-validation.ts';
+import { writeSpecOrigin } from '../lib/intake/spec-origin.ts';
+import type { SpecOrigin } from '../lib/intake/spec-origin.ts';
+import { saveDagHead } from '../lib/multi-dag.ts';
+import { RoadmapError } from '../errors.ts';
+import type { OutputOpts } from '../lib/cli-envelope.ts';
+import { loadDAG, crossOrientWithState, appendTrail, safeReadFile, json } from './shared.ts';
+
+export async function run(
+  args: string[],
+  repoRoot: string,
+  note: string,
+  outputOpts: OutputOpts,
+): Promise<void> {
+  const specPath = args[1];
+  if (!specPath) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      fix: 'roadmap make <spec-path>',
+      entry: 'bin/roadmap',
+    }, 'Missing spec path');
+  }
 
   const resolved = resolve(repoRoot, specPath);
-  if (!existsSync(resolved)) return { error: `Spec not found: ${resolved}` };
+  if (!existsSync(resolved)) {
+    throw new RoadmapError('NODE_NOT_FOUND', {
+      attempted: resolved,
+      fix: `Create ${specPath} first`,
+    }, `Spec not found: ${resolved}`);
+  }
 
-  const parsed = JSON.parse(readFileSync(resolved, 'utf-8'));
-  const tasks = (parsed.tasks ?? []).map((t: any, i: number) => ({
-    ...t, depends: t.depends ?? t.deps ?? [], priority: t.priority ?? i,
-    mode: t.mode ?? 'execute', desc: t.desc ?? t.description ?? '',
+  const specContent = safeReadFile(resolved, repoRoot);
+  let parsed: any;
+  try {
+    parsed = JSON.parse(specContent);
+  } catch (e) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      fix: 'Ensure spec is valid JSON',
+    }, `Failed to parse spec: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  // Reject raw DAG JSON
+  if (parsed.nodes && typeof parsed.nodes === 'object' && !parsed.tasks) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      fix: [
+        'Cannot create DAG from raw JSON.',
+        'roadmap make expects a spec, not a DAG definition.',
+        '',
+        'Proper workflow:',
+        '  1. roadmap spec plan --from <requirements.md> --output spec.json',
+        '  2. roadmap make spec.json',
+        '  3. roadmap show <node-id> to inspect',
+      ].join('\n'),
+    }, 'Invalid spec: raw DAG detected. Use the spec pipeline to create a spec first.');
+  }
+
+  // Validate required spec fields
+  const specErrors: Array<{ gate: string; message: string; fix: string }> = [];
+  if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
+    specErrors.push({ gate: 'spec-structure', message: 'Missing "tasks" array', fix: 'Spec must have a "tasks" array. Use: roadmap spec plan --from <requirements.md>' });
+  }
+  if (!parsed.metadata || typeof parsed.metadata !== 'object') {
+    specErrors.push({ gate: 'spec-structure', message: 'Missing "metadata" object', fix: 'Spec must have a "metadata" object with "generated" and "compile_hash". Use the spec pipeline.' });
+  }
+  if (!parsed.schema_version) {
+    specErrors.push({ gate: 'spec-structure', message: 'Missing "schema_version"', fix: 'Spec must have "schema_version". Use the spec pipeline to generate a valid spec.' });
+  }
+  if (specErrors.length > 0) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      errors: specErrors,
+      fix: specErrors.map(e => `[${e.gate}] ${e.fix}`).join('\n'),
+    }, `${specErrors.length} spec structure error(s) found`);
+  }
+
+  // Input artifact verification
+  if (!args.includes('--skip-input-verification')) {
+    if (!Array.isArray(parsed.inputs) || parsed.inputs.length === 0) {
+      throw new RoadmapError('VALIDATION_FAILED', {
+        fix: [
+          'Spec must have a non-empty "inputs" array listing source files.',
+          'Each entry: { path: "<file>", sha256: "<hash>", role: "spec"|"tasks"|"plan"|... }',
+          'At least one input must have role "spec", "tasks", or "plan".',
+        ].join('\n'),
+      }, 'Invalid spec: missing or empty "inputs" array');
+    }
+
+    for (const inp of parsed.inputs) {
+      if (!inp || typeof inp !== 'object' || !inp.path || !inp.sha256 || !inp.role) {
+        throw new RoadmapError('VALIDATION_FAILED', {
+          fix: 'Each input must have: { path: string, sha256: string, role: string }',
+          entry: JSON.stringify(inp),
+        }, 'Invalid spec: malformed input entry');
+      }
+    }
+
+    const specRoles = new Set(['spec', 'tasks', 'plan']);
+    const hasSpecRole = parsed.inputs.some((inp: any) => specRoles.has(inp.role));
+    if (!hasSpecRole) {
+      throw new RoadmapError('VALIDATION_FAILED', {
+        fix: 'At least one input must have role "spec", "tasks", or "plan".',
+        roles: parsed.inputs.map((inp: any) => inp.role),
+      }, 'Invalid spec: no input with spec/tasks/plan role');
+    }
+
+    const warnings: string[] = [];
+    const rehashes: string[] = [];
+    for (const inp of parsed.inputs) {
+      const inputPath = resolve(repoRoot, inp.path);
+      if (!existsSync(inputPath)) {
+        warnings.push(`input not found (skipped): ${inp.path}`);
+        continue;
+      }
+      const content = readFileSync(inputPath, 'utf-8');
+      const actual = createHash('sha256').update(content).digest('hex');
+      if (actual !== inp.sha256) {
+        if (args.includes('--rehash')) {
+          inp.sha256 = actual;
+          rehashes.push(`${inp.path}: updated hash to ${actual}`);
+        } else {
+          throw new RoadmapError('VALIDATION_FAILED', {
+            fix: `Input "${inp.path}" hash mismatch. Expected ${inp.sha256}, got ${actual}. Use --rehash to auto-update.`,
+          }, `Input hash mismatch for ${inp.path}`);
+        }
+      }
+    }
+
+    if (warnings.length > 0) {
+      (parsed as any)._inputWarnings = warnings;
+    }
+    if (rehashes.length > 0) {
+      writeFileSync(resolved, JSON.stringify(parsed, null, 2) + '\n');
+      (parsed as any)._rehashed = rehashes;
+    }
+  }
+
+  // Normalize tasks
+  const specAmbient = Array.isArray(parsed.inputs)
+    ? parsed.inputs.map((inp: any) => inp.path).filter(Boolean)
+    : [];
+  const normalizedTasks = (parsed.tasks as any[]).map((t: any, i: number) => ({
+    ...t,
+    depends: t.depends ?? t.deps ?? [],
+    priority: t.priority ?? i,
+    mode: t.mode ?? 'execute',
+    desc: t.desc ?? t.description ?? '',
+    ambient: [...(t.ambient ?? []), ...specAmbient],
   }));
-  const dag = tasksToDAG(tasks, { dagId: parsed.dag_id ?? 'ideal-dag', dagDesc: parsed.dag_desc });
-  define(dag); verify(dag); check(dag);
 
-  const ctx = loadContext(repoRoot);
-  const pos = orient(dag, (id) => ctx.completion.hasPassing(id));
-  return { ok: true, dag, position: pos.position, level: pos.level };
+  // Convert spec to DAG
+  let dag: any;
+  try {
+    dag = tasksToDAG(normalizedTasks, { dagId: parsed.dag_id ?? parsed.id ?? 'ideal-dag', dagDesc: parsed.dag_desc });
+  } catch (e) {
+    throw new RoadmapError('VALIDATION_FAILED', {
+      fix: 'Ensure spec conforms to SpecIR format',
+    }, `Failed to convert spec: ${e instanceof Error ? e.message : String(e)}`);
+  }
+
+  // Validate the DAG
+  const isDryRun = args.includes('--dry-run');
+  const allErrors = collectMakeErrors(dag, { skipTerminalIntent: args.includes('--skip-terminal-intent') });
+  const errors = allErrors.filter((e: any) => e.severity !== 'warning');
+  const makeWarnings = allErrors.filter((e: any) => e.severity === 'warning');
+  if (errors.length > 0) {
+    if (isDryRun) {
+      json({ ok: false, dryRun: true, errors, warnings: makeWarnings, message: `${errors.length} validation error(s) found` }, outputOpts);
+      return;
+    }
+    throw new RoadmapError('VALIDATION_FAILED', {
+      errors,
+      warnings: makeWarnings,
+      fix: errors.map(e => `[${e.gate}] ${e.fix}`).join('\n'),
+    }, `${errors.length} validation error(s) found`);
+  }
+
+  if (isDryRun) {
+    const pos = await crossOrientWithState(dag, repoRoot);
+    json({ ok: true, dryRun: true, dag, position: pos.position, level: pos.level, errors: [], message: 'Dry run: spec validates successfully (no files written)' }, outputOpts);
+    return;
+  }
+
+  // Write head.json
+  const headPath = join(repoRoot, '.roadmap', 'head.json');
+  const roadmapDir = join(repoRoot, '.roadmap');
+  if (!existsSync(roadmapDir)) mkdirSync(roadmapDir, { recursive: true });
+  writeFileSync(headPath, JSON.stringify(dag, null, 2) + '\n');
+
+  const dagId = dag.id ?? parsed.dag_id ?? parsed.id ?? 'ideal-dag';
+  saveDagHead(repoRoot, dagId, dag);
+
+  // Spec-origin receipt
+  const dagJson = JSON.stringify(dag);
+  const specHash = createHash('sha256').update(specContent).digest('hex');
+
+  let compileHash = parsed.metadata?.compile_hash;
+  if (!compileHash || compileHash === 'auto') {
+    const tasksJson = JSON.stringify(parsed.tasks || []);
+    compileHash = createHash('sha256').update(tasksJson).digest('hex');
+  }
+
+  const origin: SpecOrigin = {
+    schemaVersion: 1,
+    engine: parsed.engine?.name ?? 'spec-kit',
+    version: parsed.engine?.version ?? '0.0.0',
+    compile_hash: compileHash,
+    spec_sha: specHash,
+    importedAt: new Date().toISOString(),
+    dagId,
+  };
+  writeSpecOrigin(repoRoot, origin);
+
+  // Commit
+  let commitWarning: string | undefined;
+  try {
+    execSync('git add .roadmap/head.json .roadmap/heads/ .roadmap/spec-origin.json', { cwd: repoRoot, stdio: 'pipe' });
+    execSync(`git commit -m "make: ideal DAG from ${specPath}"`, { cwd: repoRoot, stdio: 'pipe' });
+  } catch (e: any) {
+    const stderr = e.stderr?.toString().trim() || e.message || 'unknown error';
+    commitWarning = `Git commit failed (head.json written but uncommitted): ${stderr.slice(0, 200)}`;
+  }
+
+  const pos = await crossOrientWithState(dag, repoRoot);
+
+  appendTrail({
+    ts: new Date().toISOString(),
+    cmd: 'make',
+    note,
+    repo: basename(repoRoot),
+    position: pos.position,
+    level: pos.level,
+    detail: { spec: specPath, nodes: Object.keys(dag.nodes ?? {}).length },
+  }, repoRoot);
+
+  json({
+    ok: true,
+    dag,
+    position: pos.position,
+    level: pos.level,
+    message: 'Ideal DAG created from spec',
+    ...(commitWarning ? { commitWarning } : {}),
+  }, outputOpts);
 }
