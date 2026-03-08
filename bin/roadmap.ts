@@ -99,14 +99,18 @@ function enforceMainBranch(): void {
   }
 
   const branch = getCurrentBranch();
-  if (branch !== 'main' && branch !== 'HEAD') {
-    console.error(JSON.stringify({
-      error: 'gitsafe: file operations only allowed from main branch',
-      currentBranch: branch,
-      fix: 'Switch to main branch: git checkout main',
-    }));
-    process.exit(1);
+  // Allow main, HEAD (detached), and feature/wip branches (worktree protocol)
+  if (branch === 'main' || branch === 'HEAD'
+      || branch.startsWith('feat/') || branch.startsWith('wip/')) {
+    return;
   }
+
+  console.error(JSON.stringify({
+    error: 'gitsafe: DAG-mutating operations require main, feat/*, or wip/* branch',
+    currentBranch: branch,
+    fix: `Switch branch: git checkout main (or use feat/${branch} / wip/${branch})`,
+  }));
+  process.exit(1);
 }
 
 /** Wrap readFileSync through gitsafe denylist + maxBytes validation */
