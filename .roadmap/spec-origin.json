@@ -3,7 +3,7 @@
   "engine": "spec-kit",
   "version": "1.0.0",
   "compile_hash": "manual",
-  "spec_sha": "cd5c3268fbcc52c6368297d2ad11c06f775d4ee3401cb742391085173c0790d5",
-  "importedAt": "2026-03-08T19:59:39.802Z",
-  "dagId": "cli-decompose"
+  "spec_sha": "ba83e21623ec2c38fcb1996eee8a791cce3ab1f083d82c7d2ec0e91456687cbb",
+  "importedAt": "2026-03-08T20:51:41.708Z",
+  "dagId": "hardening"
 }
