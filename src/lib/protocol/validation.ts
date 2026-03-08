@@ -312,6 +312,71 @@ export async function validateNode<T extends string>(
         passed = false;
         evidence = `spec-conformance error: ${String(e.message).slice(0, 200)}`;
       }
+    } else if (rule.type === 'runtime-explore') {
+      // Runtime-explore: dynamically import explore script, invoke with Playwright.
+      // Graceful degradation: if Playwright or the script is unavailable, skip with evidence.
+      const script = rule.script;
+      const observations = rule.observations ?? [];
+      if (!script) {
+        passed = false;
+        evidence = 'runtime-explore rule missing script path';
+      } else {
+        try {
+          const root = opts?.repoRoot ?? process.cwd();
+          const scriptPath = script.startsWith('/') ? script : `${root}/${script}`;
+          const { existsSync } = await import('node:fs');
+          if (!existsSync(scriptPath)) {
+            passed = false;
+            evidence = `explore script not found: ${script}`;
+          } else {
+            // Try to import and execute the explore script
+            let playwrightAvailable = false;
+            try {
+              await import('playwright');
+              playwrightAvailable = true;
+            } catch {
+              // Playwright not installed — degrade gracefully
+            }
+
+            if (!playwrightAvailable) {
+              // Skip with evidence — not a hard failure, just can't validate yet
+              passed = false;
+              evidence = `runtime-explore skipped: playwright not installed — run 'npx playwright install chromium' in the output repo. Script: ${script}, ${observations.length} observation(s) declared.`;
+            } else {
+              try {
+                const mod = await import(scriptPath);
+                const exploreFn = mod.default ?? mod.explore;
+                if (typeof exploreFn !== 'function') {
+                  passed = false;
+                  evidence = `explore script has no default export function: ${script}`;
+                } else {
+                  const { chromium } = await import('playwright');
+                  const browser = await chromium.launch({ headless: true });
+                  const page = await browser.newPage();
+                  try {
+                    const runDir = `${root}/.donjon/evidence`;
+                    const result = await exploreFn(page, {}, runDir);
+                    passed = result.ok === true;
+                    const total = result.observations?.length ?? 0;
+                    const passCount = result.observations?.filter((o: any) => o.pass).length ?? 0;
+                    evidence = passed
+                      ? `runtime-explore passed: ${passCount}/${total} observations, ${result.duration}ms`
+                      : `runtime-explore failed: ${passCount}/${total} observations passed${result.error ? ` — ${result.error}` : ''}`;
+                  } finally {
+                    await browser.close();
+                  }
+                }
+              } catch (e: any) {
+                passed = false;
+                evidence = `runtime-explore error: ${String(e.message).slice(0, 200)}`;
+              }
+            }
+          }
+        } catch (e: any) {
+          passed = false;
+          evidence = `runtime-explore error: ${String(e.message).slice(0, 200)}`;
+        }
+      }
     } else if (rule.type === 'intent') {
       // Intent constraints require LLM judgment. The calling LLM reads the
       // context files and provides its evaluation via --evaluate '[{...}]'.
