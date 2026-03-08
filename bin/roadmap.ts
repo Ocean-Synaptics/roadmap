@@ -15,7 +15,7 @@ import {
   validateNode,
 } from '../src/protocol.ts';
 import type { ConsumeSpec } from '../src/protocol.ts';
-import { fileExists } from '../src/predicates.ts';
+import { findRepoRoot, fileExists } from '../src/predicates.ts';
 import { RoadmapError } from '../src/errors.ts';
 import { loadClaims, saveClaims, isExpired, activeClaims, annotateWithClaims, assignBatch } from '../src/lib/claims/claims.ts';
 import { parseTasksMd, tasksToDAG } from '../src/lib/intake/speckit-import.ts';
@@ -42,7 +42,7 @@ import type { FinalHandoff, InterimHandoff } from '../src/lib/brief.ts';
 import { saveFinal, saveInterim } from '../src/lib/agent-dispatch/handoff-journal.ts';
 import type { Graph, Orientation } from '../src/protocol.ts';
 import type { OrientV1, OrientDag, OrientDagNode, OrientDagEdge, OrientBlockedNode } from '../src/lib/core/orient-schema.ts';
-import { emit, emitError, parseOutputOpts, ErrorCode, type OutputFormat, type RenderV1 } from '../src/lib/cli-envelope.ts';
+import { emit, emitError, parseOutputOpts, ErrorCode, setRepoRoot, type OutputFormat, type RenderV1 } from '../src/lib/cli-envelope.ts';
 import { render, renderDagLayers, type RenderOpts, type RenderModel, type RenderOutput, type DagLayer, type DagNode } from '../src/lib/render/index.ts';
 import { resolveWidth } from '../src/lib/render/layout.ts';
 import { renderOrient, renderPlanGallery, renderPlanSelect, renderPlanStatus } from '../src/lib/cli-human.ts';
@@ -51,7 +51,8 @@ import { lookupSchema, listCommands, schemaToJsonSchema } from '../src/lib/schem
 import { getMakeInvariants } from '../src/lib/api-invariants.ts';
 
 const rawArgs = process.argv.slice(2);
-const repoRoot = process.cwd();
+const repoRoot = findRepoRoot(process.cwd());
+setRepoRoot(repoRoot);
 
 // --- GitSafe enforcement ---
 const gitsafe = createGitSafeLoader(repoRoot);

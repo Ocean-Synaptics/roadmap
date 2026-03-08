@@ -4,7 +4,7 @@
 // @entry roadmap/agent-dispatch
 
 import type { Graph } from '../protocol/types.ts';
-import type { Orientation } from '../protocol/operations.ts';
+import type { Orientation } from '../../core/orient.ts';
 import type { Brief, FinalHandoff } from '../brief.ts';
 import { getBrief } from '../brief.ts';
 import { BriefGate } from './brief-gate.ts';

@@ -6,7 +6,7 @@ import type {
   IntentJudgment,
 } from './types.ts';
 import { node } from '../../core/access.ts';
-import { define, check, verify } from './operations.ts';
+import { define, check, verify } from '../../core/graph.ts';
 
 // --- Validation: Proof of delivery ---
 

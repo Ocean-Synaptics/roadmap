@@ -27,6 +27,9 @@ export type { CoreNodeSpec, CoreGraph } from './core/types.ts';
 export type { NodeMeta, ManagedNodeSpec, ManagedGraph } from './runtime/meta.ts';
 export { fullNode } from './runtime/meta.ts';
 
+// Predicates (IO utilities)
+export { findRepoRoot, fileExists } from './predicates.ts';
+
 // Optimizer
 export {
   optimize, utilizationRatio, levelReport, bottleneckNodes,

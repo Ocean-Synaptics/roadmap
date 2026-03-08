@@ -4,7 +4,7 @@
 // @entry roadmap
 
 import type { Graph, OptimizeResult, LevelEntry, BottleneckEntry } from './protocol/types.ts';
-import { define, verify, check, parallelOrder, criticalPath } from './protocol/operations.ts';
+import { define, verify, check, parallelOrder, criticalPath } from '../protocol.ts';
 
 /**
  * Hallucinate-validate optimizer: minimize dependencies by checking which edges are removable.

@@ -1,12 +1,32 @@
 // @module predicates
-// @exports fileExists, gitArtifactExists, gitArtifactAt, siblingArtifactExists, compound, any
+// @exports findRepoRoot, fileExists, gitArtifactExists, gitArtifactAt, siblingArtifactExists, compound, any
 // @types (none)
 // @entry roadmap/protocol (re-exported)
 
 import { existsSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, dirname } from 'node:path';
 import { homedir } from 'node:os';
 import { execSync } from 'node:child_process';
+
+/**
+ * Walk up from `startDir` until a directory containing `.roadmap/` is found.
+ * Falls back to `.git` if no `.roadmap/` exists (for fresh repos before `roadmap make`).
+ * Throws if neither marker is found.
+ */
+export function findRepoRoot(startDir: string): string {
+  let dir = startDir;
+  let gitRoot: string | null = null;
+  while (true) {
+    if (existsSync(join(dir, '.roadmap'))) return dir;
+    if (!gitRoot && existsSync(join(dir, '.git'))) gitRoot = dir;
+    const parent = dirname(dir);
+    if (parent === dir) {
+      if (gitRoot) return gitRoot;
+      throw new Error(`findRepoRoot: no .roadmap/ or .git/ found above ${startDir}`);
+    }
+    dir = parent;
+  }
+}
 
 /**
  * Curried file-exists predicate for orient().

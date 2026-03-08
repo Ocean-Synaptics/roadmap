@@ -5,7 +5,7 @@
 // Instead of throwing on first error, gathers every violation into an errors[] array.
 
 import type { Graph } from './protocol/types.ts';
-import { define, verify, check } from './protocol/operations.ts';
+import { define, verify, check } from '../protocol.ts';
 import {
   validateTerminalIntentGate,
   validateInitIntentGate,

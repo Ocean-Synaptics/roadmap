@@ -77,13 +77,12 @@ export type ErrorCodeValue = typeof ErrorCode[keyof typeof ErrorCode];
 // --- Helpers ---
 
 /** Read .roadmap/git-state.json, return lastCommit sha or null. Never throws. */
-export function getHeadSha(): string | null {
+export function getHeadSha(repoRoot?: string): string | null {
   try {
-    const raw = readFileSync(join(process.cwd(), '.roadmap', 'git-state.json'), 'utf-8');
+    const root = repoRoot ?? _repoRoot ?? process.cwd();
+    const raw = readFileSync(join(root, '.roadmap', 'git-state.json'), 'utf-8');
     const parsed = JSON.parse(raw);
-    // git-state.json stores sha as `lastCommit`
     if (typeof parsed.lastCommit === 'string') return parsed.lastCommit;
-    // fallback: head.hash from full GitState schema
     if (parsed.head && typeof parsed.head.hash === 'string') return parsed.head.hash;
     return null;
   } catch {
@@ -91,9 +90,17 @@ export function getHeadSha(): string | null {
   }
 }
 
-/** Repo root — cwd as-is. */
+// Module-level repoRoot set by setRepoRoot() from CLI entry point.
+let _repoRoot: string | null = null;
+
+/** Set the resolved repo root for all envelope output. Call once from CLI entry. */
+export function setRepoRoot(root: string): void {
+  _repoRoot = root;
+}
+
+/** Repo root — returns resolved root if set, otherwise cwd. */
 export function getRepoRoot(): string {
-  return process.cwd();
+  return _repoRoot ?? process.cwd();
 }
 
 // --- Output opts parsing ---

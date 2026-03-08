@@ -203,3 +203,13 @@ export interface BottleneckEntry {
 
 export type Connection = { forward: string; backward: string; artifact: string };
 export type Gap = { between: [string, string]; missing: string[] };
+
+export interface ModificationRecord {
+  timestamp: number;
+  action: 'delete' | 'skip';
+  nodeId: string;
+  reason: string;
+  evidence?: string;
+  commitHash?: string;
+  graphAfter?: Graph<string>;
+}
