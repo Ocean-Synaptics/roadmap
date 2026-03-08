@@ -1,6 +1,6 @@
 // @module protocol
 // @exports define, graph, check, verify, order, parallelOrder, batchConflicts, orient, advanceBatch, readyNodes, nextBatch, criticalPath, reconcile, merge, branch, analyze, modify, modifyAndCommit, validateNode, validateBatch, validateGraph, CompletionStore, optimize, utilizationRatio, levelReport, bottleneckNodes
-// @types NodeSpec, Graph, SpecMeta, Orientation, ReadyNode, NextBatch, BatchConflict, Connection, Gap, ValidationRule, ValidationCheck, ValidationResult, ModifyAnalysis, ModificationRecord, ConsumeSpec, RuntimeExploreRule, ObservationSpec, ObservationResult, ExploreResult, IntentFailure, ConvergenceLimits, EscalationResult, IntentDiagnosis, OptimizeResult, LevelEntry, BottleneckEntry
+// @types NodeSpec, Graph, SpecMeta, Orientation, ReadyNode, NextBatch, BatchConflict, Connection, Gap, ValidationRule, ValidationCheck, ValidationResult, ModifyAnalysis, ModificationRecord, ConsumeSpec, IntentFailure, ConvergenceLimits, EscalationResult, IntentDiagnosis, OptimizeResult, LevelEntry, BottleneckEntry
 // @entry roadmap/protocol
 //
 // Re-exports from split protocol modules. All implementations live in src/lib/protocol/.
@@ -25,7 +25,7 @@ export {
 } from './lib/optimize.ts';
 
 export type {
-  ValidationRule, IntentJudgment, ObservationSpec, ObservationResult, ExploreResult,
+  ValidationRule, IntentJudgment,
   ValidationCheck, ValidationResult, IntentFailure, ConvergenceLimits, EscalationResult,
   IntentDiagnosis, ConsumeSpec, NodeSpec, EmitGalleryNodeSpec, TermGate, SpecMeta,
   Graph, Connection, Gap, OptimizeResult, LevelEntry, BottleneckEntry,

@@ -3,7 +3,7 @@
 
 import type {
   Graph, ValidationCheck, ValidationResult, IntentFailure,
-  IntentJudgment, ExploreResult,
+  IntentJudgment,
 } from './types.ts';
 import { define, check, verify } from './operations.ts';
 
@@ -17,7 +17,7 @@ export async function validateNode<T extends string>(
   g: Graph<T>,
   nodeId: string,
   exists: (artifact: string) => boolean,
-  opts?: { intentJudgments?: IntentJudgment[]; exploreResults?: Array<{ script: string; success: boolean; result?: ExploreResult; error?: string }>; validating?: boolean; repoRoot?: string; branch?: string },
+  opts?: { intentJudgments?: IntentJudgment[]; validating?: boolean; repoRoot?: string; branch?: string },
 ): Promise<ValidationResult> {
   const node = g.nodes[nodeId as keyof typeof g.nodes] as any;
 
@@ -195,45 +195,6 @@ export async function validateNode<T extends string>(
         } catch (e: any) {
           passed = false;
           evidence = `launch failed: ${rule.command} — ${String(e.message).slice(0, 200)}`;
-        }
-      }
-    } else if (rule.type === 'runtime-explore') {
-      // CDP-based behavioral observation: launch app, run explore script, map observations
-      // Primary: opts.validating (call-stack). Fallback: ROADMAP_VALIDATING env (child process recursion guard).
-      const exploreValidating = opts?.validating ?? !!process.env.ROADMAP_VALIDATING;
-      if (exploreValidating) {
-        passed = true;
-        evidence = `skipped (already inside validation): ${rule.script}`;
-      } else if (!opts?.exploreResults) {
-        // No explore results provided — non-blocking, signal what needs exploration
-        passed = true;
-        evidence = `unevaluated: run with --explore to execute ${rule.script}`;
-        checks.push({ rule, passed, evidence });
-        continue;
-      } else {
-        const result = opts.exploreResults.find(r => r.script === rule.script);
-        if (!result) {
-          passed = false;
-          evidence = `explore script not found in results: ${rule.script}`;
-        } else if (!result.success) {
-          passed = false;
-          evidence = `explore failed: ${result.error ?? 'unknown error'}`;
-        } else if (result.result) {
-          // Map observations to individual checks (inlined — no exploration runtime dependency)
-          for (const obs of result.result.observations) {
-            const oc: ValidationCheck = {
-              rule,
-              passed: obs.pass,
-              evidence: `[${obs.id}] ${obs.evidence}${obs.value !== undefined ? ` (value: ${obs.value})` : ''}`,
-              observations: [obs],
-            };
-            checks.push(oc);
-            if (!oc.passed) allPassed = false;
-          }
-          continue; // already pushed checks
-        } else {
-          passed = false;
-          evidence = `explore result missing for: ${rule.script}`;
         }
       }
     } else if (rule.type === 'spec-conformance') {

@@ -5,7 +5,6 @@
 import type {
   Graph, NodeSpec, ConsumeSpec, Connection, Gap, IntentDiagnosis,
   ValidationCheck, ValidationResult, IntentFailure, IntentJudgment,
-  ExploreResult, ObservationResult,
 } from './types.ts';
 import { consumeArtifact, consumeResolvedBy } from './types.ts';
 import { CompletionStore } from '../completion/completion-context.ts';

@@ -44,8 +44,7 @@ export interface FixNodeSpec {
     reasoning: string;
     evidence: string[];
     expansionDepth: number;
-    observationFailures?: Array<{ id: string; description: string; evidence: string }>;
-    informedBy?: 'runtime-explore' | 'llm' | 'hybrid' | 'unevaluated';
+    informedBy?: 'llm' | 'unevaluated';
     estimatedCost?: number;
     costRatio?: number;
   };
@@ -147,7 +146,7 @@ export function generateIntentExpansion(
   cumulativeCost: number = 0,
 ): ExpansionResult {
   const resolved = { ...DEFAULT_LIMITS, ...limits };
-  const deterministicRules = parentValidate.filter(r => r.type !== 'intent' && r.type !== 'runtime-explore');
+  const deterministicRules = parentValidate.filter(r => r.type !== 'intent');
 
   const maxBudget = resolved.maxExpansionCost;
   const perNodeCosts: number[] = failures.map(f => {
@@ -198,7 +197,7 @@ export function generateIntentExpansion(
       _intentDiagnosis: {
         statement: f.statement, achievedConfidence: f.achieved, threshold: f.threshold,
         reasoning: f.reasoning, evidence: f.evidence, expansionDepth: depth + 1,
-        observationFailures: f.observationFailures, informedBy: f.informedBy,
+        informedBy: f.informedBy,
         estimatedCost: nodeCost, costRatio,
       },
     };
@@ -234,7 +233,7 @@ export function generateInitGateExpansion(
 
   const resolved = { ...DEFAULT_LIMITS, ...limits };
   const gaps = extractPlanClarityGaps(failure);
-  const deterministicRules = parentValidate.filter(r => r.type !== 'intent' && r.type !== 'runtime-explore');
+  const deterministicRules = parentValidate.filter(r => r.type !== 'intent');
 
   const maxBudget = resolved.maxExpansionCost;
   const perNodeCosts: number[] = gaps.map(gap => {

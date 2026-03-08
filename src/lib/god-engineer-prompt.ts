@@ -81,10 +81,9 @@ Output JSON with this structure:
       "description": "what this validator checks",
       "rationale": "why this matters to the system",
       "check": {
-        "type": "shell | artifact-exists | launch-check | runtime-explore",
+        "type": "shell | artifact-exists | launch-check",
         "command": "if shell/artifact-exists",
-        "timeout": "if launch-check",
-        "observations": "if runtime-explore"
+        "timeout": "if launch-check"
       },
       "failureMode": "what goes wrong if this fails",
       "evidence": "how we know if it passed"
@@ -174,10 +173,9 @@ export interface GodValidatorRule {
   description: string;
   rationale: string;
   check: {
-    type: 'shell' | 'artifact-exists' | 'launch-check' | 'runtime-explore';
+    type: 'shell' | 'artifact-exists' | 'launch-check';
     command?: string;
     timeout?: number;
-    observations?: Array<{ id: string; description: string }>;
   };
   failureMode: string;
   evidence: string;

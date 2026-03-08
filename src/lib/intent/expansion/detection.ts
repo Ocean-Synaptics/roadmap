@@ -1,8 +1,8 @@
 // @module intent/expansion/detection
-// @exports IntentFailure, IntentDiagnosis, diagnosisCode, buildDiagnosisBlock, buildIntentDiagnosis, extractIntentFailures, resolveProduces, isInitGateFailure, extractObservationFailures, enrichIntentFailuresWithObservations
+// @exports IntentFailure, IntentDiagnosis, diagnosisCode, buildDiagnosisBlock, buildIntentDiagnosis, extractIntentFailures, resolveProduces, isInitGateFailure
 // @entry roadmap
 
-import type { ValidationRule, ValidationCheck, IntentJudgment, ObservationResult } from '../../../protocol.ts';
+import type { ValidationRule, ValidationCheck, IntentJudgment } from '../../../protocol.ts';
 import type { DiagnosisBlock } from '../../judgment-receipt.ts';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -14,8 +14,7 @@ export interface IntentFailure {
   reasoning: string;
   evidence: string[];
   rule: ValidationRule & { type: 'intent' };
-  observationFailures?: Array<{ id: string; description: string; evidence: string }>;  // from runtime-explore
-  informedBy?: 'runtime-explore' | 'llm' | 'hybrid' | 'unevaluated'; // judgment source
+  informedBy?: 'llm' | 'unevaluated'; // judgment source
 }
 
 // FR-IG-002: Structured diagnosis schema.
@@ -28,8 +27,7 @@ export interface IntentDiagnosis {
   achievedConfidence: number;
   threshold: number;
   expansionDepth: number;
-  observationFailures?: Array<{ id: string; description: string; evidence: string }>;
-  informedBy?: 'runtime-explore' | 'llm' | 'hybrid' | 'unevaluated';
+  informedBy?: 'llm' | 'unevaluated';
   estimatedCost?: number;
   costRatio?: number;
 }
@@ -60,11 +58,6 @@ export function buildDiagnosisBlock(nodeId: string, intent: IntentFailure): Diag
   if (intent.rule.context && intent.rule.context.length > 0) {
     remediationSteps.push(`Review context files: ${intent.rule.context.join(', ')}`);
   }
-  if (intent.observationFailures && intent.observationFailures.length > 0) {
-    remediationSteps.push(
-      `Fix failing observations: ${intent.observationFailures.map(o => o.id).join(', ')}`,
-    );
-  }
   remediationSteps.push(`Achieve confidence >= ${intent.threshold} (currently ${intent.achieved.toFixed(2)})`);
 
   return { code, affectedNode: nodeId, evidenceIds, remediationSteps };
@@ -86,7 +79,6 @@ export function buildIntentDiagnosis(
     achievedConfidence: intent.achieved,
     threshold: intent.threshold,
     expansionDepth,
-    observationFailures: intent.observationFailures,
     informedBy: intent.informedBy,
     estimatedCost: opts?.estimatedCost,
     costRatio: opts?.costRatio,
@@ -145,53 +137,3 @@ export function isInitGateFailure(failure: IntentFailure): boolean {
   return keywords.some(keyword => statement.includes(keyword));
 }
 
-// ── Observation integration ────────────────────────────────────────────────────
-
-export function extractObservationFailures(
-  observations: ObservationResult[],
-): Array<{ id: string; description: string; evidence: string }> {
-  return observations
-    .filter(obs => !obs.pass)
-    .map(obs => ({
-      id: obs.id,
-      description: obs.id,
-      evidence: obs.evidence,
-    }));
-}
-
-/**
- * Enrich intent failures with observation data from runtime-explore checks.
- */
-export function enrichIntentFailuresWithObservations(
-  failures: IntentFailure[],
-  checks: ValidationCheck[],
-): IntentFailure[] {
-  return failures.map(failure => {
-    const failedObservations = checks
-      .filter(c => c.rule.type === 'runtime-explore' && !c.passed && c.observations)
-      .flatMap(c => {
-        const rule = c.rule as any;
-        const observations = rule.observations as any[] ?? [];
-        const checkObs = c.observations as ObservationResult[] ?? [];
-
-        return checkObs
-          .filter(obs => !obs.pass)
-          .map(obs => {
-            const spec = observations.find((o: any) => o.id === obs.id);
-            return {
-              id: obs.id,
-              description: spec?.description ?? obs.id,
-              evidence: obs.evidence,
-            };
-          });
-      });
-
-    if (failedObservations.length > 0) {
-      const hasJudgment = !!failure.reasoning && failure.reasoning.length > 0;
-      const informedBy = hasJudgment ? 'hybrid' : 'runtime-explore';
-      return { ...failure, observationFailures: failedObservations, informedBy };
-    }
-
-    return { ...failure, informedBy: 'llm' as const };
-  });
-}

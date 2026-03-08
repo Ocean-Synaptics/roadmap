@@ -1,5 +1,5 @@
 // @module protocol/types
-// @exports ValidationRule, IntentJudgment, ObservationSpec, ObservationResult, ExploreResult, ValidationCheck, ValidationResult, IntentFailure, ConvergenceLimits, EscalationResult, IntentDiagnosis, ConsumeSpec, consumeArtifact, consumeResolvedBy, NodeSpec, EmitGalleryNodeSpec, graph, TermGate, SpecMeta, Graph, OptimizeResult, LevelEntry, BottleneckEntry, Connection, Gap
+// @exports ValidationRule, IntentJudgment, ValidationCheck, ValidationResult, IntentFailure, ConvergenceLimits, EscalationResult, IntentDiagnosis, ConsumeSpec, consumeArtifact, consumeResolvedBy, NodeSpec, EmitGalleryNodeSpec, graph, TermGate, SpecMeta, Graph, OptimizeResult, LevelEntry, BottleneckEntry, Connection, Gap
 // @types All protocol types
 // @entry roadmap/protocol
 
@@ -19,8 +19,7 @@ export type ValidationRule =
   | { type: 'build-produces'; command: string; outputs: string[] }
   | { type: 'launch-check'; command: string; timeout?: number; successSignal?: string }
   | { type: 'spec-conformance'; spec: string; stories: number[]; criteria?: number[] }
-  | { type: 'intent'; statement: string; confidence: number; evaluator: 'self' | 'council'; context?: string[]; expandOnFail?: boolean; maxExpansionDepth?: number; prompt?: string[] }
-  | { type: 'runtime-explore'; script: string; launch?: string; port?: number; timeout?: number; observations: ObservationSpec[] };
+  | { type: 'intent'; statement: string; confidence: number; evaluator: 'self' | 'council'; context?: string[]; expandOnFail?: boolean; maxExpansionDepth?: number; prompt?: string[] };
 
 // LLM-provided judgment for one intent statement.
 // Passed via --evaluate '[{...}]' on the complete command.
@@ -32,25 +31,6 @@ export interface IntentJudgment {
   promptAnswers?: string[]; // responses to rule.prompt[] — required when rule has prompts
 }
 
-// Runtime exploration types — CDP-based behavioral observation
-export interface ObservationSpec {
-  id: string;                        // unique identifier for this observation
-  description: string;               // human-readable: "todo text visible in light mode"
-  type: 'assertion' | 'measurement'; // assertion = pass/fail, measurement = value capture
-}
-
-export interface ObservationResult {
-  id: string;                          // matches ObservationSpec.id
-  pass: boolean;
-  value?: string | number | boolean;   // measured value
-  evidence: string;                    // human-readable: "color: #1a1a1a on bg: #ffffff"
-}
-
-export interface ExploreResult {
-  observations: ObservationResult[];
-  screenshots?: string[];              // paths to captured screenshots (for audit)
-  duration: number;                    // ms
-}
 
 export interface ValidationCheck {
   rule: ValidationRule;
@@ -58,7 +38,6 @@ export interface ValidationCheck {
   evidence?: string;
   judgment?: IntentJudgment;                  // populated when judgment was provided
   intentStatus?: 'evaluated' | 'unevaluated'; // present only for intent rules
-  observations?: ObservationResult[];         // populated when runtime-explore results provided
 }
 
 export interface ValidationResult {
@@ -112,8 +91,7 @@ export interface IntentDiagnosis {
   reasoning: string;
   evidence: string[];
   expansionDepth: number;
-  observationFailures?: Array<{ id: string; description: string; evidence: string }>;  // failed observations from runtime-explore
-  informedBy?: 'runtime-explore' | 'llm' | 'hybrid' | 'unevaluated'; // judgment source
+  informedBy?: 'llm' | 'unevaluated'; // judgment source
 }
 
 // Consume entry: plain string (artifact path) or acknowledged pending contract.

@@ -1,12 +1,11 @@
 // @module intent-expansion (barrel — re-exports from expansion/)
-// @exports IntentFailure, IntentDiagnosis, diagnosisCode, PlanClarityGap, ConvergenceLimits, CostHistory, FixNodeSpec, ExpansionResult, generateIntentExpansion, generateInitGateExpansion, resolveProduces, isInitGateFailure, extractPlanClarityGaps, detectStall, buildEscalation, extractIntentFailures, extractObservationFailures, enrichIntentFailuresWithObservations, fixNodeCost, buildDiagnosisBlock, EvidenceMode, EvidenceItem, validateEvidenceAlgebra, ExpansionReceipt, writeExpansionReceipt, checkSiblingInvariants, ConvergenceIteration, ConvergenceHistory, recordConvergenceIteration, readConvergenceHistory
+// @exports IntentFailure, IntentDiagnosis, diagnosisCode, PlanClarityGap, ConvergenceLimits, CostHistory, FixNodeSpec, ExpansionResult, generateIntentExpansion, generateInitGateExpansion, resolveProduces, isInitGateFailure, extractPlanClarityGaps, detectStall, buildEscalation, extractIntentFailures, fixNodeCost, buildDiagnosisBlock, EvidenceMode, EvidenceItem, validateEvidenceAlgebra, ExpansionReceipt, writeExpansionReceipt, checkSiblingInvariants, ConvergenceIteration, ConvergenceHistory, recordConvergenceIteration, readConvergenceHistory
 // @entry roadmap
 
 // detection: types, extraction, diagnosis
 export {
   diagnosisCode, buildDiagnosisBlock, buildIntentDiagnosis,
   extractIntentFailures, resolveProduces, isInitGateFailure,
-  extractObservationFailures, enrichIntentFailuresWithObservations,
 } from './expansion/detection.ts';
 export type { IntentFailure, IntentDiagnosis } from './expansion/detection.ts';
 

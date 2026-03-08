@@ -3,7 +3,7 @@
 
 // Types
 export type {
-  ValidationRule, IntentJudgment, ObservationSpec, ObservationResult, ExploreResult,
+  ValidationRule, IntentJudgment,
   ValidationCheck, ValidationResult, IntentFailure, ConvergenceLimits, EscalationResult,
   IntentDiagnosis, ConsumeSpec, NodeSpec, EmitGalleryNodeSpec, TermGate, SpecMeta,
   Graph, Connection, Gap, OptimizeResult, LevelEntry, BottleneckEntry,
