@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "engine": "spec-kit",
   "version": "1.0.0",
-  "compile_hash": "a1818c8af3b160d4680fef90759a7434507d4a8a2aa83fd21b4e930b09e0e017",
-  "spec_sha": "e4211da098b322bc9f4e2dfad05296738a7c295d1e88dbe298eeb9cf7203f6d8",
-  "importedAt": "2026-03-07T17:10:11.697Z",
-  "dagId": "node25-compat"
+  "compile_hash": "manual",
+  "spec_sha": "a003acb7d862ebc6baf6543dd3656adc87eb7c6b53177811afc386ccbf16e631",
+  "importedAt": "2026-03-08T08:50:58.245Z",
+  "dagId": "codebase-hygiene"
 }
