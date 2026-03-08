@@ -52,7 +52,7 @@ export function buildTerminalBrief(
 
   // Layer 3: computed audit summary
   const existsPredicate = (artifact: string) => existsSync(join(repoRoot, artifact));
-  const auditContext = runAudit(dag, completionEvidence, existsPredicate, []);
+  const auditContext = runAudit(dag, completionEvidence, existsPredicate);
 
   // Layer 4: chain history
   const chainHistory = loadChain(repoRoot);
