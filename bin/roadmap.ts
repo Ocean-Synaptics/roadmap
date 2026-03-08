@@ -42,8 +42,8 @@ import { ensureConsolidated } from '../src/lib/roadmap/cli-consolidation-init.ts
 import { saveDagHead, migrateSingleHead } from '../src/lib/multi-dag.ts';
 import { getBrief } from '../src/lib/brief.ts';
 import { writeNodeCache } from '../src/lib/brief-cache.ts';
-import { validateTerminalAudit, type AuditResponse, type TerminalAuditResult } from '../src/lib/terminal-audit/validator.ts';
-import { expandGaps } from '../src/lib/terminal-audit/gap-expansion.ts';
+import { buildTerminalBrief, type TerminalBrief } from '../src/lib/terminal-brief.ts';
+import { archiveHead, appendLink, currentIteration, loadChain, getRootIntent, parseExecutionReport, type ChainLink, type ExecutionReport } from '../src/lib/chain.ts';
 import type { FinalHandoff, InterimHandoff } from '../src/lib/brief.ts';
 import { saveFinal, saveInterim } from '../src/lib/agent-dispatch/handoff-journal.ts';
 import type { Graph, Orientation } from '../src/protocol.ts';
@@ -507,6 +507,24 @@ async function cmdOrient(note: string | undefined) {
     }
   }
 
+  // Chain context from chain.jsonl
+  let chainContext: { iteration: number; predecessorId: string | null; dagId: string; rootIntent: string } | undefined;
+  try {
+    const chain = loadChain(repoRoot);
+    if (chain.length > 0) {
+      const iteration = currentIteration(repoRoot);
+      const lastLink = chain[chain.length - 1];
+      chainContext = {
+        iteration,
+        predecessorId: lastLink.predecessorId,
+        dagId: dag.id ?? 'unknown',
+        rootIntent: getRootIntent(repoRoot),
+      };
+    }
+  } catch {
+    // Chain context is best-effort
+  }
+
   const result: Record<string, unknown> = {
     position: nextPosition,
     level: nextLevel,
@@ -520,6 +538,7 @@ async function cmdOrient(note: string | undefined) {
     branch: getCurrentBranch(),
     worktree: isWorktree(),
     briefs,
+    ...(chainContext ? { chain: chainContext } : {}),
   };
 
   // When DAG is complete, surface unloaded specs as next action
@@ -690,69 +709,100 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
     return;
   }
 
-  // Terminal audit gate: for terminal nodes, run computed+detected audit
-  let terminalAuditResult: TerminalAuditResult | undefined;
+  // Terminal advance: chain to next iteration
+  let terminalBrief: TerminalBrief | undefined;
   if (nodeId === dag.term) {
-    const auditRecords = loadCompletionsWithEvidence(repoRoot);
-    const changedFiles = getBranchChangedFiles(repoRoot);
-    const existsPredicate = (artifact: string) => existsSync(join(repoRoot, artifact));
-
-    // Parse --evaluate-file as AuditResponse[] if it looks like audit responses
-    let auditResponses: AuditResponse[] | undefined;
-    if (intentJudgments && Array.isArray(intentJudgments) && intentJudgments.length > 0) {
-      const first = intentJudgments[0] as any;
-      if (first.promptId && typeof first.answer === 'string') {
-        auditResponses = intentJudgments as unknown as AuditResponse[];
-        intentJudgments = undefined; // consumed as audit responses, not intent judgments
+    // Build terminal brief with all six context layers
+    let executionReport: ExecutionReport | undefined;
+    if (intentJudgments) {
+      // --evaluate-file now parsed as ExecutionReport (not AuditResponse)
+      try {
+        const evalPath = process.argv.find((a, i) => i > 0 && process.argv[i-1] === '--evaluate-file');
+        if (evalPath) {
+          executionReport = parseExecutionReport(evalPath);
+        }
+      } catch (e) {
+        // Non-fatal: report is optional enrichment
       }
     }
+    terminalBrief = buildTerminalBrief(dag, repoRoot, executionReport);
 
-    terminalAuditResult = validateTerminalAudit(dag, auditRecords, existsPredicate, changedFiles, auditResponses);
+    // Find successor spec in term's produces
+    const termNode = dag.nodes[dag.term as keyof typeof dag.nodes] as any;
+    const successorSpecPath = (termNode.produces ?? []).find(
+      (p: string) => p.endsWith('.json') && !p.includes('artifact')
+    );
 
-    if (!terminalAuditResult.passed) {
-      // Gap expansion: convert detected gaps into fix nodes instead of asking for narrative.
-      // If gaps are actionable, insert fix nodes as terminal deps and reject advance.
-      // Agent executes fix nodes, then retries terminal advance (re-audit will pass).
-      const expansion = expandGaps(dag, terminalAuditResult.detected, repoRoot);
+    if (successorSpecPath) {
+      const fullSpecPath = join(repoRoot, successorSpecPath);
+      if (existsSync(fullSpecPath)) {
+        try {
+          // Validate successor spec via make pipeline
+          const specContent = JSON.parse(readFileSync(fullSpecPath, 'utf-8'));
+          const successorDag = specContent;
 
-      if (expansion.expanded) {
-        // DAG mutated — fix nodes inserted. Reload for accurate orient.
-        const contextPacket: any = {
-          error: `Terminal audit: ${expansion.fixNodes.length} gap(s) detected, fix nodes inserted`,
-          terminalAudit: {
-            computed: terminalAuditResult.computed,
-            detected: terminalAuditResult.detected.summary,
-          },
-          gapExpansion: {
-            fixNodes: expansion.fixNodes.map(n => ({ id: n.id, desc: n.desc, gapType: n.gapType, artifact: n.gapArtifact })),
-            reason: expansion.reason,
-          },
-          fix: `Execute the ${expansion.fixNodes.length} fix node(s) above, then retry: roadmap advance ${nodeId} --note "gaps fixed"`,
-          checks,
-        };
-        emit({ ok: false, cmd: _outputOpts.cmd, error: contextPacket }, _outputOpts);
-        recordTrailError('advance', 'TERMINAL_AUDIT_EXPANDED', `Node ${nodeId}: ${expansion.reason}`, note);
-        process.exit(1);
-        return;
+          // Validate structure
+          if (successorDag.tasks) {
+            // It's a SpecIR — convert via tasksToDAG
+            const builtDag = tasksToDAG(successorDag.tasks, {
+              dagId: successorDag.dag_id ?? `${dag.id}-successor`,
+              dagDesc: successorDag.dag_desc ?? 'Successor DAG',
+            });
+            define(builtDag);
+            verify(builtDag);
+            check(builtDag);
+
+            // Archive current head and install successor
+            const iteration = currentIteration(repoRoot) + 1;
+            archiveHead(repoRoot);
+            const headPath = join(repoRoot, '.roadmap', 'head.json');
+            writeFileSync(headPath, JSON.stringify(builtDag, null, 2) + '\n');
+
+            // Record chain link
+            const link: ChainLink = {
+              dagId: dag.id ?? 'unknown',
+              iteration: iteration - 1,
+              predecessorId: iteration > 1 ? dag.id ?? null : null,
+              completedAt: new Date().toISOString(),
+              successorDagId: builtDag.id ?? null,
+              executionReport,
+            };
+            appendLink(repoRoot, link);
+          } else if (successorDag.init && successorDag.term && successorDag.nodes) {
+            // Already a raw Graph — validate directly
+            define(successorDag);
+            verify(successorDag);
+            check(successorDag);
+
+            const iteration = currentIteration(repoRoot) + 1;
+            archiveHead(repoRoot);
+            const headPath = join(repoRoot, '.roadmap', 'head.json');
+            writeFileSync(headPath, JSON.stringify(successorDag, null, 2) + '\n');
+
+            const link: ChainLink = {
+              dagId: dag.id ?? 'unknown',
+              iteration: iteration - 1,
+              predecessorId: iteration > 1 ? dag.id ?? null : null,
+              completedAt: new Date().toISOString(),
+              successorDagId: successorDag.id ?? null,
+              executionReport,
+            };
+            appendLink(repoRoot, link);
+          }
+        } catch (e: any) {
+          // Successor spec validation failed — term advance fails
+          const contextPacket: any = {
+            error: `Successor spec validation failed: ${e.message}`,
+            successorSpec: successorSpecPath,
+            fix: 'Fix the successor spec JSON and retry terminal advance',
+            checks,
+          };
+          emit({ ok: false, cmd: _outputOpts.cmd, error: contextPacket }, _outputOpts);
+          recordTrailError('advance', 'SUCCESSOR_VALIDATION_FAILED', `Terminal ${nodeId}: ${e.message}`, note);
+          process.exit(1);
+          return;
+        }
       }
-
-      // No actionable gaps for expansion — fall back to evaluate-file prompt
-      const contextPacket: any = {
-        error: `Terminal audit: ${terminalAuditResult.reason}`,
-        terminalAudit: {
-          computed: terminalAuditResult.computed,
-          detected: terminalAuditResult.detected.summary,
-          prompts: terminalAuditResult.prompts,
-        },
-        fix: terminalAuditResult.prompts.length > 0
-          ? 'Write a JSON file with audit responses and pass via --evaluate-file <path>. Format: [{"promptId":"gap-0-...","answer":"..."},...]'
-          : 'Fix detected gaps and retry',
-        checks,
-      };
-      emit({ ok: false, cmd: _outputOpts.cmd, error: contextPacket }, _outputOpts);
-      recordTrailError('advance', 'TERMINAL_AUDIT_FAILED', `Node ${nodeId}: ${terminalAuditResult.reason}`, note);
-      process.exit(1);
-      return;
     }
   }
 
@@ -861,7 +911,7 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
     batchComplete: newPos.batchComplete,
     remaining: newPos.batchRemaining,
     ...(intentGates.length > 0 ? { intentGates } : {}),
-    ...(terminalAuditResult ? { terminalAudit: { computed: terminalAuditResult.computed, detected: terminalAuditResult.detected.summary, passed: true } } : {}),
+    ...(terminalBrief ? { terminalBrief: { rootIntent: terminalBrief.rootIntent, iteration: terminalBrief.iteration, chainHistory: terminalBrief.chainHistory, computedSummary: terminalBrief.computedSummary, detectedGaps: terminalBrief.detectedGaps.summary } } : {}),
     ...(attributionWarning ? { attributionWarning } : {}),
     ...(parallelEditWarning ? { parallelEditWarning } : {}),
   };
@@ -1015,24 +1065,6 @@ function checkAttribution(root: string, produces: string[]): string | undefined 
     return undefined;
   } catch {
     return undefined;
-  }
-}
-
-// Get all files changed on the current branch relative to main/master
-function getBranchChangedFiles(root: string): string[] {
-  try {
-    // Try main, then master as base
-    let base = 'main';
-    try { execSync(`git rev-parse --verify ${base}`, { cwd: root, stdio: 'pipe' }); }
-    catch { base = 'master'; }
-    const diff = execSync(`git diff --name-only ${base}...HEAD`, { cwd: root, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
-    return diff ? diff.split('\n').filter(f => f.length > 0) : [];
-  } catch {
-    // Fallback: uncommitted changes only
-    try {
-      const status = execSync('git diff --name-only HEAD', { cwd: root, encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }).trim();
-      return status ? status.split('\n').filter(f => f.length > 0) : [];
-    } catch { return []; }
   }
 }
 
