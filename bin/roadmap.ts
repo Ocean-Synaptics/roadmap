@@ -11,23 +11,19 @@ import { execSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createGitSafeLoader } from '../src/lib/gitsafe-loader.ts';
 import {
-  define, check, verify, order, parallelOrder, batchConflicts, orient, advanceBatch, readyNodes, nextBatch, criticalPath, reconcile,
-  validateNode, validateGraph, consumeArtifact,
+  define, check, verify, parallelOrder, orient, advanceBatch,
+  validateNode,
 } from '../src/protocol.ts';
 import type { ConsumeSpec } from '../src/protocol.ts';
 import { fileExists } from '../src/predicates.ts';
 import { RoadmapError } from '../src/errors.ts';
-import { crossOrient } from '../src/lib/cross-orient.ts';
-import { discoverDependencies, resolveSiblingPath } from '../src/lib/utils/dependency-resolver.ts';
 import { loadClaims, saveClaims, isExpired, activeClaims, annotateWithClaims, assignBatch } from '../src/lib/claims/claims.ts';
 import { parseTasksMd, tasksToDAG } from '../src/lib/intake/speckit-import.ts';
 import type { SpecConfig, SpecIR, SpecIRTask, SpecInput } from '../src/lib/intake/spec-ir.ts';
-import { enrichIntentGate } from '../src/lib/intent/intent-gate-enrichment.ts';
 import { loadCompletions, getCompletedNodeIds } from '../src/lib/completion/completion-tracker.ts';
 import { CompletionStore } from '../src/lib/completion/completion-context.ts';
 import { saveCompletionWithEvidence, loadCompletionsWithEvidence, hasPassingReceipt } from '../src/lib/evidence/completion-evidence.ts';
 import type { EvidenceRecord } from '../src/lib/evidence/completion-evidence.ts';
-import { buildScaffold } from '../src/lib/scaffold.ts';
 import { buildGallery } from '../src/lib/gallery-templates/index.ts';
 import { validateTerminalIntentGate, validateInitIntentGate, findInitBoundary } from '../src/lib/validate-dag.ts';
 import { collectMakeErrors } from '../src/lib/make-validation.ts';
@@ -37,7 +33,7 @@ import type { SpecOrigin, SpecImportReceipt } from '../src/lib/intake/spec-origi
 import { insertNode, removeNode, modifyNode, commitMutation, loadMutationLog, MutationError } from '../src/lib/dag-mutator.ts';
 import { listNodeReceipts, completionDoctor, completionCompact } from '../src/lib/receipts-ux.ts';
 import { readPackageVersion } from '../src/lib/install-skills.ts';
-import { loadDAGWithAutoMerge, ensureIndexExists } from '../src/lib/roadmap/cli-auto-merge.ts';
+import { loadDAGWithAutoMerge } from '../src/lib/roadmap/cli-auto-merge.ts';
 import { ensureConsolidated } from '../src/lib/roadmap/cli-consolidation-init.ts';
 import { saveDagHead, migrateSingleHead } from '../src/lib/multi-dag.ts';
 import { getBrief } from '../src/lib/brief.ts';
@@ -47,7 +43,6 @@ import { archiveHead, appendLink, currentIteration, loadChain, getRootIntent, pa
 import type { FinalHandoff, InterimHandoff } from '../src/lib/brief.ts';
 import { saveFinal, saveInterim } from '../src/lib/agent-dispatch/handoff-journal.ts';
 import type { Graph, Orientation } from '../src/protocol.ts';
-import type { SiblingStatus } from '../src/lib/cross-orient.ts';
 import type { OrientV1, OrientDag, OrientDagNode, OrientDagEdge, OrientBlockedNode } from '../src/lib/core/orient-schema.ts';
 import { emit, emitError, parseOutputOpts, ErrorCode, type OutputFormat, type RenderV1 } from '../src/lib/cli-envelope.ts';
 import { render, renderDagLayers, type RenderOpts, type RenderModel, type RenderOutput, type DagLayer, type DagNode } from '../src/lib/render/index.ts';
@@ -911,7 +906,7 @@ async function advanceNode(dag: Graph<string>, nodeId: string, note: string) {
     batchComplete: newPos.batchComplete,
     remaining: newPos.batchRemaining,
     ...(intentGates.length > 0 ? { intentGates } : {}),
-    ...(terminalBrief ? { terminalBrief: { rootIntent: terminalBrief.rootIntent, iteration: terminalBrief.iteration, chainHistory: terminalBrief.chainHistory, computedSummary: terminalBrief.computedSummary, detectedGaps: terminalBrief.detectedGaps.summary } } : {}),
+    ...(terminalBrief ? { terminalBrief: { rootIntent: terminalBrief.rootIntent, iteration: terminalBrief.iteration, chainHistory: terminalBrief.chainHistory } } : {}),
     ...(attributionWarning ? { attributionWarning } : {}),
     ...(parallelEditWarning ? { parallelEditWarning } : {}),
   };
@@ -2052,19 +2047,6 @@ async function loadDAGAsync(): Promise<Graph<string>> {
     // Fallback: load head.json directly
     return JSON.parse(safeReadFile(headPath));
   }
-}
-
-// Sync version: loads from head.json only
-function loadDAG(): Graph<string> {
-  const headPath = join(repoRoot, '.roadmap', 'head.json');
-  if (!existsSync(headPath)) {
-    throw new RoadmapError('NODE_NOT_FOUND', {
-      attempted: headPath,
-      fix: 'Initialize roadmap: create .roadmap/head.json or use: roadmap make <spec> --note "..."',
-      entry: 'roadmap orient',
-    }, 'No .roadmap/head.json found.');
-  }
-  return JSON.parse(safeReadFile(headPath));
 }
 
 function json(obj: unknown) {
