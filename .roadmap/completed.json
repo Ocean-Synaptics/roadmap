@@ -2036,8 +2036,8 @@
   },
   {
     "nodeId": "term",
-    "completedAt": "2026-03-08T10:58:02.426Z",
-    "dagId": "terminal-enrichment",
+    "completedAt": "2026-03-08T15:31:08.699Z",
+    "dagId": "purge-non-algebra",
     "validationChecks": [
       {
         "rule": "shell:pnpm run build",
@@ -2055,28 +2055,28 @@
         "evidence": "command passed (exit 0): pnpm vitest run"
       },
       {
-        "rule": "shell:grep -q 'terminalContext' src/lib/brief.ts",
+        "rule": "shell:test ! -d src/validators",
         "passed": true,
-        "evidence": "command passed (exit 0): grep -q 'terminalContext' src/lib/brief.ts"
+        "evidence": "command passed (exit 0): test ! -d src/validators"
       },
       {
-        "rule": "shell:grep -q 'computeReport' src/lib/terminal-audit/computed.ts",
+        "rule": "shell:test ! -d src/commands",
         "passed": true,
-        "evidence": "command passed (exit 0): grep -q 'computeReport' src/lib/terminal-audit/computed.ts"
+        "evidence": "command passed (exit 0): test ! -d src/commands"
       },
       {
-        "rule": "shell:grep -q 'detectGaps' src/lib/terminal-audit/detected.ts",
+        "rule": "shell:test ! -d test",
         "passed": true,
-        "evidence": "command passed (exit 0): grep -q 'detectGaps' src/lib/terminal-audit/detected.ts"
+        "evidence": "command passed (exit 0): test ! -d test"
       },
       {
-        "rule": "artifact-exists:.roadmap/tasks/terminal-enrichment-verified.artifact.json",
+        "rule": "artifact-exists:.roadmap/tasks/purge-non-algebra-verified.artifact.json",
         "passed": true,
         "evidence": "file exists"
       }
     ],
-    "gitSha": "a40895557fe0dfae00817cbae516991676565aae",
-    "treeSha": "20b88d4e712744e483fa861ee9a000d29f6034d8",
+    "gitSha": "38925ef0f5b6cf058384607def00a58ccc7ca04f",
+    "treeSha": "779c740e8f61fb7e7bce1a1ad1741a8d45bfedfb",
     "branch": "main"
   },
   {
