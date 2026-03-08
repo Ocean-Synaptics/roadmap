@@ -1318,5 +1318,325 @@
     "gitSha": "91b865818f6068fe5b78ee621368be9247c756ec",
     "treeSha": "cc32fee6bf4b1ec18502cd558975860031bdec9e",
     "branch": "main"
+  },
+  {
+    "nodeId": "chain-store",
+    "completedAt": "2026-03-08T08:44:59.047Z",
+    "dagId": "chain-terminal",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists:src/lib/chain.ts",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/chain.ts"
+      },
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "artifact-exists:src/lib/chain.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "694cbec924b6495c2bd4d557c02990f4df81b76b",
+    "treeSha": "a497328e2bf770acdb7fe65bd4ad5a07b2c14c6b",
+    "branch": "feat/chain-terminal"
+  },
+  {
+    "nodeId": "delete-gap-expansion",
+    "completedAt": "2026-03-08T08:45:12.838Z",
+    "dagId": "chain-terminal",
+    "validationChecks": [
+      {
+        "rule": "shell:test ! -f src/lib/terminal-audit/gap-expansion.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): test ! -f src/lib/terminal-audit/gap-expansion.ts"
+      },
+      {
+        "rule": "shell:! grep -r 'expandGaps' src/ bin/",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'expandGaps' src/ bin/"
+      },
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "artifact-exists:.roadmap/tasks/delete-gap-expansion.artifact.json",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "694cbec924b6495c2bd4d557c02990f4df81b76b",
+    "treeSha": "a497328e2bf770acdb7fe65bd4ad5a07b2c14c6b",
+    "branch": "feat/chain-terminal"
+  },
+  {
+    "nodeId": "remove-scope-leak",
+    "completedAt": "2026-03-08T08:45:14.312Z",
+    "dagId": "chain-terminal",
+    "validationChecks": [
+      {
+        "rule": "shell:! grep -r 'scope-leak' src/lib/terminal-audit/",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'scope-leak' src/lib/terminal-audit/"
+      },
+      {
+        "rule": "shell:! grep -r 'scopeLeak' src/lib/terminal-audit/",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'scopeLeak' src/lib/terminal-audit/"
+      },
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "artifact-exists:src/lib/terminal-audit/detected.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "694cbec924b6495c2bd4d557c02990f4df81b76b",
+    "treeSha": "a497328e2bf770acdb7fe65bd4ad5a07b2c14c6b",
+    "branch": "feat/chain-terminal"
+  },
+  {
+    "nodeId": "execution-report-schema",
+    "completedAt": "2026-03-08T08:45:15.765Z",
+    "dagId": "chain-terminal",
+    "validationChecks": [
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "shell:grep -q 'ExecutionReport' src/lib/chain.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -q 'ExecutionReport' src/lib/chain.ts"
+      },
+      {
+        "rule": "shell:grep -q 'parseExecutionReport' src/lib/chain.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -q 'parseExecutionReport' src/lib/chain.ts"
+      },
+      {
+        "rule": "artifact-exists:src/lib/chain.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "694cbec924b6495c2bd4d557c02990f4df81b76b",
+    "treeSha": "a497328e2bf770acdb7fe65bd4ad5a07b2c14c6b",
+    "branch": "feat/chain-terminal"
+  },
+  {
+    "nodeId": "demote-audit-to-summary",
+    "completedAt": "2026-03-08T08:45:17.233Z",
+    "dagId": "chain-terminal",
+    "validationChecks": [
+      {
+        "rule": "shell:! grep -r 'terminalAuditResult.passed' bin/",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'terminalAuditResult.passed' bin/"
+      },
+      {
+        "rule": "shell:! grep -r 'evaluateResponses' src/lib/terminal-audit/",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'evaluateResponses' src/lib/terminal-audit/"
+      },
+      {
+        "rule": "shell:! grep -r 'TERMINAL_AUDIT_EXPANDED' bin/ src/",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'TERMINAL_AUDIT_EXPANDED' bin/ src/"
+      },
+      {
+        "rule": "shell:! grep -r 'TERMINAL_AUDIT_FAILED' bin/ src/",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'TERMINAL_AUDIT_FAILED' bin/ src/"
+      },
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "artifact-exists:src/lib/terminal-audit/validator.ts",
+        "passed": true,
+        "evidence": "file exists"
+      },
+      {
+        "rule": "artifact-exists:bin/roadmap.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "694cbec924b6495c2bd4d557c02990f4df81b76b",
+    "treeSha": "a497328e2bf770acdb7fe65bd4ad5a07b2c14c6b",
+    "branch": "feat/chain-terminal"
+  },
+  {
+    "nodeId": "terminal-brief-enrichment",
+    "completedAt": "2026-03-08T08:45:18.685Z",
+    "dagId": "chain-terminal",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists:src/lib/terminal-brief.ts",
+        "passed": true,
+        "evidence": "artifact exists: src/lib/terminal-brief.ts"
+      },
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "shell:grep -q 'TerminalBrief' src/lib/terminal-brief.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -q 'TerminalBrief' src/lib/terminal-brief.ts"
+      },
+      {
+        "rule": "shell:grep -q 'rootIntent' src/lib/terminal-brief.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -q 'rootIntent' src/lib/terminal-brief.ts"
+      },
+      {
+        "rule": "artifact-exists:src/lib/terminal-brief.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "694cbec924b6495c2bd4d557c02990f4df81b76b",
+    "treeSha": "a497328e2bf770acdb7fe65bd4ad5a07b2c14c6b",
+    "branch": "feat/chain-terminal"
+  },
+  {
+    "nodeId": "terminal-advance-chain",
+    "completedAt": "2026-03-08T08:45:20.208Z",
+    "dagId": "chain-terminal",
+    "validationChecks": [
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "shell:grep -q 'archiveHead' bin/roadmap.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -q 'archiveHead' bin/roadmap.ts"
+      },
+      {
+        "rule": "shell:grep -q 'appendLink' bin/roadmap.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -q 'appendLink' bin/roadmap.ts"
+      },
+      {
+        "rule": "shell:grep -q 'TerminalBrief\\|terminalBrief' bin/roadmap.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -q 'TerminalBrief\\|terminalBrief' bin/roadmap.ts"
+      },
+      {
+        "rule": "artifact-exists:bin/roadmap.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "694cbec924b6495c2bd4d557c02990f4df81b76b",
+    "treeSha": "a497328e2bf770acdb7fe65bd4ad5a07b2c14c6b",
+    "branch": "feat/chain-terminal"
+  },
+  {
+    "nodeId": "orient-chain-context",
+    "completedAt": "2026-03-08T08:45:21.683Z",
+    "dagId": "chain-terminal",
+    "validationChecks": [
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "artifact-exists:bin/roadmap.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "694cbec924b6495c2bd4d557c02990f4df81b76b",
+    "treeSha": "a497328e2bf770acdb7fe65bd4ad5a07b2c14c6b",
+    "branch": "feat/chain-terminal"
+  },
+  {
+    "nodeId": "test-chain-lifecycle",
+    "completedAt": "2026-03-08T08:45:22.555Z",
+    "dagId": "chain-terminal",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists:tests/chain-lifecycle.test.ts",
+        "passed": true,
+        "evidence": "artifact exists: tests/chain-lifecycle.test.ts"
+      },
+      {
+        "rule": "shell:pnpm vitest run tests/chain-lifecycle.test.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm vitest run tests/chain-lifecycle.test.ts"
+      },
+      {
+        "rule": "artifact-exists:tests/chain-lifecycle.test.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "694cbec924b6495c2bd4d557c02990f4df81b76b",
+    "treeSha": "a497328e2bf770acdb7fe65bd4ad5a07b2c14c6b",
+    "branch": "feat/chain-terminal"
+  },
+  {
+    "nodeId": "chain-terminal-verified",
+    "completedAt": "2026-03-08T08:45:41.367Z",
+    "dagId": "chain-terminal",
+    "validationChecks": [
+      {
+        "rule": "shell:pnpm run build",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run build"
+      },
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "shell:pnpm vitest run",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm vitest run"
+      },
+      {
+        "rule": "shell:test ! -f src/lib/terminal-audit/gap-expansion.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): test ! -f src/lib/terminal-audit/gap-expansion.ts"
+      },
+      {
+        "rule": "shell:! grep -r 'scope-leak' src/",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'scope-leak' src/"
+      },
+      {
+        "rule": "shell:! grep -r 'TERMINAL_AUDIT_EXPANDED' src/ bin/",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'TERMINAL_AUDIT_EXPANDED' src/ bin/"
+      },
+      {
+        "rule": "artifact-exists:.roadmap/tasks/chain-terminal-verified.artifact.json",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "694cbec924b6495c2bd4d557c02990f4df81b76b",
+    "treeSha": "a497328e2bf770acdb7fe65bd4ad5a07b2c14c6b",
+    "branch": "feat/chain-terminal"
   }
 ]

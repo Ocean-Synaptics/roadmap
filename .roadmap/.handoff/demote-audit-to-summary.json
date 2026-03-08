@@ -1,5 +1,5 @@
 {
-  "timestamp": "2026-03-07T12:35:12.689Z",
+  "timestamp": "2026-03-08T08:45:17.234Z",
   "progress": 1,
   "discovered": [],
   "blockers": [],
@@ -9,7 +9,8 @@
   "gotchas": [],
   "nextNodeEntry": {
     "consumes": [
-      "src/lib/protocol/validation.ts"
+      "src/lib/terminal-audit/validator.ts",
+      "bin/roadmap.ts"
     ],
     "ready": true
   }
