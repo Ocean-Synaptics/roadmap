@@ -303,7 +303,7 @@ async function crossOrientWithState(dag: Graph<string>) {
   // Filter completion records by current DAG ID to avoid cross-DAG leakage
   const dagFiltered = completion.filterByDagId(dag.id);
 
-  const pos = orient(dag, dagFiltered, retired);
+  const pos = orient(dag, (id) => dagFiltered.hasPassing(id), retired);
 
   // Recompute remaining based on filtered completion store (DAG-scoped)
   const allNodeIds = Object.keys(dag.nodes);

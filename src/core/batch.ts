@@ -20,7 +20,8 @@ export function advanceBatch<T extends string>(
   completion: CompletionStore,
   retired?: ReadonlySet<string>,
 ): Orientation {
-  const current = orient(g, completion, retired);
+  const exists = (id: string) => completion.hasPassing(id);
+  const current = orient(g, exists, retired);
 
   if (!current.batchComplete) {
     throw new Error(
@@ -28,7 +29,7 @@ export function advanceBatch<T extends string>(
     );
   }
 
-  return orient(g, completion, retired);
+  return orient(g, exists, retired);
 }
 
 // --- readyNodes: eager dispatch beyond current batch ---
@@ -121,7 +122,7 @@ export function nextBatch<T extends string>(
   retired?: ReadonlySet<string>,
 ): NextBatch | null {
   const batches = parallelOrder(g);
-  const current = orient(g, completion, retired);
+  const current = orient(g, (id) => completion.hasPassing(id), retired);
   const nextLevel = current.level + 1;
 
   if (nextLevel >= batches.length) return null;

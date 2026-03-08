@@ -3,11 +3,11 @@
 // @types LoopSignal, PlanReceipt, Orientation
 // @entry roadmap
 
-// Pure orient: graph + completion store -> batch position. Zero IO imports.
+// Pure orient: graph + exists predicate -> batch position. Zero IO imports.
+// The exists predicate is the sole bridge to completion state / filesystem.
 
 import type { Graph } from '../lib/protocol/types.ts';
 import { consumeArtifact } from '../lib/protocol/types.ts';
-import type { CompletionStore } from '../lib/protocol/types.ts';
 import { flat } from './graph.ts';
 import { parallelOrder } from './order.ts';
 
@@ -44,7 +44,7 @@ export interface Orientation {
 
 export function orient<T extends string>(
   g: Graph<T>,
-  completion: CompletionStore,
+  exists: (id: string) => boolean,
   retired?: ReadonlySet<string>,
 ): Orientation {
   const batches = parallelOrder(g);
@@ -67,11 +67,11 @@ export function orient<T extends string>(
       if (retired?.has(id)) return false;
       const node = nm.get(id)!;
       if (node.mode === 'plan') {
-        if (completion.hasPassing(id)) return false;
+        if (exists(id)) return false;
         const children = expansionChildren.get(id) ?? [];
         return children.length === 0;
       }
-      return !completion.hasPassing(id);
+      return !exists(id);
     });
 
     if (batchIncomplete.length > 0) {

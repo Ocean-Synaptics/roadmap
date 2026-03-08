@@ -56,7 +56,7 @@ async function checkSibling(localRoot: string, dep: DependencySpec): Promise<Sib
   if (dag) {
     // Sibling repos use loadOrEmpty — they may not have completion tracking
     const sibCompletion = CompletionStore.loadOrEmpty(sibPath);
-    const sibOrientation = orient(dag, sibCompletion);
+    const sibOrientation = orient(dag, (id) => sibCompletion.hasPassing(id));
     position = sibOrientation.position;
   }
 
@@ -73,7 +73,7 @@ export async function crossOrient<T extends string>(
   completion: CompletionStore,
   retired?: ReadonlySet<string>,
 ): Promise<CrossOrientation> {
-  const local = orient(g, completion, retired);
+  const local = orient(g, (id) => completion.hasPassing(id), retired);
 
   const deps = await discoverDependencies(_repoRoot);
   if (!deps.length) {
