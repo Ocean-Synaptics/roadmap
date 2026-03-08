@@ -59,7 +59,7 @@ export class BriefGate {
     }
 
     // Handoff journal integrity
-    if (brief.handoffJournal && brief.handoffJournal.length > 0) {
+    if (Array.isArray(brief.handoffJournal) && brief.handoffJournal.length > 0) {
       this.checkHandoffJournal(brief.handoffJournal, errors);
     }
 
