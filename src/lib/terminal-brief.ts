@@ -12,6 +12,10 @@ import { computeReport } from './terminal-audit/computed.ts';
 import type { ComputedReport } from './terminal-audit/computed.ts';
 import { detectGaps } from './terminal-audit/detected.ts';
 import type { DetectedGaps } from './terminal-audit/detected.ts';
+import { computeTrailMetrics, type TrailMetrics } from './trail-metrics.ts';
+import { CompletionStore } from '../runtime/completion.ts';
+import { computeGapTrajectory } from './convergence/gap-trajectory.ts';
+import { assessConvergence, type ConvergenceAssessment } from './convergence/assessment.ts';
 
 export interface TerminalBrief {
   rootIntent: string;
@@ -21,6 +25,10 @@ export interface TerminalBrief {
   handoffSummaries: HandoffSummary[];
   detectedGaps: DetectedGaps;
   executionReport?: ExecutionReport;
+  /** Trail-derived scoring: velocity, batch duration, session metrics */
+  scoring?: TrailMetrics;
+  /** Convergence assessment: trend, persistent gaps, recommendation */
+  convergence?: ConvergenceAssessment;
 }
 
 export interface HandoffSummary {
@@ -58,8 +66,35 @@ export function buildTerminalBrief(
     rootIntent = dag.desc;
   }
 
-  // Layer 4: gap detection (uncovered consumes, untested produces)
-  const detectedGaps = detectGaps(dag);
+  // Layer 5: trail-derived scoring (best-effort — undefined if trail.jsonl missing)
+  let scoring: TrailMetrics | undefined;
+  try {
+    scoring = computeTrailMetrics(repoRoot);
+  } catch {
+    // Best-effort: don't crash if trail metrics computation fails
+  }
+
+  // Layer 4: gap detection (structural + scoring-derived)
+  let completion: CompletionStore | undefined;
+  try {
+    completion = CompletionStore.loadOrEmpty(repoRoot);
+  } catch {
+    // Best-effort: don't crash if completion store missing
+  }
+  const detectedGaps = detectGaps(dag, { completion, scoring });
+
+  // Layer 5: convergence assessment (best-effort)
+  let convergence: ConvergenceAssessment | undefined;
+  try {
+    const trajectory = computeGapTrajectory(repoRoot);
+    convergence = assessConvergence(trajectory, detectedGaps, executionReport);
+    // Auto-populate deltaAssessment on the execution report
+    if (executionReport && convergence) {
+      executionReport.deltaAssessment = convergence.iterationSummary;
+    }
+  } catch {
+    // Best-effort: don't crash if trajectory computation fails
+  }
 
   return {
     rootIntent,
@@ -69,6 +104,8 @@ export function buildTerminalBrief(
     handoffSummaries,
     detectedGaps,
     executionReport,
+    scoring,
+    convergence,
   };
 }
 

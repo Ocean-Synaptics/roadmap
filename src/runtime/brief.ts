@@ -17,6 +17,8 @@ import type { FileSummary } from '../lib/brief-cache.ts';
 import type { ComputedReport, NodeCommitStatus, TestEvidence, AuditTrail } from '../lib/terminal-audit/computed.ts';
 import { detectGaps, type DetectedGaps } from '../lib/terminal-audit/detected.ts';
 import type { ChainLink, ExecutionReport } from '../lib/chain.ts';
+import type { TrailMetrics } from '../lib/trail-metrics.ts';
+import type { ConvergenceAssessment } from '../lib/convergence/assessment.ts';
 
 export type { FinalHandoff, InterimHandoff } from '../lib/brief.ts';
 export type { ComputedReport } from '../lib/terminal-audit/computed.ts';
@@ -75,6 +77,10 @@ export interface TerminalBrief {
   handoffSummaries: HandoffSummary[];
   detectedGaps: DetectedGaps;
   executionReport?: ExecutionReport;
+  /** Trail-derived scoring: velocity, batch duration, session metrics */
+  scoring?: TrailMetrics;
+  /** Convergence assessment: trend, persistent gaps, recommendation */
+  convergence?: ConvergenceAssessment;
 }
 
 // --- Pure brief generation ---
@@ -173,8 +179,11 @@ export function buildTerminalBrief(
     ? dag.desc
     : dag.desc; // Context doesn't carry archived head descs — use current DAG desc
 
-  // Layer 4: gap detection (already pure — graph-only)
-  const detectedGaps = detectGaps(dag);
+  // Layer 4: gap detection (structural + scoring-derived via Context)
+  const detectedGaps = detectGaps(dag, {
+    completion: context.completion,
+    scoring: context.scoring,
+  });
 
   return {
     rootIntent,
@@ -184,6 +193,7 @@ export function buildTerminalBrief(
     handoffSummaries,
     detectedGaps,
     executionReport,
+    scoring: context.scoring,
   };
 }
 

@@ -377,6 +377,7 @@ async function advanceNode(
         result.iteration = terminalBrief?.iteration ?? 0;
         result.gaps = terminalBrief?.detectedGaps.gaps ?? [];
         result.scoring = terminalBrief?.scoring ?? undefined;
+        result.convergenceAssessment = terminalBrief?.convergence ?? undefined;
         result.improvementAreas = deriveImprovementAreas(terminalBrief?.detectedGaps.gaps ?? []);
         result.message = 'DAG complete. chainReady output contains gaps, scoring, and improvementAreas for successor spec authoring. Run: roadmap make <spec> --note "chain from ' + (dag.id ?? 'unknown') + '"';
       }
