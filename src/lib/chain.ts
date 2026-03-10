@@ -1,6 +1,6 @@
 // @module chain
 // @description Convergence chain storage — lineage embedded on archived DAG heads
-// @exports ChainLink, ExecutionReport, archiveHead, getRootIntent, parseExecutionReport
+// @exports ChainLink, ExecutionReport, Lineage, archiveHead, readArchivedLinks, getRootIntent, parseExecutionReport
 // @entry roadmap/chain
 
 import { readFileSync, existsSync, mkdirSync, writeFileSync, unlinkSync, readdirSync } from 'node:fs';
@@ -70,7 +70,7 @@ export function archiveHead(repoRoot: string, lineage: Lineage): void {
  * Read all archived heads from heads/*.json, extract _lineage fields.
  * Returns ChainLink-compatible objects sorted by iteration.
  */
-export function loadChainFromHeads(repoRoot: string): ChainLink[] {
+export function readArchivedLinks(repoRoot: string): ChainLink[] {
   const headsDir = join(repoRoot, HEADS_DIR);
   if (!existsSync(headsDir)) return [];
 
@@ -109,7 +109,7 @@ export function loadChainFromHeads(repoRoot: string): ChainLink[] {
  * If no heads exist, read current head.json desc.
  */
 export function getRootIntent(repoRoot: string): string {
-  const links = loadChainFromHeads(repoRoot);
+  const links = readArchivedLinks(repoRoot);
 
   if (links.length === 0) {
     // No archived heads — read current head.json

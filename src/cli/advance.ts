@@ -13,7 +13,7 @@ import { CompletionStore, saveCompletionWithEvidence } from '../runtime/completi
 import type { EvidenceRecord } from '../runtime/completion.ts';
 import { getBrief } from '../lib/brief.ts';
 import { buildTerminalBrief, type TerminalBrief } from '../lib/terminal-brief.ts';
-import { archiveHead, loadChainFromHeads, parseExecutionReport, type ExecutionReport } from '../lib/chain.ts';
+import { archiveHead, readArchivedLinks, parseExecutionReport, type ExecutionReport } from '../lib/chain.ts';
 import { tasksToDAG } from '../lib/intake/speckit-import.ts';
 import type { FinalHandoff, InterimHandoff } from '../lib/brief.ts';
 import { saveFinal, saveInterim } from '../lib/agent-dispatch/handoff-journal.ts';
@@ -192,7 +192,7 @@ async function advanceNode(
             });
             define(builtDag); verify(builtDag); check(builtDag);
 
-            const existingLinks = loadChainFromHeads(repoRoot);
+            const existingLinks = readArchivedLinks(repoRoot);
             const nextIteration = existingLinks.length > 0
               ? Math.max(...existingLinks.map(l => l.iteration)) + 1
               : 0;
@@ -209,7 +209,7 @@ async function advanceNode(
           } else if (specContent.init && specContent.term && specContent.nodes) {
             define(specContent); verify(specContent); check(specContent);
 
-            const existingLinks = loadChainFromHeads(repoRoot);
+            const existingLinks = readArchivedLinks(repoRoot);
             const nextIteration = existingLinks.length > 0
               ? Math.max(...existingLinks.map(l => l.iteration)) + 1
               : 0;

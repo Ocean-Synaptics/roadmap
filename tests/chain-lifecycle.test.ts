@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
   archiveHead,
-  loadChainFromHeads,
+  readArchivedLinks,
   getRootIntent,
   parseExecutionReport,
 } from '../src/lib/chain.ts';
@@ -137,7 +137,7 @@ describe('archiveHead with _lineage', () => {
   });
 });
 
-describe('loadChainFromHeads', () => {
+describe('readArchivedLinks', () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -150,7 +150,7 @@ describe('loadChainFromHeads', () => {
 
   it('returns empty array when heads/ does not exist', () => {
     ensureRoadmapDir(tmpDir);
-    expect(loadChainFromHeads(tmpDir)).toEqual([]);
+    expect(readArchivedLinks(tmpDir)).toEqual([]);
   });
 
   it('returns empty array when heads/ has no _lineage files', () => {
@@ -158,7 +158,7 @@ describe('loadChainFromHeads', () => {
     mkdirSync(headsDir, { recursive: true });
     // File without _lineage
     writeFileSync(join(headsDir, 'old-dag.json'), JSON.stringify({ id: 'old-dag', desc: 'no lineage' }));
-    expect(loadChainFromHeads(tmpDir)).toEqual([]);
+    expect(readArchivedLinks(tmpDir)).toEqual([]);
   });
 
   it('returns ChainLink array sorted by iteration', () => {
@@ -168,7 +168,7 @@ describe('loadChainFromHeads', () => {
     writeHead(tmpDir, { id: 'dag-b', desc: 'second' });
     archiveHead(tmpDir, makeLineage({ iteration: 1, predecessorId: 'dag-a' }));
 
-    const links = loadChainFromHeads(tmpDir);
+    const links = readArchivedLinks(tmpDir);
     expect(links).toHaveLength(2);
     expect(links[0].dagId).toBe('dag-a');
     expect(links[0].iteration).toBe(0);
@@ -185,7 +185,7 @@ describe('loadChainFromHeads', () => {
     writeHead(tmpDir, { id: 'dag-z', desc: 'third' });
     archiveHead(tmpDir, makeLineage({ iteration: 1, predecessorId: 'dag-x' }));
 
-    const links = loadChainFromHeads(tmpDir);
+    const links = readArchivedLinks(tmpDir);
     const maxIter = Math.max(...links.map(l => l.iteration));
     expect(maxIter).toBe(3);
   });

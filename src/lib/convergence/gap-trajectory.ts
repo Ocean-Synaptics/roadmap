@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import type { Graph } from '../../protocol.ts';
 import { detectGaps } from '../terminal-audit/detected.ts';
 import type { GapEntry } from '../terminal-audit/detected.ts';
-import { loadChainFromHeads } from '../chain.ts';
+import { readArchivedLinks } from '../chain.ts';
 import type { ChainLink } from '../chain.ts';
 
 export interface IterationSnapshot {
@@ -137,10 +137,10 @@ export function computeGapTrajectory(repoRoot: string): GapTrajectory {
   }
 
   // Step 3: Load chain history from heads/*.json _lineage fields
-  const chain = loadChainFromHeads(repoRoot);
+  const chain = readArchivedLinks(repoRoot);
 
   // Step 4–5: Load archived DAGs and compute snapshots
-  // chain is already sorted by iteration from loadChainFromHeads
+  // chain is already sorted by iteration from readArchivedLinks
   const sortedChain = chain;
 
   for (const link of sortedChain) {
