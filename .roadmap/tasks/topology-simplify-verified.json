@@ -1,0 +1,18 @@
+{
+  "verified": true,
+  "dagId": "topology-simplify",
+  "timestamp": "2026-03-10T15:55:00Z",
+  "invariants": [
+    "4 root files in .roadmap/ (head.json, completed.json, trail.jsonl, enforcement.json)",
+    "2 directories (.roadmap/heads/, .roadmap/.handoff/)",
+    "chain.jsonl eliminated — lineage lives on heads/*.json._lineage",
+    "head-index.json eliminated — dead code removed",
+    "spec-origin.json eliminated — origin lives on head.json._origin",
+    "git-state.json eliminated — post-commit hook gutted",
+    ".cache/ eliminated — 30 files, 112K, never read",
+    "mutations.jsonl eliminated — mutations flow through trail.jsonl",
+    "Zero IO boundary bypasses — orient, terminal-brief, gap-trajectory all use Context",
+    "Single CLAUDE.md at 237 lines (was 505 across 2 files)",
+    "576 tests passing, tsc clean, build clean"
+  ]
+}
