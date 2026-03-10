@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-10T14:30:17.904Z",
+  "progress": 1,
+  "discovered": [],
+  "blockers": [],
+  "currentFile": "",
+  "summary": "deleted head-index.json and all code references; source changes folded into fold-origin by concurren",
+  "keyDecisions": [],
+  "gotchas": [],
+  "nextNodeEntry": {
+    "consumes": [
+      ".roadmap/tasks/kill-head-index.artifact.json"
+    ],
+    "ready": true
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-10T14:41:35.608Z",
+  "progress": 1,
+  "discovered": [],
+  "blockers": [],
+  "currentFile": "",
+  "summary": "lineage now lives on heads/*.json._lineage, chain.jsonl eliminated",
+  "keyDecisions": [],
+  "gotchas": [],
+  "nextNodeEntry": {
+    "consumes": [
+      "src/lib/chain.ts"
+    ],
+    "ready": true
+  }
+}

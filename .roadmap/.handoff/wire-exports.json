@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-08T16:37:20.730Z",
+  "progress": 1,
+  "discovered": [],
+  "blockers": [],
+  "currentFile": "",
+  "summary": "protocol.ts re-exports CoreNodeSpec, CoreGraph, NodeMeta, ManagedNodeSpec, ManagedGraph, fullNode — ",
+  "keyDecisions": [],
+  "gotchas": [],
+  "nextNodeEntry": {
+    "consumes": [
+      "src/protocol.ts"
+    ],
+    "ready": true
+  }
+}

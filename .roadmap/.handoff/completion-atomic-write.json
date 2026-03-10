@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-08T20:54:44.049Z",
+  "progress": 1,
+  "discovered": [],
+  "blockers": [],
+  "currentFile": "",
+  "summary": "saveCompletionWithEvidence + saveCompletion use atomic write (tmp + renameSync)",
+  "keyDecisions": [],
+  "gotchas": [],
+  "nextNodeEntry": {
+    "consumes": [
+      "src/runtime/completion.ts"
+    ],
+    "ready": true
+  }
+}

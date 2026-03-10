@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-08T20:23:29.324Z",
+  "progress": 1,
+  "discovered": [],
+  "blockers": [],
+  "currentFile": "",
+  "summary": "advance.ts created — full cmdAdvance + advanceBatchCmd + checkAttribution. 286 tests pass.",
+  "keyDecisions": [],
+  "gotchas": [],
+  "nextNodeEntry": {
+    "consumes": [
+      "src/cli/advance.ts"
+    ],
+    "ready": true
+  }
+}

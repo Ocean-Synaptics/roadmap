@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-03-10T14:48:04.694Z",
+  "progress": 1,
+  "discovered": [],
+  "blockers": [],
+  "currentFile": "",
+  "summary": "3 IO bypass violations fixed: orient.ts uses loadContext, terminal-brief.ts and gap-trajectory.ts ac",
+  "keyDecisions": [],
+  "gotchas": [],
+  "nextNodeEntry": {
+    "consumes": [
+      "src/cli/orient.ts",
+      "src/lib/terminal-brief.ts",
+      "src/lib/convergence/gap-trajectory.ts"
+    ],
+    "ready": true
+  }
+}

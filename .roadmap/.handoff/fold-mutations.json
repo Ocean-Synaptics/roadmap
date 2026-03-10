@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-03-10T14:22:32.644Z",
+  "progress": 1,
+  "discovered": [],
+  "blockers": [],
+  "currentFile": "",
+  "summary": "mutations now flow through trail.jsonl",
+  "keyDecisions": [],
+  "gotchas": [],
+  "nextNodeEntry": {
+    "consumes": [
+      "src/lib/dag-mutator.ts",
+      "src/cli/dag.ts"
+    ],
+    "ready": true
+  }
+}

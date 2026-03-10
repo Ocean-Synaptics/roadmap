@@ -2036,14 +2036,9 @@
   },
   {
     "nodeId": "term",
-    "completedAt": "2026-03-09T11:05:20.147Z",
-    "dagId": "convergence-aware",
+    "completedAt": "2026-03-10T14:51:35.821Z",
+    "dagId": "topology-simplify",
     "validationChecks": [
-      {
-        "rule": "shell:pnpm run build",
-        "passed": true,
-        "evidence": "command passed (exit 0): pnpm run build"
-      },
       {
         "rule": "shell:pnpm run check",
         "passed": true,
@@ -2055,24 +2050,59 @@
         "evidence": "command passed (exit 0): pnpm vitest run"
       },
       {
-        "rule": "shell:grep -q 'ConvergenceAssessment' src/lib/convergence/assessment.ts",
+        "rule": "shell:pnpm run build",
         "passed": true,
-        "evidence": "command passed (exit 0): grep -q 'ConvergenceAssessment' src/lib/convergence/assessment.ts"
+        "evidence": "command passed (exit 0): pnpm run build"
       },
       {
-        "rule": "shell:grep -q 'convergence' src/cli/advance.ts",
+        "rule": "shell:! test -f .roadmap/chain.jsonl",
         "passed": true,
-        "evidence": "command passed (exit 0): grep -q 'convergence' src/cli/advance.ts"
+        "evidence": "command passed (exit 0): ! test -f .roadmap/chain.jsonl"
       },
       {
-        "rule": "artifact-exists:.roadmap/tasks/convergence-aware-verified.json",
+        "rule": "shell:! test -f .roadmap/head-index.json",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! test -f .roadmap/head-index.json"
+      },
+      {
+        "rule": "shell:! test -f .roadmap/spec-origin.json",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! test -f .roadmap/spec-origin.json"
+      },
+      {
+        "rule": "shell:! test -f .roadmap/git-state.json",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! test -f .roadmap/git-state.json"
+      },
+      {
+        "rule": "shell:! test -d .roadmap/.cache",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! test -d .roadmap/.cache"
+      },
+      {
+        "rule": "shell:! test -f .roadmap/mutations.jsonl",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! test -f .roadmap/mutations.jsonl"
+      },
+      {
+        "rule": "shell:! test -f .claude/CLAUDE.md",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! test -f .claude/CLAUDE.md"
+      },
+      {
+        "rule": "shell:test $(ls .roadmap/*.json .roadmap/*.jsonl 2>/dev/null | wc -l) -eq 4",
+        "passed": true,
+        "evidence": "command passed (exit 0): test $(ls .roadmap/*.json .roadmap/*.jsonl 2>/dev/null | wc -l) -eq 4"
+      },
+      {
+        "rule": "artifact-exists:.roadmap/tasks/topology-simplify-verified.json",
         "passed": true,
         "evidence": "file exists"
       }
     ],
-    "gitSha": "1af1a8532766ccac882338b335e8ca0a47bc911b",
-    "treeSha": "8de55fb22fe12796b696442411c0886fe60c994c",
-    "branch": "feat/wire-runtime-explore"
+    "gitSha": "3a0fc352d81344d9850194b7ab2bdc1f206fa97f",
+    "treeSha": "2035c6849e864f02246dd1710650718ec33256e1",
+    "branch": "feat/topology-simplify"
   },
   {
     "nodeId": "delete-test-files",
@@ -3628,5 +3658,285 @@
     "gitSha": "1af1a8532766ccac882338b335e8ca0a47bc911b",
     "treeSha": "8de55fb22fe12796b696442411c0886fe60c994c",
     "branch": "feat/wire-runtime-explore"
+  },
+  {
+    "nodeId": "fold-mutations",
+    "completedAt": "2026-03-10T14:22:32.643Z",
+    "dagId": "topology-simplify",
+    "validationChecks": [
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "shell:pnpm vitest run",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm vitest run"
+      },
+      {
+        "rule": "shell:! test -f .roadmap/mutations.jsonl",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! test -f .roadmap/mutations.jsonl"
+      },
+      {
+        "rule": "shell:! grep -r 'mutations\\.jsonl\\|MUTATIONS_FILE' src/ --include='*.ts' | grep -v node_modules | grep -v dist",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'mutations\\.jsonl\\|MUTATIONS_FILE' src/ --include='*.ts' | grep -v node_modules | grep -v dist"
+      },
+      {
+        "rule": "artifact-exists:src/lib/dag-mutator.ts",
+        "passed": true,
+        "evidence": "file exists"
+      },
+      {
+        "rule": "artifact-exists:src/cli/dag.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "2998c03648120ab9d2f2ae3fbe6db0bf9d461f65",
+    "treeSha": "12ce7190137a8f0a025ffeea1ee6de237df61a03",
+    "branch": "feat/topology-simplify"
+  },
+  {
+    "nodeId": "fold-origin",
+    "completedAt": "2026-03-10T14:26:41.867Z",
+    "dagId": "topology-simplify",
+    "validationChecks": [
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "shell:pnpm vitest run",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm vitest run"
+      },
+      {
+        "rule": "shell:! test -f .roadmap/spec-origin.json",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! test -f .roadmap/spec-origin.json"
+      },
+      {
+        "rule": "shell:! grep -r 'spec-origin\\.json' src/ --include='*.ts' | grep -v node_modules | grep -v dist",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'spec-origin\\.json' src/ --include='*.ts' | grep -v node_modules | grep -v dist"
+      },
+      {
+        "rule": "artifact-exists:src/cli/make.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "45e665713b35bf7b8f93146b3731db4e85f92651",
+    "treeSha": "eb0b36743f9aa73f469bf0d5eb7edc0dac7b626e",
+    "branch": "feat/topology-simplify"
+  },
+  {
+    "nodeId": "kill-head-index",
+    "completedAt": "2026-03-10T14:30:17.903Z",
+    "dagId": "topology-simplify",
+    "validationChecks": [
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "shell:pnpm vitest run",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm vitest run"
+      },
+      {
+        "rule": "shell:! test -f .roadmap/head-index.json",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! test -f .roadmap/head-index.json"
+      },
+      {
+        "rule": "shell:! grep -r 'head-index\\|headIndex\\|HEAD_INDEX' src/ --include='*.ts' | grep -v node_modules | grep -v dist",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'head-index\\|headIndex\\|HEAD_INDEX' src/ --include='*.ts' | grep -v node_modules | grep -v dist"
+      },
+      {
+        "rule": "artifact-exists:.roadmap/tasks/kill-head-index.artifact.json",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "797c2d60776dba97a4bd9373a09868f8abb50698",
+    "treeSha": "bb9bf08d2336b25b2b741472a62add927f8fba9e",
+    "branch": "feat/topology-simplify"
+  },
+  {
+    "nodeId": "kill-dead-files",
+    "completedAt": "2026-03-10T14:31:53.579Z",
+    "dagId": "topology-simplify",
+    "validationChecks": [
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "shell:pnpm vitest run",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm vitest run"
+      },
+      {
+        "rule": "shell:! test -d .roadmap/.cache",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! test -d .roadmap/.cache"
+      },
+      {
+        "rule": "shell:! test -f .roadmap/git-state.json",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! test -f .roadmap/git-state.json"
+      },
+      {
+        "rule": "shell:! grep -r 'writeNodeCache\\|brief-cache' src/ --include='*.ts' -l | grep -v node_modules | grep -v dist",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'writeNodeCache\\|brief-cache' src/ --include='*.ts' -l | grep -v node_modules | grep -v dist"
+      },
+      {
+        "rule": "artifact-exists:.roadmap/tasks/kill-dead-files.artifact.json",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "797c2d60776dba97a4bd9373a09868f8abb50698",
+    "treeSha": "bb9bf08d2336b25b2b741472a62add927f8fba9e",
+    "branch": "feat/topology-simplify"
+  },
+  {
+    "nodeId": "lineage-on-heads",
+    "completedAt": "2026-03-10T14:41:35.605Z",
+    "dagId": "topology-simplify",
+    "validationChecks": [
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "shell:pnpm vitest run",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm vitest run"
+      },
+      {
+        "rule": "shell:! grep -r 'chain\\.jsonl\\|CHAIN_FILE' src/ --include='*.ts' | grep -v node_modules | grep -v dist",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'chain\\.jsonl\\|CHAIN_FILE' src/ --include='*.ts' | grep -v node_modules | grep -v dist"
+      },
+      {
+        "rule": "shell:! grep 'appendLink\\|loadChain' src/lib/chain.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep 'appendLink\\|loadChain' src/lib/chain.ts"
+      },
+      {
+        "rule": "artifact-exists:src/lib/chain.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "f223aeccf98a39c756ee827c718bed4c9d836a61",
+    "treeSha": "45765db9b961d5352237038e7f6aefec64be051a",
+    "branch": "feat/topology-simplify"
+  },
+  {
+    "nodeId": "fix-io-bypass",
+    "completedAt": "2026-03-10T14:48:04.693Z",
+    "dagId": "topology-simplify",
+    "validationChecks": [
+      {
+        "rule": "shell:pnpm run check",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm run check"
+      },
+      {
+        "rule": "shell:pnpm vitest run",
+        "passed": true,
+        "evidence": "command passed (exit 0): pnpm vitest run"
+      },
+      {
+        "rule": "shell:! grep -r 'from.*chain' src/cli/orient.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'from.*chain' src/cli/orient.ts"
+      },
+      {
+        "rule": "shell:! grep -r 'from.*chain' src/lib/terminal-brief.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -r 'from.*chain' src/lib/terminal-brief.ts"
+      },
+      {
+        "rule": "shell:! grep 'loadChain' src/lib/convergence/gap-trajectory.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep 'loadChain' src/lib/convergence/gap-trajectory.ts"
+      },
+      {
+        "rule": "artifact-exists:src/cli/orient.ts",
+        "passed": true,
+        "evidence": "file exists"
+      },
+      {
+        "rule": "artifact-exists:src/lib/terminal-brief.ts",
+        "passed": true,
+        "evidence": "file exists"
+      },
+      {
+        "rule": "artifact-exists:src/lib/convergence/gap-trajectory.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "e711df2339db5eedbe88bc863c9c8dfc39c48684",
+    "treeSha": "cb9724e44d23ce5de9a587ead4f848f50996d4a8",
+    "branch": "feat/topology-simplify"
+  },
+  {
+    "nodeId": "consolidate-claude-md",
+    "completedAt": "2026-03-10T14:49:58.921Z",
+    "dagId": "topology-simplify",
+    "validationChecks": [
+      {
+        "rule": "shell:! test -f .claude/CLAUDE.md",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! test -f .claude/CLAUDE.md"
+      },
+      {
+        "rule": "shell:test $(wc -l < CLAUDE.md) -le 350",
+        "passed": true,
+        "evidence": "command passed (exit 0): test $(wc -l < CLAUDE.md) -le 350"
+      },
+      {
+        "rule": "shell:! grep -q 'chain\\.jsonl\\|head-index\\|spec-origin\\.json\\|git-state\\.json\\|\\.cache/' CLAUDE.md",
+        "passed": true,
+        "evidence": "command passed (exit 0): ! grep -q 'chain\\.jsonl\\|head-index\\|spec-origin\\.json\\|git-state\\.json\\|\\.cache/' CLAUDE.md"
+      },
+      {
+        "rule": "shell:grep -q 'head.json' CLAUDE.md",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -q 'head.json' CLAUDE.md"
+      },
+      {
+        "rule": "shell:grep -q 'completed.json' CLAUDE.md",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -q 'completed.json' CLAUDE.md"
+      },
+      {
+        "rule": "shell:grep -q 'trail.jsonl' CLAUDE.md",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -q 'trail.jsonl' CLAUDE.md"
+      },
+      {
+        "rule": "artifact-exists:CLAUDE.md",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "06c2b7f2d8f4ad504b3c403797182d0dc817e02c",
+    "treeSha": "4686890636660c2d246d32be65048d17004acd15",
+    "branch": "feat/topology-simplify"
   }
 ]
