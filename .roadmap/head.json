@@ -1,31 +1,34 @@
 {
-  "id": "convergence-aware",
-  "desc": "Auto-populate ExecutionReport at terminal, compute gap trajectory across chain history, synthesize convergence assessment into chainReady output. Agents get 'converging at 40%/iteration' or 'stuck on 3 persistent gaps' — enough to write specs that converge rather than churn.",
+  "id": "topology-simplify",
+  "desc": "Simplify .roadmap/ file topology: kill 7 dead/redundant entries (chain.jsonl, head-index.json, spec-origin.json, git-state.json, .cache/, mutations.jsonl, tasks/*.artifact), merge lineage onto heads/, fold origin into head.json, fold mutations into trail.jsonl, enforce IO boundary by killing chain.ts escape hatch. 4 root files + 2 dirs, down from 7 + 4.",
   "init": "init",
   "term": "term",
   "nodes": {
     "init": {
       "id": "init",
-      "desc": "Current state: asymptotic-chain DAG complete. chainReady replaces done:true. Scoring wired into TerminalBrief. detectGaps broadened. But ExecutionReport is opt-in, gap trajectory not computed, no convergence assessment.",
+      "desc": "Init marker \u2014 current state: DAG complete, 547 tests passing, chain.jsonl empty, all topology targets identified.",
       "produces": [
-        "init.marker"
+        ".roadmap/tasks/init.artifact.json"
       ],
       "consumes": [],
       "deps": [],
       "validate": [
         {
-          "type": "artifact-exists",
-          "path": "init.marker"
+          "type": "shell",
+          "command": "pnpm run check"
+        },
+        {
+          "type": "shell",
+          "command": "pnpm vitest run"
         }
       ],
       "idempotent": true
     },
-    "auto-execution-report": {
-      "id": "auto-execution-report",
-      "desc": "Auto-populate ExecutionReport when terminal node advances, without requiring --evaluate-file. Compute from data already available: nodesExecuted from CompletionStore (count of completed node IDs), totalDuration from trail metrics (totalWallClockMs), retriesPerNode from trail entries (count advance entries per node with detail.passed === false followed by retry). observations[] from handoff summaries (gotchas from all nodes). blockers[] from handoff summaries. deltaAssessment left empty (filled by gap-trajectory node). Wire this into advance.ts terminal path: when building ChainLink for appendLink(), auto-compute the ExecutionReport instead of requiring --evaluate-file. The --evaluate-file path remains as an override.",
+    "kill-dead-files": {
+      "id": "kill-dead-files",
+      "desc": "Delete .roadmap/.cache/ (30 files, 112K, never read), .roadmap/git-state.json (never read), .roadmap/tasks/*.artifact.json (informational only). Remove all code that writes to these: writeNodeCache() in brief-cache.ts, git-state writes in checkpoint.ts/cli-envelope.ts, artifact writes in advance.ts. Remove imports of brief-cache.ts. Delete brief-cache.ts if it becomes empty.",
       "produces": [
-        "src/lib/auto-execution-report.ts",
-        "src/cli/advance.ts"
+        ".roadmap/tasks/kill-dead-files.artifact.json"
       ],
       "consumes": [],
       "deps": [
@@ -38,24 +41,28 @@
         },
         {
           "type": "shell",
-          "command": "grep -q 'autoExecutionReport\\|computeExecutionReport' src/lib/auto-execution-report.ts"
-        },
-        {
-          "type": "shell",
-          "command": "grep -q 'auto-execution-report\\|autoExecutionReport\\|computeExecutionReport' src/cli/advance.ts"
-        },
-        {
-          "type": "shell",
           "command": "pnpm vitest run"
+        },
+        {
+          "type": "shell",
+          "command": "! test -d .roadmap/.cache"
+        },
+        {
+          "type": "shell",
+          "command": "! test -f .roadmap/git-state.json"
+        },
+        {
+          "type": "shell",
+          "command": "! grep -r 'writeNodeCache\\|brief-cache' src/ --include='*.ts' -l | grep -v node_modules | grep -v dist"
         }
       ],
       "idempotent": true
     },
-    "gap-trajectory": {
-      "id": "gap-trajectory",
-      "desc": "Compute gap trajectory across chain history. New module src/lib/convergence/gap-trajectory.ts exports computeGapTrajectory(repoRoot) → GapTrajectory. Algorithm: (1) load head-index.json to get predecessor chain, (2) for each archived head in .roadmap/heads/, load the DAG and run detectGaps() on it, (3) build per-iteration gap counts by type, (4) compute resolved[] (gaps in predecessor not in current), persistent[] (gaps in both), new[] (gaps in current not in predecessor), (5) compute convergence direction: gap count trend (shrinking/stable/growing), reduction rate per iteration. GapTrajectory type: { iterations: Array<{ dagId, iteration, gapCount, gapsByType }>, resolved: GapEntry[], persistent: GapEntry[], new: GapEntry[], trend: 'converging' | 'stable' | 'diverging', reductionRate: number }. Pure function over archived DAG files — no dependency on current execution state.",
+    "kill-head-index": {
+      "id": "kill-head-index",
+      "desc": "Delete .roadmap/head-index.json. Remove all code that reads or writes it: index-extractor.ts, lazy-graph-loader.ts head-index reads, dag-consolidator.ts head-index writes, chain.ts HEAD_INDEX_FILE constant and archiveHead() index writes. Delete index-extractor.ts if it becomes empty. Update any imports.",
       "produces": [
-        "src/lib/convergence/gap-trajectory.ts"
+        ".roadmap/tasks/kill-head-index.artifact.json"
       ],
       "consumes": [],
       "deps": [
@@ -68,39 +75,123 @@
         },
         {
           "type": "shell",
-          "command": "grep -q 'computeGapTrajectory' src/lib/convergence/gap-trajectory.ts"
-        },
-        {
-          "type": "shell",
-          "command": "grep -q 'GapTrajectory' src/lib/convergence/gap-trajectory.ts"
-        },
-        {
-          "type": "shell",
-          "command": "grep -q 'converging\\|diverging\\|stable' src/lib/convergence/gap-trajectory.ts"
-        },
-        {
-          "type": "shell",
           "command": "pnpm vitest run"
+        },
+        {
+          "type": "shell",
+          "command": "! test -f .roadmap/head-index.json"
+        },
+        {
+          "type": "shell",
+          "command": "! grep -r 'head-index\\|headIndex\\|HEAD_INDEX' src/ --include='*.ts' | grep -v node_modules | grep -v dist"
         }
       ],
       "idempotent": true
     },
-    "convergence-assessment": {
-      "id": "convergence-assessment",
-      "desc": "Synthesize gap trajectory + execution report into a ConvergenceAssessment and wire it into the chainReady output. New module src/lib/convergence/assessment.ts exports assessConvergence(trajectory, currentGaps, executionReport) → ConvergenceAssessment. ConvergenceAssessment type: { trend, reductionRate, persistentGaps[], resolvedThisIteration[], newThisIteration[], recommendation: string, iterationSummary: string }. The recommendation is a concrete sentence: 'Gap surface shrinking 40% per iteration — 3 persistent gaps need targeted shell validators' or 'Diverging after iteration 2 — 5 new no-shell-coverage gaps suggest validator strategy needs revision'. Wire into: (1) TerminalBrief gets a convergence field (both pure and IO versions), (2) advance.ts chainReady output includes convergenceAssessment, (3) the ExecutionReport.deltaAssessment auto-populates from the assessment's iterationSummary. Update src/runtime/brief.ts, src/lib/terminal-brief.ts, src/cli/advance.ts.",
+    "fold-origin": {
+      "id": "fold-origin",
+      "desc": "Fold spec-origin.json into head.json as _origin field. Update make.ts to write _origin onto the DAG object before saving head.json instead of writing separate spec-origin.json. Update runtime-gate.ts requireValidOrigin() to read _origin from head.json instead of spec-origin.json. Update origin-validator.ts similarly. Delete spec-origin.ts if it becomes just a type definition (fold type into protocol). Delete .roadmap/spec-origin.json file.",
       "produces": [
-        "src/lib/convergence/assessment.ts",
-        "src/runtime/brief.ts",
+        "src/cli/make.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "init"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "pnpm run check"
+        },
+        {
+          "type": "shell",
+          "command": "pnpm vitest run"
+        },
+        {
+          "type": "shell",
+          "command": "! test -f .roadmap/spec-origin.json"
+        },
+        {
+          "type": "shell",
+          "command": "! grep -r 'spec-origin\\.json' src/ --include='*.ts' | grep -v node_modules | grep -v dist"
+        }
+      ],
+      "idempotent": true
+    },
+    "fold-mutations": {
+      "id": "fold-mutations",
+      "desc": "Fold mutations.jsonl into trail.jsonl. Update dag-mutator.ts to append mutation events to trail.jsonl (via appendTrail in shared.ts) instead of writing to mutations.jsonl. Update dag.ts log subcommand to read mutation events from trail.jsonl by filtering op type. Delete mutations.jsonl file. Delete MUTATIONS_FILE constant.",
+      "produces": [
+        "src/lib/dag-mutator.ts",
+        "src/cli/dag.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "init"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "pnpm run check"
+        },
+        {
+          "type": "shell",
+          "command": "pnpm vitest run"
+        },
+        {
+          "type": "shell",
+          "command": "! test -f .roadmap/mutations.jsonl"
+        },
+        {
+          "type": "shell",
+          "command": "! grep -r 'mutations\\.jsonl\\|MUTATIONS_FILE' src/ --include='*.ts' | grep -v node_modules | grep -v dist"
+        }
+      ],
+      "idempotent": true
+    },
+    "lineage-on-heads": {
+      "id": "lineage-on-heads",
+      "desc": "Move lineage data onto archived DAGs. When archiveHead() archives head.json to heads/{dagId}.json, add a _lineage field: { iteration, predecessorId, completedAt, executionReport }. Update loadChainState() in runtime/context.ts to scan heads/*.json and read _lineage fields instead of chain.jsonl. Delete chain.jsonl constant and appendLink/loadChain/currentIteration functions from chain.ts. Keep archiveHead (rewritten) and parseExecutionReport (still needed). Update getRootIntent to read from heads/ _lineage chain.",
+      "produces": [
+        "src/lib/chain.ts"
+      ],
+      "consumes": [],
+      "deps": [
+        "kill-head-index"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "pnpm run check"
+        },
+        {
+          "type": "shell",
+          "command": "pnpm vitest run"
+        },
+        {
+          "type": "shell",
+          "command": "! grep -r 'chain\\.jsonl\\|CHAIN_FILE' src/ --include='*.ts' | grep -v node_modules | grep -v dist"
+        },
+        {
+          "type": "shell",
+          "command": "! grep 'appendLink\\|loadChain' src/lib/chain.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "fix-io-bypass": {
+      "id": "fix-io-bypass",
+      "desc": "Fix the 3 modules that bypass Context by calling loadChain(repoRoot) directly: (1) src/cli/orient.ts:122 \u2014 replace loadChain/currentIteration/getRootIntent with ctx.chain from loadContext, (2) src/lib/terminal-brief.ts:59 \u2014 make buildTerminalBrief take Context (or chain state) as parameter instead of calling loadChain, (3) src/lib/convergence/gap-trajectory.ts:140 \u2014 pass chain data in instead of calling loadChain. After this, no module outside runtime/context.ts touches chain data directly.",
+      "produces": [
+        "src/cli/orient.ts",
         "src/lib/terminal-brief.ts",
-        "src/cli/advance.ts"
-      ],
-      "consumes": [
-        "src/lib/auto-execution-report.ts",
         "src/lib/convergence/gap-trajectory.ts"
       ],
+      "consumes": [
+        "src/lib/chain.ts"
+      ],
       "deps": [
-        "auto-execution-report",
-        "gap-trajectory"
+        "lineage-on-heads"
       ],
       "validate": [
         {
@@ -109,70 +200,76 @@
         },
         {
           "type": "shell",
-          "command": "grep -q 'ConvergenceAssessment' src/lib/convergence/assessment.ts"
-        },
-        {
-          "type": "shell",
-          "command": "grep -q 'assessConvergence' src/lib/convergence/assessment.ts"
-        },
-        {
-          "type": "shell",
-          "command": "grep -q 'convergence' src/runtime/brief.ts"
-        },
-        {
-          "type": "shell",
-          "command": "grep -q 'convergence' src/cli/advance.ts"
-        },
-        {
-          "type": "shell",
           "command": "pnpm vitest run"
+        },
+        {
+          "type": "shell",
+          "command": "! grep -r 'from.*chain' src/cli/orient.ts"
+        },
+        {
+          "type": "shell",
+          "command": "! grep -r 'from.*chain' src/lib/terminal-brief.ts"
+        },
+        {
+          "type": "shell",
+          "command": "! grep 'loadChain' src/lib/convergence/gap-trajectory.ts"
         }
       ],
       "idempotent": true
     },
-    "test-convergence": {
-      "id": "test-convergence",
-      "desc": "Integration tests proving convergence assessment works across chain iterations. Test 1: computeGapTrajectory on a repo with 2 archived heads returns correct resolved/persistent/new classification. Test 2: assessConvergence with shrinking gap surface returns trend:'converging' with correct reductionRate. Test 3: assessConvergence with growing gap surface returns trend:'diverging'. Test 4: assessConvergence with zero chain history returns trend:'stable' (first iteration baseline). Test 5: terminal advance chainReady output includes convergenceAssessment field. Test 6: auto ExecutionReport populates nodesExecuted and totalDuration from trail data. Use mock archived heads (write temp DAG JSON files) for trajectory tests.",
+    "consolidate-claude-md": {
+      "id": "consolidate-claude-md",
+      "desc": "Merge .claude/CLAUDE.md (agent guide, 241 lines) into root CLAUDE.md (264 lines). Deduplicate overlapping sections (both describe CLI commands, file topology, session protocol). Remove documentation for killed files (chain.jsonl, head-index.json, spec-origin.json, git-state.json, .cache/, mutations.jsonl). Update file topology section to match new 4+2 layout. Target: single CLAUDE.md under 350 lines total.",
       "produces": [
-        "tests/convergence-assessment.test.ts"
+        "CLAUDE.md"
       ],
-      "consumes": [
-        "src/lib/convergence/gap-trajectory.ts",
-        "src/lib/convergence/assessment.ts",
-        "src/lib/auto-execution-report.ts"
-      ],
+      "consumes": [],
       "deps": [
-        "convergence-assessment"
+        "kill-dead-files",
+        "kill-head-index",
+        "fold-origin",
+        "fold-mutations",
+        "fix-io-bypass"
       ],
       "validate": [
         {
           "type": "shell",
-          "command": "pnpm vitest run tests/convergence-assessment.test.ts"
+          "command": "! test -f .claude/CLAUDE.md"
         },
         {
           "type": "shell",
-          "command": "pnpm vitest run"
+          "command": "test $(wc -l < CLAUDE.md) -le 350"
+        },
+        {
+          "type": "shell",
+          "command": "! grep -q 'chain\\.jsonl\\|head-index\\|spec-origin\\.json\\|git-state\\.json\\|\\.cache/' CLAUDE.md"
+        },
+        {
+          "type": "shell",
+          "command": "grep -q 'head.json' CLAUDE.md"
+        },
+        {
+          "type": "shell",
+          "command": "grep -q 'completed.json' CLAUDE.md"
+        },
+        {
+          "type": "shell",
+          "command": "grep -q 'trail.jsonl' CLAUDE.md"
         }
       ],
       "idempotent": true
     },
     "term": {
       "id": "term",
-      "desc": "Convergence-aware chain loop verified. Agents at terminal see: gap trajectory (resolved/persistent/new), convergence trend (converging/stable/diverging), reduction rate, and a concrete recommendation for the successor spec. ExecutionReport auto-populates. The full evaluative context for convergence-based spec authoring is in the chainReady output.",
+      "desc": "Topology simplified: .roadmap/ has 4 root files (head.json, completed.json, trail.jsonl, enforcement.json) + 2 directories (heads/, .handoff/). Zero IO boundary bypasses. Single CLAUDE.md under 350 lines. All tests pass. Lineage lives on archived DAGs. Mutations flow through trail. Origin travels with head.",
       "produces": [
-        ".roadmap/tasks/convergence-aware-verified.json"
+        ".roadmap/tasks/topology-simplify-verified.json"
       ],
-      "consumes": [
-        "tests/convergence-assessment.test.ts"
-      ],
+      "consumes": [],
       "deps": [
-        "test-convergence"
+        "consolidate-claude-md"
       ],
       "validate": [
-        {
-          "type": "shell",
-          "command": "pnpm run build"
-        },
         {
           "type": "shell",
           "command": "pnpm run check"
@@ -183,16 +280,53 @@
         },
         {
           "type": "shell",
-          "command": "grep -q 'ConvergenceAssessment' src/lib/convergence/assessment.ts"
+          "command": "pnpm run build"
         },
         {
           "type": "shell",
-          "command": "grep -q 'convergence' src/cli/advance.ts"
+          "command": "! test -f .roadmap/chain.jsonl"
+        },
+        {
+          "type": "shell",
+          "command": "! test -f .roadmap/head-index.json"
+        },
+        {
+          "type": "shell",
+          "command": "! test -f .roadmap/spec-origin.json"
+        },
+        {
+          "type": "shell",
+          "command": "! test -f .roadmap/git-state.json"
+        },
+        {
+          "type": "shell",
+          "command": "! test -d .roadmap/.cache"
+        },
+        {
+          "type": "shell",
+          "command": "! test -f .roadmap/mutations.jsonl"
+        },
+        {
+          "type": "shell",
+          "command": "! test -f .claude/CLAUDE.md"
+        },
+        {
+          "type": "shell",
+          "command": "test $(ls .roadmap/*.json .roadmap/*.jsonl 2>/dev/null | wc -l) -eq 4"
         }
       ],
       "idempotent": true
     }
   },
   "version": "0.3.0",
-  "protocolVersion": "0.3.0"
+  "protocolVersion": "0.3.0",
+  "_origin": {
+    "schemaVersion": 1,
+    "engine": "spec-kit",
+    "version": "1.0.0",
+    "compile_hash": "00e8cf0d36142a6418e1fdcda25dbab43faf2c07a246585367ba4f32f6bafd86",
+    "spec_sha": "333c04dd151a2a6831c039cb9a651df29198be8a04e16ce861d4b6a34a11c954",
+    "importedAt": "2026-03-10T14:25:43.122098Z",
+    "dagId": "topology-simplify"
+  }
 }
