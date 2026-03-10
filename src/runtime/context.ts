@@ -9,13 +9,13 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import { CompletionStore } from './completion.ts';
-import type { ChainLink } from '../lib/chain.ts';
+import type { ChainLink, ExecutionReport } from '../lib/chain.ts';
 import type { FinalHandoff, InterimHandoff } from '../lib/brief.ts';
 import { computeTrailMetrics, type TrailMetrics } from '../lib/trail-metrics.ts';
 
 // --- Types ---
 
-/** Loaded chain state from .roadmap/chain.jsonl */
+/** Loaded chain state from .roadmap/heads/*.json _lineage fields */
 export interface ChainState {
   readonly links: readonly ChainLink[];
   /** Highest iteration number, or 0 if no chain entries */
@@ -52,24 +52,38 @@ export interface Context {
 
 // --- Loaders ---
 
-/** Load chain state from .roadmap/chain.jsonl */
+/** Load chain state by scanning .roadmap/heads/*.json _lineage fields */
 function loadChainState(repoRoot: string): ChainState {
-  const chainPath = join(repoRoot, '.roadmap', 'chain.jsonl');
-  if (!existsSync(chainPath)) {
+  const headsDir = join(repoRoot, '.roadmap', 'heads');
+  if (!existsSync(headsDir)) {
     return { links: [], iteration: 0 };
   }
 
   try {
-    const content = readFileSync(chainPath, 'utf-8');
-    const links: ChainLink[] = content
-      .split('\n')
-      .filter(line => line.trim() !== '')
-      .map(line => JSON.parse(line) as ChainLink);
+    const files = readdirSync(headsDir).filter(f => f.endsWith('.json'));
+    const links: ChainLink[] = [];
 
-    const iteration = links.length === 0
-      ? 0
-      : Math.max(...links.map(l => l.iteration));
+    for (const file of files) {
+      try {
+        const content = readFileSync(join(headsDir, file), 'utf-8');
+        const parsed = JSON.parse(content) as { id?: string; _lineage?: { iteration: number; predecessorId: string | null; completedAt: string; executionReport?: ExecutionReport } };
+        if (!parsed._lineage) continue;
+        const lin = parsed._lineage;
+        links.push({
+          dagId: parsed.id ?? file.replace('.json', ''),
+          iteration: lin.iteration,
+          predecessorId: lin.predecessorId,
+          completedAt: lin.completedAt,
+          successorDagId: null,
+          executionReport: lin.executionReport,
+        });
+      } catch {
+        // Skip malformed heads
+      }
+    }
 
+    links.sort((a, b) => a.iteration - b.iteration);
+    const iteration = links.length === 0 ? 0 : Math.max(...links.map(l => l.iteration));
     return { links, iteration };
   } catch {
     return { links: [], iteration: 0 };
@@ -155,7 +169,7 @@ function loadHandoffs(repoRoot: string): HandoffMap {
  * call once at session start, then thread Context through all runtime functions.
  *
  * - Completions: .roadmap/completed.json (receipt-based)
- * - Chain: .roadmap/chain.jsonl (convergence iteration history)
+ * - Chain: .roadmap/heads/*.json _lineage fields (convergence iteration history)
  * - Handoffs: .roadmap/.handoff/ (per-node final + interim checkpoints)
  *
  * Uses loadOrEmpty for completions so missing files don't throw.

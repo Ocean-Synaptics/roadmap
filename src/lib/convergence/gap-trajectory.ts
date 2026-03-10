@@ -2,12 +2,12 @@
 // @description Compute gap trajectory across archived DAG iterations
 // @exports IterationSnapshot, GapTrajectory, computeGapTrajectory
 
-import { readFileSync, existsSync, readdirSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Graph } from '../../protocol.ts';
 import { detectGaps } from '../terminal-audit/detected.ts';
 import type { GapEntry } from '../terminal-audit/detected.ts';
-import { loadChain } from '../chain.ts';
+import { loadChainFromHeads } from '../chain.ts';
 import type { ChainLink } from '../chain.ts';
 
 export interface IterationSnapshot {
@@ -113,7 +113,7 @@ function snapshotFromDag(dag: Graph<string>, dagId: string, iteration: number): 
  *
  * 1. Load current head.json as the current DAG
  * 2. Run detectGaps(currentDag) for current gaps
- * 3. Load chain.jsonl via loadChain(repoRoot) to get iteration history
+ * 3. Load chain from heads/*.json _lineage fields to get iteration history
  * 4. For each ChainLink, load the archived DAG from .roadmap/heads/<dagId>.json
  * 5. Run detectGaps() on each archived DAG to get historical gap snapshots
  * 6. Build iterations[] array with per-iteration gap counts
@@ -136,36 +136,18 @@ export function computeGapTrajectory(repoRoot: string): GapTrajectory {
     }
   }
 
-  // Step 3: Load chain history
-  const chain = loadChain(repoRoot);
+  // Step 3: Load chain history from heads/*.json _lineage fields
+  const chain = loadChainFromHeads(repoRoot);
 
   // Step 4–5: Load archived DAGs and compute snapshots
-  // Sort chain by iteration for chronological order
-  const sortedChain = [...chain].sort((a, b) => a.iteration - b.iteration);
+  // chain is already sorted by iteration from loadChainFromHeads
+  const sortedChain = chain;
 
   for (const link of sortedChain) {
     const archivePath = join(repoRoot, HEADS_DIR, `${link.dagId}.json`);
     const dag = tryLoadGraph(archivePath);
     if (!dag) continue;
     iterations.push(snapshotFromDag(dag, link.dagId, link.iteration));
-  }
-
-  // If no chain exists, scan .roadmap/heads/ directly for any archived DAGs
-  if (chain.length === 0) {
-    const headsDir = join(repoRoot, HEADS_DIR);
-    if (existsSync(headsDir)) {
-      const files = readdirSync(headsDir).filter(f => f.endsWith('.json')).sort();
-      let idx = 0;
-      for (const file of files) {
-        const dagPath = join(headsDir, file);
-        const dag = tryLoadGraph(dagPath);
-        if (!dag) continue;
-        // Skip if this is the same as current head (not yet archived)
-        if (dag.id === currentDagId) continue;
-        iterations.push(snapshotFromDag(dag, dag.id, idx));
-        idx++;
-      }
-    }
   }
 
   // Step 6: Add current DAG as the latest iteration

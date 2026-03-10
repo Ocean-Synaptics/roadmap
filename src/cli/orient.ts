@@ -7,7 +7,7 @@ import { loadClaims, annotateWithClaims } from '../lib/claims/claims.ts';
 import { readPackageVersion } from '../lib/install-skills.ts';
 import { requireValidOrigin, checkSpecDrift } from '../lib/intake/runtime-gate.ts';
 import { getBrief } from '../lib/brief.ts';
-import { loadChain, currentIteration, getRootIntent } from '../lib/chain.ts';
+import { loadChainFromHeads, getRootIntent } from '../lib/chain.ts';
 import { emit, type OutputOpts } from '../lib/cli-envelope.ts';
 import type { Graph } from '../lib/protocol/types.ts';
 import type { OrientV1 } from '../lib/core/orient-schema.ts';
@@ -119,14 +119,14 @@ export async function run(
 
   let chainContext: { iteration: number; predecessorId: string | null; dagId: string; rootIntent: string };
   try {
-    const chain = loadChain(repoRoot);
-    const iteration = currentIteration(repoRoot);
-    const lastLink = chain.length > 0 ? chain[chain.length - 1] : null;
+    const links = loadChainFromHeads(repoRoot);
+    const iteration = links.length > 0 ? Math.max(...links.map(l => l.iteration)) + 1 : 0;
+    const lastLink = links.length > 0 ? links[links.length - 1] : null;
     chainContext = {
       iteration,
       predecessorId: lastLink?.predecessorId ?? null,
       dagId: dag.id ?? 'unknown',
-      rootIntent: chain.length > 0 ? getRootIntent(repoRoot) : (dag.desc ?? 'unknown'),
+      rootIntent: links.length > 0 ? getRootIntent(repoRoot) : (dag.desc ?? 'unknown'),
     };
   } catch {
     chainContext = { iteration: 0, predecessorId: null, dagId: dag.id ?? 'unknown', rootIntent: dag.desc ?? 'unknown' };

@@ -55,8 +55,16 @@ function writeHead(repoRoot: string, dag: Graph<string>): void {
   writeDag(repoRoot, 'head.json', dag);
 }
 
-function writeArchivedHead(repoRoot: string, dag: Graph<string>): void {
-  writeDag(repoRoot, `heads/${dag.id}.json`, dag);
+function writeArchivedHead(repoRoot: string, dag: Graph<string>, iteration = 0): void {
+  const enriched = {
+    ...dag,
+    _lineage: {
+      iteration,
+      predecessorId: null,
+      completedAt: '2026-03-01T00:00:00Z',
+    },
+  };
+  writeFileSync(join(repoRoot, '.roadmap', `heads/${dag.id}.json`), JSON.stringify(enriched));
 }
 
 function mkGapEntry(type: string, nodeId: string, artifact: string): GapEntry {

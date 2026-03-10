@@ -1,9 +1,9 @@
 // @module chain
-// @description Convergence chain storage — append-only JSONL chain linking DAG iterations
-// @exports ChainLink, ExecutionReport, appendLink, loadChain, currentIteration, archiveHead, getRootIntent, parseExecutionReport
+// @description Convergence chain storage — lineage embedded on archived DAG heads
+// @exports ChainLink, ExecutionReport, archiveHead, getRootIntent, parseExecutionReport
 // @entry roadmap/chain
 
-import { readFileSync, existsSync, mkdirSync, renameSync, appendFileSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, writeFileSync, unlinkSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 export interface ExecutionReport {
@@ -25,42 +25,25 @@ export interface ChainLink {
   executionReport?: ExecutionReport;
 }
 
-const CHAIN_FILE = '.roadmap/chain.jsonl';
+/** Lineage metadata embedded on archived DAG heads */
+export interface Lineage {
+  iteration: number;
+  predecessorId: string | null;
+  completedAt: string;
+  executionReport?: ExecutionReport;
+}
+
 const HEAD_FILE = '.roadmap/head.json';
 const HEADS_DIR = '.roadmap/heads';
 
-/** Append a ChainLink as a JSON line to .roadmap/chain.jsonl */
-export function appendLink(repoRoot: string, link: ChainLink): void {
-  const filePath = join(repoRoot, CHAIN_FILE);
-  const dir = join(repoRoot, '.roadmap');
-  if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-  appendFileSync(filePath, JSON.stringify(link) + '\n');
-}
-
-/** Read all links from chain.jsonl, return as array */
-export function loadChain(repoRoot: string): ChainLink[] {
-  const filePath = join(repoRoot, CHAIN_FILE);
-  if (!existsSync(filePath)) return [];
-  const content = readFileSync(filePath, 'utf-8');
-  return content
-    .split('\n')
-    .filter((line) => line.trim() !== '')
-    .map((line) => JSON.parse(line) as ChainLink);
-}
-
-/** Return the highest iteration number from chain, or 0 if empty */
-export function currentIteration(repoRoot: string): number {
-  const chain = loadChain(repoRoot);
-  if (chain.length === 0) return 0;
-  return Math.max(...chain.map((link) => link.iteration));
-}
-
 /**
- * Archive current head.json:
+ * Archive current head.json with embedded lineage:
  * 1. Read .roadmap/head.json, extract its `id` field
- * 2. Move file to .roadmap/heads/<dagId>.json
+ * 2. Attach _lineage metadata to the JSON
+ * 3. Write enriched version to .roadmap/heads/<dagId>.json
+ * 4. Delete head.json
  */
-export function archiveHead(repoRoot: string): void {
+export function archiveHead(repoRoot: string, lineage: Lineage): void {
   const headPath = join(repoRoot, HEAD_FILE);
   if (!existsSync(headPath)) {
     throw new Error(`No head.json found at ${headPath}`);
@@ -74,21 +57,62 @@ export function archiveHead(repoRoot: string): void {
   const headsDir = join(repoRoot, HEADS_DIR);
   if (!existsSync(headsDir)) mkdirSync(headsDir, { recursive: true });
 
-  // Move head.json to heads/<dagId>.json
+  // Write enriched head to heads/<dagId>.json with _lineage field
+  const enriched = { ...head, _lineage: lineage };
   const archivePath = join(headsDir, `${dagId}.json`);
-  renameSync(headPath, archivePath);
+  writeFileSync(archivePath, JSON.stringify(enriched, null, 2) + '\n');
+
+  // Remove head.json
+  unlinkSync(headPath);
 }
 
 /**
- * Walk the chain back to iteration 0 and read that DAG's desc field
- * from the archived head (.roadmap/heads/<dagId>.json).
- * If chain is empty, read current head.json desc.
+ * Read all archived heads from heads/*.json, extract _lineage fields.
+ * Returns ChainLink-compatible objects sorted by iteration.
+ */
+export function loadChainFromHeads(repoRoot: string): ChainLink[] {
+  const headsDir = join(repoRoot, HEADS_DIR);
+  if (!existsSync(headsDir)) return [];
+
+  const links: ChainLink[] = [];
+  let files: string[];
+  try {
+    files = readdirSync(headsDir).filter(f => f.endsWith('.json'));
+  } catch {
+    return [];
+  }
+
+  for (const file of files) {
+    try {
+      const content = readFileSync(join(headsDir, file), 'utf-8');
+      const parsed = JSON.parse(content) as { id?: string; _lineage?: Lineage };
+      if (!parsed._lineage) continue;
+      const lin = parsed._lineage;
+      links.push({
+        dagId: parsed.id ?? file.replace('.json', ''),
+        iteration: lin.iteration,
+        predecessorId: lin.predecessorId,
+        completedAt: lin.completedAt,
+        successorDagId: null, // not stored in lineage
+        executionReport: lin.executionReport,
+      });
+    } catch {
+      // Skip malformed heads
+    }
+  }
+
+  return links.sort((a, b) => a.iteration - b.iteration);
+}
+
+/**
+ * Walk heads/*.json to find iteration 0 (or lowest) and read that DAG's desc.
+ * If no heads exist, read current head.json desc.
  */
 export function getRootIntent(repoRoot: string): string {
-  const chain = loadChain(repoRoot);
+  const links = loadChainFromHeads(repoRoot);
 
-  if (chain.length === 0) {
-    // No chain entries — read current head.json
+  if (links.length === 0) {
+    // No archived heads — read current head.json
     const headPath = join(repoRoot, HEAD_FILE);
     if (!existsSync(headPath)) {
       throw new Error(`No head.json and no chain entries — cannot determine root intent`);
@@ -97,11 +121,8 @@ export function getRootIntent(repoRoot: string): string {
     return head.desc;
   }
 
-  // Find iteration 0's dagId
-  const rootLink = chain.find((link) => link.iteration === 0);
-  if (!rootLink) {
-    throw new Error(`Chain has entries but no iteration 0 — chain is corrupt`);
-  }
+  // Find iteration 0's dagId (or lowest)
+  const rootLink = links.reduce((min, l) => l.iteration < min.iteration ? l : min, links[0]);
 
   const archivePath = join(repoRoot, HEADS_DIR, `${rootLink.dagId}.json`);
   if (!existsSync(archivePath)) {

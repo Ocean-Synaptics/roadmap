@@ -13,7 +13,7 @@ import { CompletionStore, saveCompletionWithEvidence } from '../runtime/completi
 import type { EvidenceRecord } from '../runtime/completion.ts';
 import { getBrief } from '../lib/brief.ts';
 import { buildTerminalBrief, type TerminalBrief } from '../lib/terminal-brief.ts';
-import { archiveHead, appendLink, currentIteration, parseExecutionReport, type ChainLink, type ExecutionReport } from '../lib/chain.ts';
+import { archiveHead, loadChainFromHeads, parseExecutionReport, type ExecutionReport } from '../lib/chain.ts';
 import { tasksToDAG } from '../lib/intake/speckit-import.ts';
 import type { FinalHandoff, InterimHandoff } from '../lib/brief.ts';
 import { saveFinal, saveInterim } from '../lib/agent-dispatch/handoff-journal.ts';
@@ -192,38 +192,36 @@ async function advanceNode(
             });
             define(builtDag); verify(builtDag); check(builtDag);
 
-            const iteration = currentIteration(repoRoot) + 1;
-            archiveHead(repoRoot);
+            const existingLinks = loadChainFromHeads(repoRoot);
+            const nextIteration = existingLinks.length > 0
+              ? Math.max(...existingLinks.map(l => l.iteration)) + 1
+              : 0;
+            const completedAt = new Date().toISOString();
+            archiveHead(repoRoot, {
+              iteration: nextIteration,
+              predecessorId: nextIteration > 0 ? dag.id ?? null : null,
+              completedAt,
+              executionReport,
+            });
             const headPath = join(repoRoot, '.roadmap', 'head.json');
             writeFileSync(headPath, JSON.stringify(builtDag, null, 2) + '\n');
-
-            const link: ChainLink = {
-              dagId: dag.id ?? 'unknown',
-              iteration: iteration - 1,
-              predecessorId: iteration > 1 ? dag.id ?? null : null,
-              completedAt: new Date().toISOString(),
-              successorDagId: builtDag.id ?? null,
-              executionReport,
-            };
-            appendLink(repoRoot, link);
             chained = true;
           } else if (specContent.init && specContent.term && specContent.nodes) {
             define(specContent); verify(specContent); check(specContent);
 
-            const iteration = currentIteration(repoRoot) + 1;
-            archiveHead(repoRoot);
+            const existingLinks = loadChainFromHeads(repoRoot);
+            const nextIteration = existingLinks.length > 0
+              ? Math.max(...existingLinks.map(l => l.iteration)) + 1
+              : 0;
+            const completedAt = new Date().toISOString();
+            archiveHead(repoRoot, {
+              iteration: nextIteration,
+              predecessorId: nextIteration > 0 ? dag.id ?? null : null,
+              completedAt,
+              executionReport,
+            });
             const headPath = join(repoRoot, '.roadmap', 'head.json');
             writeFileSync(headPath, JSON.stringify(specContent, null, 2) + '\n');
-
-            const link: ChainLink = {
-              dagId: dag.id ?? 'unknown',
-              iteration: iteration - 1,
-              predecessorId: iteration > 1 ? dag.id ?? null : null,
-              completedAt: new Date().toISOString(),
-              successorDagId: specContent.id ?? null,
-              executionReport,
-            };
-            appendLink(repoRoot, link);
             chained = true;
           }
         } catch (e: any) {

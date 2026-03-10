@@ -7,7 +7,7 @@ import { readFileSync, existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import type { Graph } from '../protocol.ts';
 import type { ChainLink, ExecutionReport } from './chain.ts';
-import { loadChain, currentIteration, getRootIntent } from './chain.ts';
+import { loadChainFromHeads, getRootIntent } from './chain.ts';
 import { computeReport } from './terminal-audit/computed.ts';
 import type { ComputedReport } from './terminal-audit/computed.ts';
 import { detectGaps } from './terminal-audit/detected.ts';
@@ -55,9 +55,11 @@ export function buildTerminalBrief(
   // Layer 2: handoff journals
   const handoffSummaries = loadHandoffSummaries(repoRoot);
 
-  // Layer 3: chain history
-  const chainHistory = loadChain(repoRoot);
-  const iteration = currentIteration(repoRoot);
+  // Layer 3: chain history (from heads/*.json _lineage fields)
+  const chainHistory = loadChainFromHeads(repoRoot);
+  const iteration = chainHistory.length > 0
+    ? Math.max(...chainHistory.map(l => l.iteration)) + 1
+    : 0;
   let rootIntent: string;
   try {
     rootIntent = getRootIntent(repoRoot);

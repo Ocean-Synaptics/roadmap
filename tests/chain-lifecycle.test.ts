@@ -3,14 +3,12 @@ import { mkdirSync, writeFileSync, existsSync, readFileSync, rmSync, mkdtempSync
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 import {
-  appendLink,
-  loadChain,
-  currentIteration,
   archiveHead,
+  loadChainFromHeads,
   getRootIntent,
   parseExecutionReport,
 } from '../src/lib/chain.ts';
-import type { ChainLink, ExecutionReport } from '../src/lib/chain.ts';
+import type { ExecutionReport, Lineage } from '../src/lib/chain.ts';
 import { buildTerminalBrief } from '../src/lib/terminal-brief.ts';
 import type { Graph, NodeSpec } from '../src/lib/protocol/types.ts';
 
@@ -29,13 +27,11 @@ function writeHead(root: string, content: Record<string, unknown>): void {
   writeFileSync(join(root, '.roadmap', 'head.json'), JSON.stringify(content, null, 2));
 }
 
-function makeLink(overrides: Partial<ChainLink> = {}): ChainLink {
+function makeLineage(overrides: Partial<Lineage> = {}): Lineage {
   return {
-    dagId: 'dag-001',
     iteration: 0,
     predecessorId: null,
     completedAt: '2026-03-01T00:00:00Z',
-    successorDagId: null,
     ...overrides,
   };
 }
@@ -71,7 +67,7 @@ function buildDAG(specs: Record<string, Partial<NodeSpec<string, any>>>): Graph<
 
 // --- Tests ---
 
-describe('Chain storage: appendLink, loadChain, currentIteration', () => {
+describe('archiveHead with _lineage', () => {
   let tmpDir: string;
 
   beforeEach(() => {
@@ -82,79 +78,52 @@ describe('Chain storage: appendLink, loadChain, currentIteration', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('loadChain returns empty array on empty dir', () => {
-    expect(loadChain(tmpDir)).toEqual([]);
-  });
-
-  it('currentIteration returns 0 on empty dir', () => {
-    expect(currentIteration(tmpDir)).toBe(0);
-  });
-
-  it('appendLink then loadChain returns the link', () => {
-    const link = makeLink();
-    appendLink(tmpDir, link);
-    const chain = loadChain(tmpDir);
-    expect(chain).toHaveLength(1);
-    expect(chain[0]).toEqual(link);
-  });
-
-  it('appending two links returns chain of length 2', () => {
-    const link1 = makeLink({ dagId: 'dag-001', iteration: 0 });
-    const link2 = makeLink({ dagId: 'dag-002', iteration: 1, predecessorId: 'dag-001' });
-    appendLink(tmpDir, link1);
-    appendLink(tmpDir, link2);
-    const chain = loadChain(tmpDir);
-    expect(chain).toHaveLength(2);
-    expect(chain[0].dagId).toBe('dag-001');
-    expect(chain[1].dagId).toBe('dag-002');
-  });
-
-  it('currentIteration returns max iteration number', () => {
-    appendLink(tmpDir, makeLink({ iteration: 0 }));
-    appendLink(tmpDir, makeLink({ iteration: 3 }));
-    appendLink(tmpDir, makeLink({ iteration: 1 }));
-    expect(currentIteration(tmpDir)).toBe(3);
-  });
-});
-
-describe('archiveHead', () => {
-  let tmpDir: string;
-
-  beforeEach(() => {
-    tmpDir = makeTmpDir();
-  });
-
-  afterEach(() => {
-    rmSync(tmpDir, { recursive: true, force: true });
-  });
-
-  it('archives head.json to heads/<dagId>.json', () => {
+  it('archives head.json to heads/<dagId>.json with _lineage field', () => {
     writeHead(tmpDir, { id: 'test-dag', desc: 'test description' });
-    archiveHead(tmpDir);
+    const lineage = makeLineage({ iteration: 0, predecessorId: null });
+    archiveHead(tmpDir, lineage);
 
     // head.json removed
     expect(existsSync(join(tmpDir, '.roadmap', 'head.json'))).toBe(false);
 
-    // heads/test-dag.json exists with original content
+    // heads/test-dag.json exists with original content + _lineage
     const archivePath = join(tmpDir, '.roadmap', 'heads', 'test-dag.json');
     expect(existsSync(archivePath)).toBe(true);
     const archived = JSON.parse(readFileSync(archivePath, 'utf-8'));
     expect(archived.id).toBe('test-dag');
     expect(archived.desc).toBe('test description');
+    expect(archived._lineage).toBeDefined();
+    expect(archived._lineage.iteration).toBe(0);
+    expect(archived._lineage.predecessorId).toBeNull();
+    expect(archived._lineage.completedAt).toBe('2026-03-01T00:00:00Z');
 
     // head-index.json should NOT exist
     const indexPath = join(tmpDir, '.roadmap', 'head-index.json');
     expect(existsSync(indexPath)).toBe(false);
   });
 
+  it('embeds executionReport in _lineage when provided', () => {
+    writeHead(tmpDir, { id: 'dag-with-report', desc: 'test' });
+    const report = makeExecutionReport({ tokensConsumed: 42000 });
+    const lineage = makeLineage({ iteration: 1, predecessorId: 'prev-dag', executionReport: report });
+    archiveHead(tmpDir, lineage);
+
+    const archivePath = join(tmpDir, '.roadmap', 'heads', 'dag-with-report.json');
+    const archived = JSON.parse(readFileSync(archivePath, 'utf-8'));
+    expect(archived._lineage.executionReport).toBeDefined();
+    expect(archived._lineage.executionReport.nodesExecuted).toBe(5);
+    expect(archived._lineage.executionReport.tokensConsumed).toBe(42000);
+    expect(archived._lineage.predecessorId).toBe('prev-dag');
+  });
+
   it('second archiveHead archives both heads independently', () => {
     // First archive
     writeHead(tmpDir, { id: 'dag-alpha', desc: 'first' });
-    archiveHead(tmpDir);
+    archiveHead(tmpDir, makeLineage({ iteration: 0 }));
 
     // Second archive
     writeHead(tmpDir, { id: 'dag-beta', desc: 'second' });
-    archiveHead(tmpDir);
+    archiveHead(tmpDir, makeLineage({ iteration: 1, predecessorId: 'dag-alpha' }));
 
     expect(existsSync(join(tmpDir, '.roadmap', 'heads', 'dag-alpha.json'))).toBe(true);
     expect(existsSync(join(tmpDir, '.roadmap', 'heads', 'dag-beta.json'))).toBe(true);
@@ -164,7 +133,61 @@ describe('archiveHead', () => {
 
   it('throws when head.json does not exist', () => {
     ensureRoadmapDir(tmpDir);
-    expect(() => archiveHead(tmpDir)).toThrow(/No head\.json found/);
+    expect(() => archiveHead(tmpDir, makeLineage())).toThrow(/No head\.json found/);
+  });
+});
+
+describe('loadChainFromHeads', () => {
+  let tmpDir: string;
+
+  beforeEach(() => {
+    tmpDir = makeTmpDir();
+  });
+
+  afterEach(() => {
+    rmSync(tmpDir, { recursive: true, force: true });
+  });
+
+  it('returns empty array when heads/ does not exist', () => {
+    ensureRoadmapDir(tmpDir);
+    expect(loadChainFromHeads(tmpDir)).toEqual([]);
+  });
+
+  it('returns empty array when heads/ has no _lineage files', () => {
+    const headsDir = join(tmpDir, '.roadmap', 'heads');
+    mkdirSync(headsDir, { recursive: true });
+    // File without _lineage
+    writeFileSync(join(headsDir, 'old-dag.json'), JSON.stringify({ id: 'old-dag', desc: 'no lineage' }));
+    expect(loadChainFromHeads(tmpDir)).toEqual([]);
+  });
+
+  it('returns ChainLink array sorted by iteration', () => {
+    writeHead(tmpDir, { id: 'dag-a', desc: 'first' });
+    archiveHead(tmpDir, makeLineage({ iteration: 0, predecessorId: null }));
+
+    writeHead(tmpDir, { id: 'dag-b', desc: 'second' });
+    archiveHead(tmpDir, makeLineage({ iteration: 1, predecessorId: 'dag-a' }));
+
+    const links = loadChainFromHeads(tmpDir);
+    expect(links).toHaveLength(2);
+    expect(links[0].dagId).toBe('dag-a');
+    expect(links[0].iteration).toBe(0);
+    expect(links[1].dagId).toBe('dag-b');
+    expect(links[1].iteration).toBe(1);
+    expect(links[1].predecessorId).toBe('dag-a');
+  });
+
+  it('max iteration from links is correct', () => {
+    writeHead(tmpDir, { id: 'dag-x', desc: 'first' });
+    archiveHead(tmpDir, makeLineage({ iteration: 0 }));
+    writeHead(tmpDir, { id: 'dag-y', desc: 'second' });
+    archiveHead(tmpDir, makeLineage({ iteration: 3, predecessorId: 'dag-x' }));
+    writeHead(tmpDir, { id: 'dag-z', desc: 'third' });
+    archiveHead(tmpDir, makeLineage({ iteration: 1, predecessorId: 'dag-x' }));
+
+    const links = loadChainFromHeads(tmpDir);
+    const maxIter = Math.max(...links.map(l => l.iteration));
+    expect(maxIter).toBe(3);
   });
 });
 
@@ -179,24 +202,25 @@ describe('getRootIntent', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('returns current head.json desc when no chain exists', () => {
+  it('returns current head.json desc when no archived heads exist', () => {
     writeHead(tmpDir, { id: 'current-dag', desc: 'Build the authentication system' });
     expect(getRootIntent(tmpDir)).toBe('Build the authentication system');
   });
 
-  it('returns archived head desc for iteration 0 when chain exists', () => {
-    // Set up: archive the first head, then add a chain entry for it
+  it('returns archived head desc for iteration 0 when heads exist', () => {
+    // Archive the first head with iteration 0
     writeHead(tmpDir, { id: 'root-dag', desc: 'Original root intent' });
-    archiveHead(tmpDir);
+    archiveHead(tmpDir, makeLineage({ iteration: 0, predecessorId: null }));
 
-    // Add chain entry linking to the archived head
-    appendLink(tmpDir, makeLink({ dagId: 'root-dag', iteration: 0 }));
+    // Archive a successor
+    writeHead(tmpDir, { id: 'successor-dag', desc: 'Successor intent' });
+    archiveHead(tmpDir, makeLineage({ iteration: 1, predecessorId: 'root-dag' }));
 
-    // getRootIntent should walk chain to iteration 0 and read archived desc
+    // getRootIntent should find iteration 0 and read its desc
     expect(getRootIntent(tmpDir)).toBe('Original root intent');
   });
 
-  it('throws when no head.json and no chain entries', () => {
+  it('throws when no head.json and no archived heads', () => {
     ensureRoadmapDir(tmpDir);
     expect(() => getRootIntent(tmpDir)).toThrow(/No head\.json and no chain entries/);
   });
@@ -329,6 +353,27 @@ describe('buildTerminalBrief', () => {
     expect(brief.handoffSummaries[0].summary).toBe('Initialized project structure');
     expect(brief.handoffSummaries[0].keyDecisions).toEqual(['Used TypeScript']);
     expect(brief.handoffSummaries[0].gotchas).toEqual(['Requires Node 20+']);
+  });
+
+  it('reads chainHistory from heads/_lineage when archived heads exist', () => {
+    const dag = buildDAG({
+      init: { produces: ['init.marker'], deps: [] },
+      term: { consumes: ['init.marker'], deps: ['init'] },
+    });
+
+    // Archive a predecessor head with _lineage
+    writeHead(tmpDir, { id: 'pred-dag', desc: 'Predecessor DAG' });
+    archiveHead(tmpDir, makeLineage({ iteration: 0, predecessorId: null }));
+
+    // Current head
+    writeHead(tmpDir, { id: 'test-dag', desc: 'Current DAG' });
+
+    const brief = buildTerminalBrief(dag, tmpDir);
+    expect(brief.chainHistory).toHaveLength(1);
+    expect(brief.chainHistory[0].dagId).toBe('pred-dag');
+    expect(brief.chainHistory[0].iteration).toBe(0);
+    // iteration should be max(archived) + 1 = 1
+    expect(brief.iteration).toBe(1);
   });
 
   it('excludes interim handoff files', () => {
