@@ -3,7 +3,7 @@
 // @exports ChainLink, ExecutionReport, appendLink, loadChain, currentIteration, archiveHead, getRootIntent, parseExecutionReport
 // @entry roadmap/chain
 
-import { readFileSync, writeFileSync, existsSync, mkdirSync, renameSync, appendFileSync } from 'node:fs';
+import { readFileSync, existsSync, mkdirSync, renameSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 export interface ExecutionReport {
@@ -25,16 +25,9 @@ export interface ChainLink {
   executionReport?: ExecutionReport;
 }
 
-export interface HeadIndexEntry {
-  dagId: string;
-  path: string;
-  predecessor: string | null;
-}
-
 const CHAIN_FILE = '.roadmap/chain.jsonl';
 const HEAD_FILE = '.roadmap/head.json';
 const HEADS_DIR = '.roadmap/heads';
-const HEAD_INDEX_FILE = '.roadmap/head-index.json';
 
 /** Append a ChainLink as a JSON line to .roadmap/chain.jsonl */
 export function appendLink(repoRoot: string, link: ChainLink): void {
@@ -66,7 +59,6 @@ export function currentIteration(repoRoot: string): number {
  * Archive current head.json:
  * 1. Read .roadmap/head.json, extract its `id` field
  * 2. Move file to .roadmap/heads/<dagId>.json
- * 3. Update .roadmap/head-index.json adding entry with predecessor link
  */
 export function archiveHead(repoRoot: string): void {
   const headPath = join(repoRoot, HEAD_FILE);
@@ -85,24 +77,6 @@ export function archiveHead(repoRoot: string): void {
   // Move head.json to heads/<dagId>.json
   const archivePath = join(headsDir, `${dagId}.json`);
   renameSync(headPath, archivePath);
-
-  // Load existing head-index.json or start fresh
-  const indexPath = join(repoRoot, HEAD_INDEX_FILE);
-  let index: HeadIndexEntry[] = [];
-  if (existsSync(indexPath)) {
-    index = JSON.parse(readFileSync(indexPath, 'utf-8')) as HeadIndexEntry[];
-  }
-
-  // Determine predecessor: last entry in index, or null
-  const predecessor = index.length > 0 ? index[index.length - 1].dagId : null;
-
-  index.push({
-    dagId,
-    path: `heads/${dagId}.json`,
-    predecessor,
-  });
-
-  writeFileSync(indexPath, JSON.stringify(index, null, 2) + '\n');
 }
 
 /**

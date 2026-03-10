@@ -7,6 +7,7 @@ import * as path from 'path';
 import { merge, define } from '../../protocol.ts';
 import type { Graph } from '../../protocol.ts';
 import { buildDAGDependencyGraph, groupDAGsIntoBatches } from './dag-dependency-resolver.ts';
+import { SPEC_ORIGIN_PATH } from '../intake/spec-origin.ts';
 
 export interface DAGFile {
   path: string;
@@ -48,7 +49,7 @@ export class ConsolidationError extends Error {
 
 /**
  * Discover all DAG files in .roadmap/ directory
- * Filters out: head.json, head-index.json, temporary files, non-DAG files
+ * Filters out: head.json, temporary files, non-DAG files
  */
 export async function discoverDAGFiles(roadmapRoot: string): Promise<DAGFile[]> {
   const roadmapDir = path.join(roadmapRoot, '.roadmap');
@@ -70,7 +71,6 @@ export async function discoverDAGFiles(roadmapRoot: string): Promise<DAGFile[]> 
     // Skip system files
     if (
       file === 'head.json' ||
-      file === 'head-index.json' ||
       file === 'git-state.json' ||
       file === 'hook-config.json' ||
       file === 'iter.json' ||
@@ -78,7 +78,7 @@ export async function discoverDAGFiles(roadmapRoot: string): Promise<DAGFile[]> 
       file === 'PLAN_SELECTED.json' ||
       file === 'strategy.json' ||
       file === 'rates.json' ||
-      file === 'spec-origin.json' ||
+      file === path.basename(SPEC_ORIGIN_PATH) || // legacy origin file, kept for exclusion
       file === 'migration-receipt.json' ||
       file === 'retired.json' ||
       file === 'test-head.json' ||

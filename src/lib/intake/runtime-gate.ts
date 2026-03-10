@@ -12,7 +12,6 @@ import {
   type SpecOrigin,
   loadSpecOrigin,
   sha256File,
-  SPEC_ORIGIN_PATH,
 } from './spec-origin.ts';
 import { validateOriginComplete } from './origin-validator.ts';
 import { RoadmapError } from '../../errors.ts';

@@ -6,6 +6,7 @@
 
 import { readFileSync, existsSync, appendFileSync, mkdirSync, readdirSync } from 'node:fs';
 import { join, resolve, basename, dirname } from 'node:path';
+import { SPEC_ORIGIN_PATH } from '../lib/intake/spec-origin.ts';
 import { homedir } from 'node:os';
 import { execSync } from 'node:child_process';
 import { createGitSafeLoader } from '../lib/gitsafe-loader.ts';
@@ -175,7 +176,7 @@ export function loadSpecGoal(
   if (!existsSync(roadmapDir)) return null;
   try {
     for (const file of readdirSync(roadmapDir)) {
-      if (!file.endsWith('-spec.json') || file === 'spec-origin.json') continue;
+      if (!file.endsWith('-spec.json') || file === basename(SPEC_ORIGIN_PATH)) continue;
       try {
         const spec = JSON.parse(readFileSync(join(roadmapDir, file), 'utf-8'));
         if (spec?.dag_id === dagId && spec?.goal && typeof spec.goal.statement === 'string') {

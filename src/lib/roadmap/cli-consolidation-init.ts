@@ -47,7 +47,7 @@ export async function ensureConsolidated(repoRoot: string): Promise<Consolidatio
 
 /**
  * Consolidate from explicit spec paths.
- * Each spec must have a valid spec-origin.json.
+ * Each spec must have a valid spec origin (head.json._origin).
  * No auto-discovery — caller provides exact paths.
  */
 export async function consolidateFromSpecs(
@@ -61,15 +61,13 @@ export async function consolidateFromSpecs(
     };
   }
 
-  // Validate each spec has origin
-  for (const sp of specPaths) {
-    const specDir = path.dirname(path.resolve(repoRoot, sp));
-    const originPath = path.join(specDir, 'spec-origin.json');
-    // Check spec-origin exists at repo level (all specs share the origin)
+  // Validate each spec has origin (head.json._origin)
+  for (const _sp of specPaths) {
+    // Check origin exists at repo level (all specs share the origin)
     if (!hasSpecOriginSync(repoRoot)) {
       return {
         consolidated: false, merged: false, count: specPaths.length, order: [], batches: [],
-        error: `Missing spec-origin for consolidation. Each spec must be created via the intake pipeline. Missing: ${SPEC_ORIGIN_PATH}`,
+        error: `Missing spec origin for consolidation. Each spec must be created via the intake pipeline. Missing: ${SPEC_ORIGIN_PATH}`,
       };
     }
   }

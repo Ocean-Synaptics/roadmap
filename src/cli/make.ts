@@ -8,7 +8,6 @@ import { createHash } from 'node:crypto';
 import { execSync } from 'node:child_process';
 import { tasksToDAG } from '../lib/intake/speckit-import.ts';
 import { collectMakeErrors } from '../lib/make-validation.ts';
-import { writeSpecOrigin } from '../lib/intake/spec-origin.ts';
 import type { SpecOrigin } from '../lib/intake/spec-origin.ts';
 import { saveDagHead } from '../lib/multi-dag.ts';
 import { RoadmapError } from '../errors.ts';
@@ -187,17 +186,8 @@ export async function run(
     return;
   }
 
-  // Write head.json
-  const headPath = join(repoRoot, '.roadmap', 'head.json');
-  const roadmapDir = join(repoRoot, '.roadmap');
-  if (!existsSync(roadmapDir)) mkdirSync(roadmapDir, { recursive: true });
-  writeFileSync(headPath, JSON.stringify(dag, null, 2) + '\n');
-
+  // Build spec-origin provenance
   const dagId = dag.id ?? parsed.dag_id ?? parsed.id ?? 'ideal-dag';
-  saveDagHead(repoRoot, dagId, dag);
-
-  // Spec-origin receipt
-  const dagJson = JSON.stringify(dag);
   const specHash = createHash('sha256').update(specContent).digest('hex');
 
   let compileHash = parsed.metadata?.compile_hash;
@@ -215,12 +205,22 @@ export async function run(
     importedAt: new Date().toISOString(),
     dagId,
   };
-  writeSpecOrigin(repoRoot, origin);
+
+  // Embed _origin into DAG before writing head.json
+  (dag as any)._origin = origin;
+
+  // Write head.json
+  const headPath = join(repoRoot, '.roadmap', 'head.json');
+  const roadmapDir = join(repoRoot, '.roadmap');
+  if (!existsSync(roadmapDir)) mkdirSync(roadmapDir, { recursive: true });
+  writeFileSync(headPath, JSON.stringify(dag, null, 2) + '\n');
+
+  saveDagHead(repoRoot, dagId, dag);
 
   // Commit
   let commitWarning: string | undefined;
   try {
-    execSync('git add .roadmap/head.json .roadmap/heads/ .roadmap/spec-origin.json', { cwd: repoRoot, stdio: 'pipe' });
+    execSync('git add .roadmap/head.json .roadmap/heads/', { cwd: repoRoot, stdio: 'pipe' });
     execSync(`git commit -m "make: ideal DAG from ${specPath}"`, { cwd: repoRoot, stdio: 'pipe' });
   } catch (e: any) {
     const stderr = e.stderr?.toString().trim() || e.message || 'unknown error';

@@ -138,12 +138,13 @@ describe('CLI intake enforcement', () => {
     expect(result.exitCode).toBe(0);
 
     // head.json should exist
-    expect(existsSync(join(repo, '.roadmap', 'head.json'))).toBe(true);
+    const headPath = join(repo, '.roadmap', 'head.json');
+    expect(existsSync(headPath)).toBe(true);
 
-    // spec-origin.json should exist with correct fields
-    const originPath = join(repo, '.roadmap', 'spec-origin.json');
-    expect(existsSync(originPath)).toBe(true);
-    const origin = JSON.parse(readFileSync(originPath, 'utf-8'));
+    // _origin should be embedded in head.json with correct fields
+    const dag = JSON.parse(readFileSync(headPath, 'utf-8'));
+    const origin = dag._origin;
+    expect(origin).toBeDefined();
     expect(origin.schemaVersion).toBe(1);
     expect(origin.engine).toBe('spec-kit');
     expect(origin.dagId).toBe('test-dag');
@@ -187,7 +188,9 @@ describe('CLI intake enforcement', () => {
 
     runRoadmap(repo, `make spec.json --note "provenance"`);
 
-    const origin = JSON.parse(readFileSync(join(repo, '.roadmap', 'spec-origin.json'), 'utf-8'));
+    // _origin is now embedded in head.json
+    const dag = JSON.parse(readFileSync(join(repo, '.roadmap', 'head.json'), 'utf-8'));
+    const origin = dag._origin;
     expect(origin.dagId).toBe('provenance-test');
     expect(origin.compile_hash).toBe('abc123');
     expect(origin.spec_sha).toMatch(/^[a-f0-9]{64}$/);

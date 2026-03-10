@@ -128,7 +128,7 @@ describe('archiveHead', () => {
     rmSync(tmpDir, { recursive: true, force: true });
   });
 
-  it('archives head.json to heads/<dagId>.json and creates head-index.json', () => {
+  it('archives head.json to heads/<dagId>.json', () => {
     writeHead(tmpDir, { id: 'test-dag', desc: 'test description' });
     archiveHead(tmpDir);
 
@@ -142,16 +142,12 @@ describe('archiveHead', () => {
     expect(archived.id).toBe('test-dag');
     expect(archived.desc).toBe('test description');
 
-    // head-index.json has entry
+    // head-index.json should NOT exist
     const indexPath = join(tmpDir, '.roadmap', 'head-index.json');
-    expect(existsSync(indexPath)).toBe(true);
-    const index = JSON.parse(readFileSync(indexPath, 'utf-8'));
-    expect(index).toHaveLength(1);
-    expect(index[0].dagId).toBe('test-dag');
-    expect(index[0].predecessor).toBeNull();
+    expect(existsSync(indexPath)).toBe(false);
   });
 
-  it('second archiveHead links predecessor correctly', () => {
+  it('second archiveHead archives both heads independently', () => {
     // First archive
     writeHead(tmpDir, { id: 'dag-alpha', desc: 'first' });
     archiveHead(tmpDir);
@@ -160,12 +156,10 @@ describe('archiveHead', () => {
     writeHead(tmpDir, { id: 'dag-beta', desc: 'second' });
     archiveHead(tmpDir);
 
-    const index = JSON.parse(readFileSync(join(tmpDir, '.roadmap', 'head-index.json'), 'utf-8'));
-    expect(index).toHaveLength(2);
-    expect(index[0].dagId).toBe('dag-alpha');
-    expect(index[0].predecessor).toBeNull();
-    expect(index[1].dagId).toBe('dag-beta');
-    expect(index[1].predecessor).toBe('dag-alpha');
+    expect(existsSync(join(tmpDir, '.roadmap', 'heads', 'dag-alpha.json'))).toBe(true);
+    expect(existsSync(join(tmpDir, '.roadmap', 'heads', 'dag-beta.json'))).toBe(true);
+    // head-index.json should NOT exist
+    expect(existsSync(join(tmpDir, '.roadmap', 'head-index.json'))).toBe(false);
   });
 
   it('throws when head.json does not exist', () => {

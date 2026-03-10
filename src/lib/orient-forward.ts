@@ -2,7 +2,8 @@
 // @exports scanPendingSpecs, PendingSpec, scanSiblingDags, SiblingDag
 
 import { readFileSync, readdirSync, existsSync } from "fs";
-import { resolve } from "path";
+import { resolve, basename } from "path";
+import { SPEC_ORIGIN_PATH } from "./intake/spec-origin.ts";
 
 /**
  * PendingSpec — A spec file that hasn't been executed yet, or a follow-on spec
@@ -71,7 +72,7 @@ export function scanPendingSpecs(
   try {
     const files = readdirSync(roadmapDir);
     const specFiles = files.filter(
-      (f) => f.endsWith("-spec.json") && f !== "spec-origin.json",
+      (f) => f.endsWith("-spec.json") && f !== basename(SPEC_ORIGIN_PATH),
     );
 
     for (const file of specFiles) {
