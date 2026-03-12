@@ -118,7 +118,7 @@
     },
     "fleet-integration": {
       "id": "fleet-integration",
-      "desc": "End-to-end: create fleet.json with 2 test repos, orient --fleet shows status, loop start → generate → mine → close writes receipt chain. Verify SHA linking across loop iterations. Verify loopReady gate on close.",
+      "desc": "End-to-end: fleet context, loop lifecycle, SHA chain, orient fleet hint",
       "produces": [
         "tests/fleet-integration.test.ts"
       ],
