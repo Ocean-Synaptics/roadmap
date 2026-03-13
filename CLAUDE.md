@@ -1,104 +1,153 @@
+🟥🟥🟥🟥🟥🟥🟥🟥🟧🟧🟧🟧🟧🟧🟧🟧🟨🟨🟨🟨🟨🟨🟨🟨🟩🟩🟩🟩🟩🟩🟩🟩🟦🟦🟦🟦🟦🟦🟦🟦🟪🟪🟪🟪🟪🟪🟪🟪
+
 # roadmap
 
-DAG-governed execution protocol. Planning produces a DAG. Execution fills it. Validation gates transitions. Done = DAG terminates.
+```
+  [🧭 Orient: find batch position] ────▷ [📖 Read produces/consumes] ────▷ [🏗️ Implement] ────▷ [📦 Commit] ────▷ [⚡ Advance: validate + record] ───╮
+       ^                                                                                                                                                │
+       ╰────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+```
 
----
+💎 **Planning produces a DAG. Execution fills it. Validation gates transitions. Done = DAG terminates.**
+
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## Session Rules
 
-**1. Orient at session start.** Always. `roadmap orient --note "<intent>"` is the truth source. Never infer position.
+```
+  rule                                    enforcement
+  ─────────────────────────────────────── ──────────────────────────────────────────────
+  orient at session start                 roadmap orient --note "<intent>" is truth source
+  never declare done without advancing    roadmap advance <node-id> runs validators
+  spec before execution                   >1 step → spec first, spec becomes the DAG
+  commit only what a node produces        each commit covers exactly the produces array
+```
 
-**2. Never declare work done without advancing.** `roadmap advance <node-id>` runs validators and records evidence.
-
-**3. Spec before execution.** Any task with more than one step gets a spec first. The spec becomes the DAG.
-
-**4. Commit only what a node produces.** Each commit covers exactly the `produces` array of one node.
-
----
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## Core Loop
 
 ```bash
-roadmap orient --note "<intent>"          # Find batch position + produces
-
-# For each node in current batch:
-# 1. Read produces/consumes from orient output
-# 2. Implement the produces
+roadmap orient --note "<intent>"          # find batch position + produces
+# for each node in current batch:
 git add <produces-files>
 git commit -m "<node-id>: <what>"
-roadmap advance <node-id> --note "<what>" # Run validators, record completion
-
-# Repeat until orient returns chainReady: true
+roadmap advance <node-id> --note "<what>" # run validators, record completion
+# repeat until orient returns chainReady: true
 ```
 
 `position` is a batch (array of independent nodes). Run them in parallel if spawning agents.
 
----
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## Layered Architecture
 
 ```
-src/core/          Pure graph algebra. Zero IO. Graph in, Value out.
-  ├─ graph.ts        define, verify, check, flat, fwd, detectCycles, reach
-  ├─ order.ts        order, parallelOrder, criticalPath, batchConflicts
-  ├─ orient.ts       orient(g, exists) → Orientation
-  ├─ batch.ts        advanceBatch, readyNodes, nextBatch
-  ├─ reconcile.ts    reconcile, merge, branch, analyze, modify
-  ├─ access.ts       nodes(g), node(g, id) — typed accessors
-  └─ types.ts        CoreNodeSpec, CoreGraph (5-field contract)
-
-src/runtime/       IO boundary. Single filesystem touch point.
-  ├─ context.ts      loadContext(repoRoot) → Context (completions, chain, handoffs)
-  ├─ completion.ts   CompletionStore — receipt-based completion tracking
-  ├─ brief.ts        brief(g, position, context) → Brief (pure, sync)
-  └─ meta.ts         NodeMeta, ManagedGraph, fullNode() — runtime metadata
-
-src/cli/           Thin dispatch. Parse args, call runtime, JSON to stdout.
-  ├─ make.ts         spec → DAG creation
-  ├─ orient.ts       batch position query
-  └─ advance.ts      node completion / batch advancement
-
-src/lib/           Supporting modules (protocol types, validators, intake, etc.)
+                [🔮 src/core/ — pure graph algebra, zero IO]
+                     │
+          ╭──────────┼──────────╮
+          │          │          │
+          ▽          ▽          ▽
+  [📐 graph.ts] [📊 order.ts] [🧭 orient.ts]
+  define         order          orient(g, exists)
+  verify         parallelOrder  → Orientation
+  check          criticalPath
+  flat, fwd      batchConflicts
+  detectCycles
+  reach
+          │          │          │
+          ╰──────────┼──────────╯
+                     │
+          ╭──────────┴──────────╮
+          │                     │
+          ▽                     ▽
+  [⛓️ batch.ts]         [🔀 reconcile.ts]
+  advanceBatch            reconcile, merge
+  readyNodes              branch, analyze
+  nextBatch               modify
+          │                     │
+          ╰──────────┬──────────╯
+                     │
+                     ▽
+          [🧬 types.ts + access.ts]
+          CoreNodeSpec, CoreGraph
+          nodes(g), node(g, id)
 ```
 
-**Invariant:** `src/core/` has zero `node:fs` imports. All filesystem access goes through `src/runtime/context.ts` via `loadContext()`.
+```
+  [🌐 src/runtime/ — IO boundary, single filesystem touch point]
+       │
+       ├────▷ [📂 context.ts]     loadContext(repoRoot) → Context
+       │
+       ├────▷ [✅ completion.ts]  CompletionStore — receipt-based tracking
+       │
+       ├────▷ [📋 brief.ts]      brief(g, position, context) → Brief
+       │
+       ╰────▷ [🏷️ meta.ts]       NodeMeta, ManagedGraph, fullNode()
+```
 
----
+```
+  [🧰 src/cli/ — thin dispatch, args → runtime → JSON to stdout]
+       │
+       ├────▷ [✨ make.ts]       spec → DAG creation
+       ├────▷ [🧭 orient.ts]    batch position query
+       ╰────▷ [⚡ advance.ts]   node completion / batch advancement
+```
+
+```
+  invariant    src/core/ has zero node:fs imports
+  boundary     all filesystem access → src/runtime/context.ts via loadContext()
+```
+
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## .roadmap/ File Topology
 
 ```
-.roadmap/
-├── head.json              Active DAG + _origin provenance
-├── completed.json         Completion receipts (append-heavy, atomic write)
-├── trail.jsonl            Event log + mutations (append-only, SLO scoring)
-├── enforcement.json       Gitsafe rules (static, never written by CLI)
-├── heads/                 Archived DAGs with _lineage field
-│   └── {dagId}.json         { ...dag, _lineage: { iteration, predecessorId, completedAt, executionReport } }
-└── .handoff/              Per-node handoff data (feeds into briefs)
-    └── {nodeId}.json
+  [📁 .roadmap/]
+       │
+       ├────▷ [📄 head.json]           active DAG + _origin provenance
+       │
+       ├────▷ [✅ completed.json]      completion receipts (append-heavy, atomic write)
+       │
+       ├────▷ [📜 trail.jsonl]         event log + mutations (append-only, SLO scoring)
+       │
+       ├────▷ [🔒 enforcement.json]    gitsafe rules (static, never written by CLI)
+       │
+       ├────▷ [📁 heads/]
+       │          │
+       │          ╰────▷ [{dagId}.json]   archived DAGs with _lineage field
+       │
+       ╰────▷ [📁 .handoff/]
+                   │
+                   ╰────▷ [{nodeId}.json] per-node handoff data → feeds briefs
 ```
 
-**loadContext()** reads all of these once at session start. Agents never read `.roadmap/` directly — `orient` consolidates everything into one JSON response.
+```
+  loadContext() reads all of these once at session start
+  agents never read .roadmap/ directly — orient consolidates into one JSON response
+```
 
----
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## Key Types
 
-```typescript
-CoreNodeSpec       { id, desc, produces, consumes, deps }
-NodeSpec<T,S>      CoreNodeSpec & NodeMeta (validate, mode, idempotent, ...)
-Graph<T>           { id, desc, init, term, nodes }
-Orientation        { position, level, batchRemaining, batchComplete, produces, consumes }
-Context            { repoRoot, completion, chain, handoffs, scoring }
-Brief              { position, mode, produces, consumes, description, pattern, handoffs }
+```
+  type               shape
+  ────────────────── ──────────────────────────────────────────────────────────
+  CoreNodeSpec       { id, desc, produces, consumes, deps }
+  NodeSpec<T,S>      CoreNodeSpec & NodeMeta (validate, mode, idempotent, ...)
+  Graph<T>           { id, desc, init, term, nodes }
+  Orientation        { position, level, batchRemaining, batchComplete, produces, consumes }
+  Context            { repoRoot, completion, chain, handoffs, scoring }
+  Brief              { position, mode, produces, consumes, description, pattern, handoffs }
 ```
 
----
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## Spec Authoring
 
-When a task has no DAG: write a spec, then `roadmap make spec.json --note "..."`.
+No DAG yet? Write a spec → `roadmap make spec.json --note "..."`.
 
 ### Node Anatomy
 
@@ -118,114 +167,158 @@ When a task has no DAG: write a spec, then `roadmap make spec.json --note "..."`
 }
 ```
 
-**`produces`** — file paths this node creates. What `advance` checks exist.
-**`consumes`** — file paths this node reads. Must be produced by a predecessor.
-**`depends`** — predecessor node IDs. **`mode`** — `execute` or `plan`.
-
-A node is well-defined if a new agent could execute it with zero questions, `produces` are concrete file paths, and every validator is falsifiable.
+```
+  field       semantics
+  ─────────── ─────────────────────────────────────────────────────────────
+  produces    file paths this node creates — what advance checks exist
+  consumes    file paths this node reads — must be produced by a predecessor
+  depends     predecessor node IDs
+  mode        execute | plan
+  well-defined test: new agent, zero questions, concrete produces, falsifiable validators
+```
 
 ### Validators
 
-| Situation | Validator |
-|-----------|-----------|
-| File must exist | `{ "type": "artifact-exists" }` |
-| Command must exit 0 | `{ "type": "shell", "command": "npm test" }` |
-| Build must produce outputs | `{ "type": "build-produces", "command": "...", "outputs": [...] }` |
-| Plan node expanded | `{ "type": "expanded" }` |
-| Spec scenario covered | `{ "type": "spec-conformance", "spec": "...", "stories": [...] }` |
+```
+  situation                  validator
+  ────────────────────────── ─────────────────────────────────────────────────
+  file must exist            { "type": "artifact-exists" }
+  command must exit 0        { "type": "shell", "command": "npm test" }
+  build must produce output  { "type": "build-produces", "command": "...", "outputs": [...] }
+  plan node expanded         { "type": "expanded" }
+  spec scenario covered      { "type": "spec-conformance", "spec": "...", "stories": [...] }
 
-Default to `shell` for anything testable. `artifact-exists` for files that are their own evidence.
+  default: shell for anything testable, artifact-exists for files that are their own evidence
+```
 
----
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## CLI
 
 ```
-Core:
-  roadmap make <spec>  --note "..."   Create DAG from spec
-  roadmap orient       --note "..."   Batch position + produces/consumes (JSON)
-  roadmap advance [id] --note "..."   Complete node or advance batch
+  [🧰 roadmap CLI]
+       │
+       ├────▷ [✨ make <spec> --note]      create DAG from spec
+       ├────▷ [🧭 orient --note]           batch position + produces/consumes (JSON)
+       ├────▷ [⚡ advance [id] --note]     complete node or advance batch
+       │
+       ├────▷ [🔀 dag insert --note]       insert node
+       ├────▷ [🗑️ dag remove --note]       remove node (--cascade)
+       ├────▷ [✏️ dag modify --note]        modify node fields
+       ├────▷ [📜 dag log]                 mutation history (from trail.jsonl)
+       │
+       ├────▷ [📡 api [<cmd>]]             JSON Schema for command I/O
+       ├────▷ [📡 api --all]               full schema registry
+       ╰────▷ [❓ help]                     usage
 
-DAG mutations:
-  roadmap dag insert   --note "..."   Insert node
-  roadmap dag remove   --note "..."   Remove node (--cascade)
-  roadmap dag modify   --note "..."   Modify node fields
-  roadmap dag log                     Mutation history (from trail.jsonl)
-
-Discovery:
-  roadmap api [<cmd>]                 JSON Schema for command I/O
-  roadmap api --all                   Full schema registry
-  roadmap help                        Usage
+  all commands require --note (except help, orient, api) — output is JSON
 ```
 
-All commands require `--note` (except help, orient, api). Output is JSON.
-
----
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## Advance Rejection
 
-When `advance` rejects: read `error.code` + `error.validator`, fix the produce, re-commit, retry. Never retry without changing the artifact. Never skip validators.
+```
+  [⚡ Advance] ────▷ [❌ Rejected]
+                          │
+                          ▽
+                     [🔍 Read error.code + error.validator]
+                          │
+                          ▽
+                     [🐛 Fix the produce]
+                          │
+                          ▽
+                     [📦 Re-commit]
+                          │
+                          ▽
+                     [⚡ Retry advance]
 
----
+  never retry without changing the artifact — never skip validators
+```
+
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## Plan Mode
 
-`mode: "plan"` signals decomposition. Plan nodes surface in `orient().preGate` before deps close. They complete when child nodes with `expandedFrom` exist. Add children via `roadmap dag insert`.
+```
+  [📋 mode: "plan"] ────▷ [🧭 orient().preGate surfaces it]
+                                │
+                                ▽
+                           [🏗️ Decompose: dag insert children with expandedFrom]
+                                │
+                                ▽
+                           [✅ Plan completes when children exist]
+```
 
----
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## Parallel Execution
 
-When orient returns multiple nodes in `position`, they are independent. Each agent:
-1. Claims one node
-2. Creates worktree: `git worktree add .claude/worktrees/<node-id> -b feat/<node-id>`
-3. Works and commits inside worktree
-4. Advances: `roadmap advance <node-id> --note "done"`
+```
+  [🧭 Orient: multiple nodes in position]
+       │
+       ╭──────────┼──────────┬──────────╮
+       │          │          │          │
+       ▽          ▽          ▽          ▽
+  [🐺 Agent 1] [🐺 Agent 2] [🐺 Agent 3] [🐺 Agent N]
+  claim node    claim node    claim node    claim node
+       │          │          │          │
+       ▽          ▽          ▽          ▽
+  [🌳 worktree] [🌳 worktree] [🌳 worktree] [🌳 worktree]
+       │          │          │          │
+       ▽          ▽          ▽          ▽
+  [⚡ advance]  [⚡ advance]  [⚡ advance]  [⚡ advance]
 
-**Branch discipline:** `feat/*`, `wip/*` — allowed to edit head.json. `main` — read-only for DAG state.
+  worktree:   git worktree add .claude/worktrees/<node-id> -b feat/<node-id>
+  branches:   feat/*, wip/* — allowed to edit head.json
+              main — read-only for DAG state
+```
 
----
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## Entry Points
 
-| Import | What |
-|--------|------|
-| `roadmap` | Full API — DAG ops + predicates + errors + types |
-| `roadmap/protocol` | Core — define, verify, orient, merge, reconcile, parallelOrder |
-| `roadmap/agent` | Sealed agent API — getBrief, advance |
-| `roadmap/validation` | validateNode, validateGraph, validateBatch |
+```
+  import                  what
+  ─────────────────────── ────────────────────────────────────────────────────
+  roadmap                 full API — DAG ops + predicates + errors + types
+  roadmap/protocol        core — define, verify, orient, merge, reconcile, parallelOrder
+  roadmap/agent           sealed agent API — getBrief, advance
+  roadmap/validation      validateNode, validateGraph, validateBatch
+```
 
----
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## Module Map
 
-| Area | Key Files | What |
-|------|-----------|------|
-| DAG algebra | `src/core/*.ts` | Pure validation, ordering, orientation, merging |
-| IO boundary | `src/runtime/context.ts` | Single `loadContext()` loads all filesystem state |
-| Completion | `src/runtime/completion.ts` | Receipt-based tracking with evidence records |
-| Brief generation | `src/runtime/brief.ts` | Pure brief(g, position, context) → Brief |
-| Chain/lineage | `src/lib/chain.ts` | archiveHead, getRootIntent, parseExecutionReport |
-| DAG mutation | `src/lib/dag-mutator.ts` | insert/remove/modify with provenance to trail.jsonl |
-| Gitsafe | `src/lib/gitsafe-loader.ts` | File access control (denylist, size limits) |
-| Validators | `src/lib/protocol/validation.ts` | artifact-exists, shell, schema, expanded |
-| Agent dispatch | `src/lib/agent-dispatch/` | Brief gate, handoff journal, dispatch coordinator |
-| Convergence | `src/lib/convergence/` | Gap trajectory, convergence assessment |
+```
+  area               key files                              what
+  ────────────────── ────────────────────────────────────── ──────────────────────────────────
+  DAG algebra        src/core/*.ts                          pure validation, ordering, merging
+  IO boundary        src/runtime/context.ts                 single loadContext() for all FS state
+  completion         src/runtime/completion.ts              receipt-based tracking + evidence
+  brief generation   src/runtime/brief.ts                   pure brief(g, position, context) → Brief
+  chain/lineage      src/lib/chain.ts                       archiveHead, getRootIntent, parseReport
+  DAG mutation       src/lib/dag-mutator.ts                 insert/remove/modify → trail.jsonl
+  gitsafe            src/lib/gitsafe-loader.ts              file access control (denylist, size)
+  validators         src/lib/protocol/validation.ts         artifact-exists, shell, schema, expanded
+  agent dispatch     src/lib/agent-dispatch/                brief gate, handoff, dispatch coordinator
+  convergence        src/lib/convergence/                   gap trajectory, convergence assessment
+```
 
----
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## File Headers
 
-Every src/ file has structured headers for machine discovery:
 ```
-// @module core/graph
-// @exports define, verify, check, flat, fwd, detectCycles, reach
-// @entry roadmap
+  // @module core/graph
+  // @exports define, verify, check, flat, fwd, detectCycles, reach
+  // @entry roadmap
+
+  grep @exports across src/ → full API map without reading function bodies
 ```
 
-Grep `@exports` across src/ to get the full API map without reading function bodies.
-
----
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## Installation
 
@@ -235,3 +328,5 @@ cd ~/.local/share/roadmap && pnpm install && pnpm link --global
 ```
 
 If this repo has no `.roadmap/head.json`: write a spec and run `roadmap make`.
+
+🟥🟥🟥🟥🟥🟥🟥🟥🟧🟧🟧🟧🟧🟧🟧🟧🟨🟨🟨🟨🟨🟨🟨🟨🟩🟩🟩🟩🟩🟩🟩🟩🟦🟦🟦🟦🟦🟦🟦🟦🟪🟪🟪🟪🟪🟪🟪🟪
