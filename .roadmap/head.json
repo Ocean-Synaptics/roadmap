@@ -327,7 +327,7 @@
     },
     "test-fleet": {
       "id": "test-fleet",
-      "desc": "Write tests/fleet-discovery.test.ts. Test multi-dag discovery: (1) finds DAGs in heads/ when head.json is stale, (2) filters out completed DAGs, (3) returns all active DAGs per repo. Test unified frontier: (1) returns correct frontier for single repo/single DAG, (2) resolves cross-repo dependencies, (3) returns global frontier sorted by dependency order. Tests create temp .roadmap dirs with head.json + heads/*.json fixtures.",
+      "desc": "Tests for fleet discovery and frontier",
       "produces": [
         "tests/fleet-discovery.test.ts"
       ],
