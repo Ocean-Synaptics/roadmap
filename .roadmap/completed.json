@@ -4088,5 +4088,35 @@
     "gitSha": "83436456db1959a721a606d503d02b4897410003",
     "treeSha": "efd75b0a7b585411c05c7c0c87e548dba9ed64c2",
     "branch": "main"
+  },
+  {
+    "nodeId": "render-pattern",
+    "completedAt": "2026-03-13T10:51:12.551Z",
+    "dagId": "pattern-enrichment",
+    "validationChecks": [
+      {
+        "rule": "shell:grep -q 'renderPattern' src/runtime/brief.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -q 'renderPattern' src/runtime/brief.ts"
+      },
+      {
+        "rule": "shell:grep -qv 'inferPattern' src/runtime/brief.ts",
+        "passed": true,
+        "evidence": "command passed (exit 0): grep -qv 'inferPattern' src/runtime/brief.ts"
+      },
+      {
+        "rule": "intent:Plan clarity: renderPattern produces a self-contained execut",
+        "passed": true,
+        "evidence": "confidence=0.95 (threshold=0.9) — renderPattern() interpolates desc, produces, consumes, position, and mode into a plain-text 7-line prompt (TASK/PRODUCE/"
+      },
+      {
+        "rule": "artifact-exists:src/runtime/brief.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "7114797a4ca21c28bc0bb5978ab0723876b599c1",
+    "treeSha": "a84899585d28e89cc89fd374922a86dd3c3aa160",
+    "branch": "feat/fleet-loop"
   }
 ]

@@ -33,7 +33,7 @@
     },
     "sync-lib-brief": {
       "id": "sync-lib-brief",
-      "desc": "Replace inferPattern() with renderPattern() in src/lib/brief.ts to match runtime/brief.ts. Same function, same output. The lib copy is the agent-facing API (roadmap/agent entry point).",
+      "desc": "Replace inferPattern() with renderPattern() in src/lib/brief.ts — agent-facing API mirror",
       "produces": [
         "src/lib/brief.ts"
       ],
