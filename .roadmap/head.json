@@ -176,7 +176,7 @@
     },
     "successor-proposer": {
       "id": "successor-proposer",
-      "desc": "Create src/runtime/successor.ts. Pure function proposeSuccessor(assessment, findings, rootIntent, dag) → SuccessorProposal. When trajectory is converging and findings exist: action='continue', build specDraft with nodes mapped from unaddressed discoveries + weak evidence + unresolved blockers. dagId = currentDag.id + '-i' + (iteration+1). When trajectory is orbiting/diverging: action='orbit-break', include diagnosis. When no findings: action='converged'. Export SuccessorProposal type. specDraft.nodes must have concrete produces arrays (not empty).",
+      "desc": "Pure successor proposal function",
       "produces": [
         "src/runtime/successor.ts"
       ],
