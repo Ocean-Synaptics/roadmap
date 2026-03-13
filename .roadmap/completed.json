@@ -4523,5 +4523,25 @@
     "gitSha": "9979345fa1d0699166f136db637e57fec8df61f4",
     "treeSha": "799fcb7f62be3ea77ee87928b9cd9cc3d11b72e3",
     "branch": "feat/fleet-intelligence"
+  },
+  {
+    "nodeId": "test-intelligence",
+    "completedAt": "2026-03-13T11:21:07.930Z",
+    "dagId": "fleet-intelligence",
+    "validationChecks": [
+      {
+        "rule": "shell:npx vitest run tests/execution-intelligence.test.ts --reporter=dot",
+        "passed": true,
+        "evidence": "command passed (exit 0): npx vitest run tests/execution-intelligence.test.ts --reporter=dot"
+      },
+      {
+        "rule": "artifact-exists:tests/execution-intelligence.test.ts",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "5f4aac54ef800aa670dcef7719e7b6a7667df5eb",
+    "treeSha": "e4044950f63c53ac88dbd39a6fd70d648fadbf29",
+    "branch": "feat/fleet-intelligence"
   }
 ]

@@ -369,7 +369,7 @@
     },
     "term": {
       "id": "term",
-      "desc": "Terminal verification. Run full test suite. Confirm build passes. Confirm API enforcement passes (roadmap api --validate returns ok:true). Verify no references to cliLoop remain. Verify all new modules have @module headers. Verify no node:fs imports in src/runtime/execution-miner.ts, trajectory.ts, successor.ts.",
+      "desc": "Terminal verification — all tests, build, purity checks",
       "produces": [
         "docs/fleet-intelligence-verification.md"
       ],
