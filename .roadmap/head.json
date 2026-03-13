@@ -209,7 +209,7 @@
     },
     "wire-terminal": {
       "id": "wire-terminal",
-      "desc": "Modify src/cli/advance.ts terminal flow. After building terminalBrief, call mineExecution() → assessTrajectory() → proposeSuccessor(). Add executionFindings, trajectoryAssessment, and successorProposal to the advance response when completing the terminal node. The successor proposal must appear in the JSON output so agents can read it and act. Import the three new modules. Do not change non-terminal advance behavior.",
+      "desc": "Wire intelligence into terminal advance",
       "produces": [
         "src/cli/advance.ts"
       ],

@@ -4,6 +4,7 @@
 
 import { readFileSync, existsSync, writeFileSync } from 'node:fs';
 import { join, resolve, basename } from 'node:path';
+import { homedir } from 'node:os';
 import { execSync } from 'node:child_process';
 import {
   define, check, verify, advanceBatch, validateNode,
@@ -20,6 +21,9 @@ import type { FinalHandoff, InterimHandoff } from '../lib/brief.ts';
 import { saveFinal, saveInterim } from '../lib/agent-dispatch/handoff-journal.ts';
 import { computeExecutionReport } from '../lib/auto-execution-report.ts';
 import { requireValidOrigin } from '../lib/intake/runtime-gate.ts';
+import { mineExecution } from '../runtime/execution-miner.ts';
+import { assessTrajectory } from '../runtime/trajectory.ts';
+import { proposeSuccessor } from '../runtime/successor.ts';
 import type { GapEntry } from '../lib/terminal-audit/detected.ts';
 import { emit, type OutputOpts } from '../lib/cli-envelope.ts';
 import {
@@ -103,7 +107,12 @@ async function advanceNode(
   }
 
   // Run validators
-  const existsPredicate = (artifact: string) => existsSync(join(repoRoot, artifact));
+  const existsPredicate = (artifact: string) => {
+    const resolved = artifact.startsWith('~/')
+      ? join(homedir(), artifact.slice(2))
+      : join(repoRoot, artifact);
+    return existsSync(resolved);
+  };
   const readFilePredicate = (path: string): string | null => {
     try { return readFileSync(path, 'utf-8'); } catch { return null; }
   };
@@ -130,7 +139,9 @@ async function advanceNode(
   // Check produces artifacts
   const produces = node.produces ?? [];
   for (const artifact of produces) {
-    const fullPath = join(repoRoot, artifact);
+    const fullPath = artifact.startsWith('~/')
+      ? join(homedir(), artifact.slice(2))
+      : join(repoRoot, artifact);
     const artifactExists = existsSync(fullPath);
     checks.push({
       rule: `artifact-exists:${artifact}`,
@@ -243,6 +254,28 @@ async function advanceNode(
 
   // Attribution safety
   const attributionWarning = checkAttribution(repoRoot, produces);
+  const attributionFiles = attributionWarning ? [attributionWarning] : [];
+
+  // Execution intelligence (terminal node only)
+  let executionFindings: import('../runtime/execution-miner.ts').ExecutionFindings | undefined;
+  let trajectoryAssessment: import('../runtime/trajectory.ts').TrajectoryAssessment | undefined;
+  let successorProposal: import('../runtime/successor.ts').SuccessorProposal | undefined;
+  if (nodeId === dag.term) {
+    const advCtxForMining = loadContext(repoRoot);
+    executionFindings = mineExecution(dag, advCtxForMining, attributionFiles);
+    trajectoryAssessment = assessTrajectory(
+      executionFindings,
+      [...advCtxForMining.chain.links],
+      terminalBrief?.rootIntent ?? dag.desc,
+      dag.id ?? 'unknown',
+    );
+    successorProposal = proposeSuccessor(
+      trajectoryAssessment,
+      executionFindings,
+      terminalBrief?.rootIntent ?? dag.desc,
+      dag,
+    );
+  }
 
   // Parallel-edit guard
   let parallelEditWarning: string | undefined;
@@ -307,7 +340,7 @@ async function advanceNode(
         }));
       const artifactEvidence = (node.produces ?? []).map((a: string) => ({
         artifact: a,
-        exists: existsSync(join(repoRoot, a)),
+        exists: existsSync(a.startsWith('~/') ? join(homedir(), a.slice(2)) : join(repoRoot, a)),
       }));
       const passCount = shellEvidence.filter(s => s.passed).length;
       const artifactCount = artifactEvidence.filter((a: { artifact: string; exists: boolean }) => a.exists).length;
@@ -347,6 +380,9 @@ async function advanceNode(
     } } : {}),
     ...(attributionWarning ? { attributionWarning } : {}),
     ...(parallelEditWarning ? { parallelEditWarning } : {}),
+    ...(executionFindings ? { executionFindings } : {}),
+    ...(trajectoryAssessment ? { trajectoryAssessment } : {}),
+    ...(successorProposal ? { successorProposal } : {}),
   };
 
   if (newPos.batchRemaining.length > 0) {
