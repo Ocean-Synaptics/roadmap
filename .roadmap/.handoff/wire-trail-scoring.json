@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-03-09T10:32:48.742Z",
+  "progress": 1,
+  "discovered": [],
+  "blockers": [],
+  "currentFile": "",
+  "summary": "scoring wired into Context, TerminalBrief (both pure and IO), trail-metrics computed best-effort",
+  "keyDecisions": [],
+  "gotchas": [],
+  "nextNodeEntry": {
+    "consumes": [
+      "src/runtime/brief.ts",
+      "src/runtime/context.ts",
+      "src/lib/terminal-brief.ts"
+    ],
+    "ready": true
+  }
+}

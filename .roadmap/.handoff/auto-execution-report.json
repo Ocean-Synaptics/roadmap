@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-03-09T10:59:24.657Z",
+  "progress": 1,
+  "discovered": [],
+  "blockers": [],
+  "currentFile": "",
+  "summary": "auto-computes ExecutionReport from trail+completion+handoffs, --evaluate-file remains as override",
+  "keyDecisions": [],
+  "gotchas": [],
+  "nextNodeEntry": {
+    "consumes": [
+      "src/lib/auto-execution-report.ts",
+      "src/cli/advance.ts"
+    ],
+    "ready": true
+  }
+}

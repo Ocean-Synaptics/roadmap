@@ -1,0 +1,16 @@
+{
+  "timestamp": "2026-03-09T11:05:07.506Z",
+  "progress": 1,
+  "discovered": [],
+  "blockers": [],
+  "currentFile": "",
+  "summary": "13 tests across 6 suites: trajectory, assessment (converging/diverging/stable), execution report",
+  "keyDecisions": [],
+  "gotchas": [],
+  "nextNodeEntry": {
+    "consumes": [
+      "tests/convergence-assessment.test.ts"
+    ],
+    "ready": true
+  }
+}

@@ -62,60 +62,94 @@ async function runFleetOrient(repoRoot: string, outputOpts: OutputOpts): Promise
       continue;
     }
 
-    const headPath = join(rc.resolvedPath, '.roadmap', 'head.json');
-    if (!existsSync(headPath)) {
+    // Build list of DAG files to load: all active heads/*.json DAGs
+    const headsDirectory = join(rc.resolvedPath, '.roadmap', 'heads');
+    const dagFiles: { dagPath: string; dagId: string }[] = [];
+
+    if (rc.activeDAGs.length > 0 && existsSync(headsDirectory)) {
+      for (const summary of rc.activeDAGs) {
+        const candidatePath = join(headsDirectory, `${summary.dagId}.json`);
+        if (existsSync(candidatePath)) {
+          dagFiles.push({ dagPath: candidatePath, dagId: summary.dagId });
+        }
+      }
+    }
+
+    // Fallback: if no heads/ DAGs found, use head.json
+    if (dagFiles.length === 0) {
+      const headPath = join(rc.resolvedPath, '.roadmap', 'head.json');
+      if (!existsSync(headPath)) {
+        repos.push({
+          name: rc.entry.name, path: rc.resolvedPath,
+          dagId: null, status: 'no-dag', level: null,
+          activeDAGs,
+        });
+        continue;
+      }
+      const head = JSON.parse(readFileSync(headPath, 'utf-8')) as { id?: string };
+      dagFiles.push({ dagPath: headPath, dagId: head.id ?? rc.entry.name });
+    }
+
+    // Load each active DAG and compute its frontier
+    let repoHasActive = false;
+    let repoTotalDone = 0;
+    let repoTotalRemaining = 0;
+    const repoBatch: string[] = [];
+
+    for (const { dagPath, dagId } of dagFiles) {
+      try {
+        const dag = await loadDAG(rc.resolvedPath, dagPath);
+        const pos = await crossOrientWithState(dag, rc.resolvedPath);
+
+        const allProduced = new Set<string>();
+        for (const doneId of pos.done) {
+          const node = (dag.nodes as unknown as Record<string, { produces?: readonly string[] }>)[doneId];
+          if (node?.produces) node.produces.forEach(p => allProduced.add(p));
+        }
+
+        repoDagInfos.push({
+          repoName: rc.entry.name,
+          dagId,
+          dag,
+          position: pos.position,
+          allProduced,
+        });
+
+        repoTotalDone += pos.done.length;
+        repoTotalRemaining += pos.remaining.length;
+        if (pos.remaining.length > 0) {
+          repoHasActive = true;
+          repoBatch.push(...pos.position);
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        blockers.push(`${rc.entry.name}/${dagId}: ${message}`);
+      }
+    }
+
+    if (repoHasActive) {
+      repos.push({
+        name: rc.entry.name, path: rc.resolvedPath,
+        dagId: dagFiles.length === 1 ? dagFiles[0].dagId : null,
+        status: 'active', level: null,
+        batch: repoBatch,
+        done: repoTotalDone, remaining: repoTotalRemaining,
+        activeDAGs,
+      });
+    } else if (repoTotalDone > 0) {
+      repos.push({
+        name: rc.entry.name, path: rc.resolvedPath,
+        dagId: dagFiles.length === 1 ? dagFiles[0].dagId : null,
+        status: 'complete', level: null,
+        done: repoTotalDone, remaining: 0,
+        activeDAGs,
+      });
+    } else {
       repos.push({
         name: rc.entry.name, path: rc.resolvedPath,
         dagId: null, status: 'no-dag', level: null,
         activeDAGs,
       });
-      continue;
-    }
-
-    try {
-      const head = JSON.parse(readFileSync(headPath, 'utf-8')) as { id?: string };
-      const dag = await loadDAG(rc.resolvedPath);
-      const pos = await crossOrientWithState(dag, rc.resolvedPath);
-
-      // Collect all paths produced by done nodes for cross-repo dependency resolution
-      const allProduced = new Set<string>();
-      for (const doneId of pos.done) {
-        const node = (dag.nodes as unknown as Record<string, { produces?: readonly string[] }>)[doneId];
-        if (node?.produces) node.produces.forEach(p => allProduced.add(p));
-      }
-
-      repoDagInfos.push({
-        repoName: rc.entry.name,
-        dagId: head.id ?? dag.id ?? rc.entry.name,
-        dag,
-        position: pos.position,
-        allProduced,
-      });
-
-      if (pos.remaining.length === 0) {
-        repos.push({
-          name: rc.entry.name, path: rc.resolvedPath,
-          dagId: head.id ?? null, status: 'complete',
-          level: pos.level, done: pos.done.length, remaining: 0,
-          activeDAGs,
-        });
-      } else {
-        repos.push({
-          name: rc.entry.name, path: rc.resolvedPath,
-          dagId: head.id ?? null, status: 'active',
-          level: pos.level, batch: pos.position,
-          done: pos.done.length, remaining: pos.remaining.length,
-          activeDAGs,
-        });
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      repos.push({
-        name: rc.entry.name, path: rc.resolvedPath,
-        dagId: null, status: 'stalled', level: null, reason: msg,
-        activeDAGs,
-      });
-      blockers.push(`${rc.entry.name}: ${msg}`);
     }
   }
 

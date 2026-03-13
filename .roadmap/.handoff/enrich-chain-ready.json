@@ -1,0 +1,17 @@
+{
+  "timestamp": "2026-03-09T10:36:22.081Z",
+  "progress": 1,
+  "discovered": [],
+  "blockers": [],
+  "currentFile": "",
+  "summary": "detectGaps broadened with no-shell-coverage, untested-evidence, velocity-decay; chainReady output ca",
+  "keyDecisions": [],
+  "gotchas": [],
+  "nextNodeEntry": {
+    "consumes": [
+      "src/lib/terminal-audit/detected.ts",
+      "src/cli/advance.ts"
+    ],
+    "ready": true
+  }
+}

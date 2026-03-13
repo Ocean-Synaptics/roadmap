@@ -190,7 +190,18 @@ export function loadSpecGoal(
 
 // ── DAG loading ─────────────────────────────────────────────────────────
 
-export async function loadDAG(repoRoot: string): Promise<Graph<string>> {
+export async function loadDAG(repoRoot: string, dagPath?: string): Promise<Graph<string>> {
+  if (dagPath) {
+    if (!existsSync(dagPath)) {
+      throw new RoadmapError('NODE_NOT_FOUND', {
+        attempted: dagPath,
+        fix: 'Verify the DAG file exists at the specified path.',
+        entry: 'roadmap orient',
+      }, `DAG file not found: ${dagPath}`);
+    }
+    return JSON.parse(safeReadFile(dagPath, repoRoot));
+  }
+
   const headPath = join(repoRoot, '.roadmap', 'head.json');
   if (!existsSync(headPath)) {
     throw new RoadmapError('NODE_NOT_FOUND', {
