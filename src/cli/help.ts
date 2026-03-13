@@ -5,7 +5,7 @@
 export function run(): void {
   console.log(`roadmap — DAG expansion protocol CLI
 
-Core commands (mainline execution loop):
+Core commands (mainline execution):
   make <spec>        Create ideal DAG from spec
   orient             Current batch position + produces/consumes
   advance [node-id]  Complete node (run validators, record evidence) or advance batch
