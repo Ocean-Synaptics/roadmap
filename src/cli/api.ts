@@ -5,10 +5,22 @@
 import { emit, ErrorCode, type OutputOpts } from '../lib/cli-envelope.ts';
 import { lookupSchema, listCommands, schemaToJsonSchema } from '../lib/schemas.ts';
 import { getMakeInvariants } from '../lib/api-invariants.ts';
+import { validateApiCoverage } from '../lib/api-enforcement.ts';
 
 export function run(args: string[], outputOpts: OutputOpts): void {
   const target = args[1];
   const all = args.includes('--all');
+  const validate = args.includes('--validate');
+
+  if (validate) {
+    const result = validateApiCoverage();
+    if (!result.ok) {
+      emit({ ok: false, cmd: 'api', error: { code: ErrorCode.VALIDATION_FAILED, message: 'API coverage violations found', fix: result.violations.map(v => `${v.command}: ${v.issue}`) } }, outputOpts);
+      process.exit(1);
+    }
+    emit({ ok: true, cmd: 'api', data: result }, outputOpts);
+    return;
+  }
 
   if (all || !target) {
     const commands = listCommands();

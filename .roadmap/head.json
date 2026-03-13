@@ -78,7 +78,7 @@
     },
     "register-missing-schemas": {
       "id": "register-missing-schemas",
-      "desc": "Run the api-enforcement validator. For every violation it reports (missing schema, missing example, missing description), add the missing entry to src/lib/schemas.ts. Goal: validateApiCoverage().ok === true. This includes adding schemas for dag.log, status, and any other commands currently in the router but missing from the schema registry. Every schema must have description, input, output, and at least one example.",
+      "desc": "Register all missing schemas",
       "produces": [
         "src/lib/schemas.ts"
       ],
