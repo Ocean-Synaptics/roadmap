@@ -54,7 +54,7 @@
     },
     "api-enforcement": {
       "id": "api-enforcement",
-      "desc": "Build-time API coverage validator",
+      "desc": "Create src/lib/api-enforcement.ts — build-time validator that checks: (1) every command in KNOWN_COMMANDS has a schema in schemas.ts, (2) every schema has description + input + output + at least one example, (3) every schema command appears in help text, (4) no orphan schemas. Export validateApiCoverage() → { ok, violations[] }. Add 'roadmap api --validate' subcommand that runs it. Add shell validator to pre-commit or build.",
       "produces": [
         "src/lib/api-enforcement.ts"
       ],
