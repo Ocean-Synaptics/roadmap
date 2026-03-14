@@ -64,7 +64,7 @@ export function mineExecution(
   for (const [nodeId, entry] of context.handoffs) {
     const allHandoffs = [...entry.interims, ...(entry.final ? [entry.final] : [])];
     for (const h of allHandoffs) {
-      for (const item of h.discovered) {
+      for (const item of h.discovered ?? []) {
         if (!isAddressed(item, nodeTexts)) {
           unaddressedDiscoveries.push({ source: nodeId, nodeId, item });
         }

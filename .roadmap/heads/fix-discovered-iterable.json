@@ -6,7 +6,7 @@
   "nodes": {
     "guard-discovered": {
       "id": "guard-discovered",
-      "desc": "Guard h.discovered iteration",
+      "desc": "In src/runtime/execution-miner.ts mineExecution(), line 67: change `for (const item of h.discovered)` to `for (const item of h.discovered ?? [])`. Also guard h.blockers on line ~90 if same pattern exists. Same fix in any other iteration over handoff fields that may be undefined (discovered, blockers, gotchas, keyDecisions). No new imports, no structural changes.",
       "produces": [
         "src/runtime/execution-miner.ts"
       ],
