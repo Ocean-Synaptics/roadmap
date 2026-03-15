@@ -40,6 +40,9 @@ export type OrientV1 = {
   // Errors (non-zero exit)
   errors?: OrientError[];
 
+  // Skill chain suggestion
+  suggestedSkill?: { skill: string; reason: string };
+
   exit: { code: number };
 };
 

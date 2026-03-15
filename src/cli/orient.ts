@@ -200,6 +200,14 @@ async function runFleetOrient(repoRoot: string, outputOpts: OutputOpts): Promise
   const allDone = repos.every(r => r.status === 'complete');
   const loopReady = repos.length > 0 && allDone;
 
+  const suggestedSkill = loopReady
+    ? { skill: '/roadmap-review', reason: 'All repos complete. Assess convergence before closing.' }
+    : globalFrontier.length > 0
+      ? { skill: '/roadmap-auto', reason: `${globalFrontier.length} frontier node(s) ready across fleet.` }
+      : blockers.length > 0
+        ? { skill: '/roadmap-review', reason: 'Fleet blocked. Review cross-repo dependencies.' }
+        : { skill: '/roadmap-spec', reason: 'No active work. Design a new roadmap.' };
+
   const fleetStatus: FleetStatus = {
     iteration,
     compiler: { repo: '.', headCommit },
@@ -209,7 +217,7 @@ async function runFleetOrient(repoRoot: string, outputOpts: OutputOpts): Promise
     globalFrontier,
   };
 
-  emit({ ok: true, cmd: outputOpts.cmd, data: fleetStatus }, outputOpts);
+  emit({ ok: true, cmd: outputOpts.cmd, data: { ...fleetStatus, suggestedSkill } }, outputOpts);
 }
 
 export async function run(
@@ -260,11 +268,13 @@ export async function run(
         remaining: 0,
         chainReady: false,
         errors: [{ kind: 'no_dag', message: 'No roadmap tracked in this repo' }],
+        suggestedSkill: { skill: '/roadmap-spec', reason: 'No DAG in this repo. Design one.' },
         exit: { code: 0 },
       } satisfies OrientV1 }, outputOpts);
     } else {
       emit({ ok: true, cmd: outputOpts.cmd, data: {
         position: 'untracked', repo: basename(repoRoot), tracked: false,
+        suggestedSkill: { skill: '/roadmap-spec', reason: 'No DAG in this repo. Design one.' },
       } }, outputOpts);
     }
     return;
@@ -366,6 +376,13 @@ export async function run(
     } else {
       result.nextAction = 'DAG complete. Evaluate gaps and write successor spec if needed: roadmap make <spec> --note "..."';
     }
+  }
+
+  // Suggest next skill based on state
+  if (result.chainReady) {
+    result.suggestedSkill = { skill: '/roadmap-review', reason: 'DAG complete. Assess convergence before chaining or closing.' };
+  } else if (nextPosition.length > 0) {
+    result.suggestedSkill = { skill: '/roadmap-auto', reason: `${nextPosition.length} node(s) ready in current batch.` };
   }
 
   if (drift.drifted) {
