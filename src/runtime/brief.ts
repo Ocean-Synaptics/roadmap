@@ -142,7 +142,7 @@ export function brief(
     produces: spec.produces.slice(0, 5),
     consumes: spec.consumes.map(c => consumeArtifact(c)).slice(0, 5),
     description: slice?.specContext.description ?? spec.desc,
-    pattern: renderPattern(spec, g.desc, position),
+    pattern: renderPattern(spec, g.desc, position, position === g.term ? context : undefined),
     handoff: prevHandoff,
     handoffJournal: journal,
     remaining,
@@ -268,7 +268,7 @@ function countRemaining(dag: Graph<string>, position: string): number {
   return visited.size - 1; // Don't count current node
 }
 
-function renderPattern(spec: { id: string; desc: string; produces: readonly string[]; consumes: readonly (string | { artifact: string })[]; mode?: 'execute' | 'plan' }, dagDesc: string, position: string): string {
+function renderPattern(spec: { id: string; desc: string; produces: readonly string[]; consumes: readonly (string | { artifact: string })[]; mode?: 'execute' | 'plan' }, dagDesc: string, position: string, termContext?: Context): string {
   if (spec.mode === 'plan') {
     return [
       `TASK: ${spec.desc}`,
@@ -276,6 +276,24 @@ function renderPattern(spec: { id: string; desc: string; produces: readonly stri
       `POSITION: ${position} in "${dagDesc}"`,
       `OUTPUT: DAG expansion via \`roadmap dag insert\``,
       `VERIFY: Each child node is self-contained and independently executable`,
+    ].join('\n');
+  }
+
+  // Terminal node: enriched prompt with root intent and chain context
+  if (termContext) {
+    const rootIntent = termContext.chain.rootIntent || dagDesc;
+    const iteration = termContext.chain.iteration;
+    const successorFile = spec.produces.find(p => p.endsWith('-successor.spec.json')) ?? 'docs/<dag-id>-successor.spec.json';
+
+    return [
+      `TASK: Assess convergence against root intent. Write successor spec or declare converged.`,
+      `ROOT INTENT: ${rootIntent}`,
+      `ITERATION: ${iteration} (read chain history for what previous iterations attempted)`,
+      `PRODUCE: ${successorFile}`,
+      `USE: /roadmap-spec to design the successor — do not write spec.json directly`,
+      `CONVERGED: if intent satisfied, write {"dag_id":"...","converged":true,"rationale":"why"}`,
+      `CONTINUE: if gaps remain, use /roadmap-spec to design a narrower successor DAG`,
+      `ORBITING: if same problems persist across iterations, STOP and surface to human`,
     ].join('\n');
   }
 

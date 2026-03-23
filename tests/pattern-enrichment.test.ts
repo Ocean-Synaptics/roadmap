@@ -11,18 +11,35 @@ function makeDAG(overrides?: Partial<Graph<string>['nodes'][string]>): Graph<str
   return {
     id: 'pattern-test',
     desc: 'Test renderPattern interpolation',
-    init: 'work',
-    term: 'work',
+    init: 'init',
+    term: 'term',
     nodes: {
+      init: {
+        id: 'init',
+        desc: 'Synthetic init',
+        produces: [],
+        consumes: [],
+        deps: [],
+        validate: [],
+        idempotent: true,
+      } as any,
       work: {
         id: 'work',
         desc: 'Build the widget parser',
         produces: ['src/parser.ts', 'src/types.ts'],
         consumes: [],
-        deps: [],
+        deps: ['init'],
         mode: 'execute',
         validate: [],
         ...overrides,
+      } as any,
+      term: {
+        id: 'term',
+        desc: 'Terminal verification',
+        produces: [],
+        consumes: [],
+        deps: ['work'],
+        validate: [],
       } as any,
     },
   };
