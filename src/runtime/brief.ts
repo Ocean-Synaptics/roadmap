@@ -57,6 +57,8 @@ export interface Brief {
   producesPreview?: FileSummary[];
   /** Terminal context: enriched when position === dag.term */
   terminalContext?: TerminalBrief;
+  /** Dispatch constraint: 'main' = must execute in orchestrator context, never background agent */
+  dispatch?: 'main';
 }
 
 // --- TerminalBrief type ---
@@ -153,6 +155,7 @@ export function brief(
     ...(slice?.topology ? { topology: slice.topology } : {}),
     ...(slice?.producesPreview?.length ? { producesPreview: slice.producesPreview } : {}),
     ...(terminalContext ? { terminalContext } : {}),
+    ...((spec as any).dispatch === 'main' ? { dispatch: 'main' as const } : {}),
   };
 }
 

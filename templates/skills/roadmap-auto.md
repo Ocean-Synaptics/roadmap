@@ -14,12 +14,17 @@ Send the agent off to work. Autonomous execution of the current roadmap.
   1. roadmap orient — position is truth. never infer.
   2. work every node in the current batch.
      parallel background agents when batch has 2+ nodes.
+     if a node's brief has dispatch: "main" → execute it yourself.
+     never dispatch term or main-context nodes to background agents.
   3. per node:
      implement produces → git add → git commit "<node-id>: <what>"
      → roadmap advance <node-id> --note "<what>"
   4. advance rejects? read the error. fix the produce.
      re-commit. retry. never skip validators.
   5. batch completes → orient again → next batch → repeat until done.
+  6. at term: invoke /roadmap-spec to write the successor.
+     you have session context the background agents don't.
+     then /roadmap-endcontext to close.
 ```
 
 ## Reporting
