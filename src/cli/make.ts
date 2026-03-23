@@ -163,12 +163,18 @@ export async function run(
     }, `Failed to convert spec: ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  // Auto-inject successor spec into term node produces
+  // Auto-inject successor spec into term node produces + validator
   const _dagIdForSuccessor = dag.id ?? parsed.dag_id ?? 'unknown';
   const successorSpecFile = `docs/${_dagIdForSuccessor}-successor.spec.json`;
   const termNode = dag.nodes[dag.term];
   if (termNode && !termNode.produces.includes(successorSpecFile)) {
     termNode.produces = [...termNode.produces, successorSpecFile];
+    // Validator: successor spec must exist and be valid JSON with dag_id or converged field
+    const successorValidator = {
+      type: 'shell' as const,
+      command: `node -e "const d=JSON.parse(require('fs').readFileSync('${successorSpecFile}','utf-8')); if(!d.dag_id && !d.converged) process.exit(1)"`,
+    };
+    termNode.validate = [...(termNode.validate ?? []), successorValidator];
   }
 
   // Validate the DAG
