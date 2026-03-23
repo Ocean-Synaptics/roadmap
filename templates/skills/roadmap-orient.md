@@ -90,16 +90,16 @@ For fleet orient, show per-repo status with their active DAGs:
 
 ```
   position has nodes?    → /roadmap-auto (autonomous execution)
-  chainReady: true?      → /roadmap-endcontext (assess before chaining)
+  chainReady: true?      → /roadmap-term (assess before chaining)
   no DAG?                → /roadmap-spec (design one)
   fleet has blockers?    → surface which repos are blocking which
-  end of session?        → /roadmap-endcontext (persist + handoff)
+  end of session?        → /roadmap-term (persist + handoff)
 ```
 
 ## The chain
 
 ```
-  orient → auto → spec → endcontext → orient
+  orient → auto → spec → term → orient
   every skill points to the next
   orient is always the entry point and the re-entry point
 ```

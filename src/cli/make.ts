@@ -175,8 +175,6 @@ export async function run(
       command: `node -e "const d=JSON.parse(require('fs').readFileSync('${successorSpecFile}','utf-8')); if(!d.dag_id && !d.converged) process.exit(1)"`,
     };
     termNode.validate = [...(termNode.validate ?? []), successorValidator];
-    // Mark term as non-dispatchable — must execute in main agent context
-    (termNode as any).dispatch = 'main';
   }
 
   // Validate the DAG

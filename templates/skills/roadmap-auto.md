@@ -22,9 +22,9 @@ Send the agent off to work. Autonomous execution of the current roadmap.
   4. advance rejects? read the error. fix the produce.
      re-commit. retry. never skip validators.
   5. batch completes → orient again → next batch → repeat until done.
-  6. at term: invoke /roadmap-spec to write the successor.
+  6. at term: invoke /roadmap-term.
      you have session context the background agents don't.
-     then /roadmap-endcontext to close.
+     /roadmap-term handles assessment, review, successor, and close.
 ```
 
 ## Reporting
@@ -106,6 +106,6 @@ Send the agent off to work. Autonomous execution of the current roadmap.
 
 ```
   this skill is called after /roadmap-orient shows work to do
-  at terminal → run /roadmap-endcontext (review + persist + close)
-  the chain: orient → auto → spec → endcontext → orient
+  at terminal → run /roadmap-term (review + persist + close)
+  the chain: orient → auto → spec → term → orient
 ```

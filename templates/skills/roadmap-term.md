@@ -1,44 +1,58 @@
 ---
-name: roadmap-endcontext
-description: Review session, persist learnings, close cleanly
+name: roadmap-term
+description: Assess convergence, review session, write successor, close cleanly
 user-invocable: true
 ---
 
-# roadmap-endcontext
+# roadmap-term
 
-End of session. Three steps: review what happened, persist what matters, hand off cleanly.
+You're at the terminal node. This is the assessment moment — not a formality.
 
-## Step 1: Review
+## 1. Assess
+
+```
+  read the root intent — what was the human actually asking for?
+  not the DAG description. the original need.
+
+  compare: does what we built satisfy that intent?
+  not "did validators pass" — does the thing WORK?
+
+  visual work   → screenshot it. look at it.
+  functional    → run it. exercise the workflow.
+  infra         → deploy it. hit the endpoint.
+```
+
+## 2. Review Dropped Threads
 
 ```
   scan the conversation for what didn't land
 
   dropped threads
     things discussed but never acted on
-    ideas, bugs, concerns that were acknowledged
-    but never became a spec node, handoff, or CLAUDE.md entry
+    ideas, bugs, concerns acknowledged but never
+    became a spec node, handoff, or CLAUDE.md entry
 
   undocumented decisions
     "we chose X because Y" said in conversation
-    but never written to docs/ or CLAUDE.md
+    never written to docs/ or CLAUDE.md
 
-  execution quality (if a DAG ran)
-    use the thing — screenshot, run, exercise the workflow
-    what's the worst thing about the current state?
-    what would embarrass you if the human saw it now?
-
-  successor completeness (if one was written)
-    does it cover the discoveries?
-    is it narrower than the current DAG?
-    are there dropped threads that should be nodes?
+  execution gaps
+    nodes where you noticed something wrong but moved on
+    validators that passed but the output wasn't right
+    things a human would catch that the DAG didn't
 ```
 
-Present what you find. **Don't act — propose.** The human decides what matters.
+## 3. Present
 
 ```
+  show what you found. don't act — propose.
+
   ┌─────────────────────────────────────────────────────────┐
-  │  📋 SESSION REVIEW                                      │
+  │  📋 TERM REVIEW                                         │
   ├─────────────────────────────────────────────────────────┤
+  │                                                         │
+  │  Intent: <root intent>                                  │
+  │  Status: <converging / gaps remain / orbiting>          │
   │                                                         │
   │  Dropped threads:                                       │
   │    • item (discussed, no node)                          │
@@ -47,18 +61,18 @@ Present what you find. **Don't act — propose.** The human decides what matters
   │  Undocumented decisions:                                │
   │    • decision (not in CLAUDE.md or docs/)               │
   │                                                         │
-  │  Proposed actions:                                      │
-  │    → add to successor spec?                             │
-  │    → write to CLAUDE.md?                                │
+  │  Proposed:                                              │
+  │    → successor spec node?                               │
+  │    → CLAUDE.md entry?                                   │
   │    → fine to drop?                                      │
   │                                                         │
-  │  Waiting for your call on each item.                    │
+  │  Waiting for your call.                                 │
   └─────────────────────────────────────────────────────────┘
+
+  the human decides what matters. then you act.
 ```
 
-## Step 2: Persist
-
-After the human triages, act on decisions:
+## 4. Persist
 
 ```
 ╭─────────────────────────────────────────────────────────────────╮
@@ -78,9 +92,22 @@ After the human triages, act on decisions:
 ╰─────────────────────────────────────────────────────────────────╯
 ```
 
-## Step 3: Boot Prompt
+## 5. Successor
 
-After everything is durable, the boot prompt is thin — it points, not contains.
+```
+  converged     write {"dag_id":"...","converged":true,"rationale":"why"}
+                the rationale must be specific — what intent is satisfied
+
+  continue      invoke /roadmap-spec to design the successor
+                dropped threads + gaps feed into the spec
+                the next DAG should be NARROWER than this one
+
+  orbiting      STOP. surface to human.
+                "same problems across iterations: [list]"
+                do not write another spec. redirect needed.
+```
+
+## 6. Boot Prompt
 
 ```markdown
 ## Context
@@ -90,34 +117,34 @@ After everything is durable, the boot prompt is thin — it points, not contains
 ## Start
 
 Run `/roadmap-orient` — position is truth.
-Read this repo's CLAUDE.md for execution protocol and known issues.
+Read CLAUDE.md for execution protocol and known issues.
 
 ## Skills
 
-/roadmap-orient · /roadmap-spec · /roadmap-auto · /roadmap-endcontext
+/roadmap-orient · /roadmap-spec · /roadmap-auto · /roadmap-term
 
 ## State
 
-<branch, clean/dirty, successor spec created or DAG in progress>
+<branch, successor spec status>
 
 ## Decisions
 
-<2-3 bullets, or: "see docs/adr/">
+<bullets, or: "see docs/adr/">
 
 ## Next Move
 
-<one line: what to do first>
+<one line>
 ```
 
 ## Values
 
 ```
+  this node requires your full session context
+  never dispatch it to a background agent
   the review is adversarial, not congratulatory
-  surface, don't act — human decides what matters
-  the boot prompt is a pointer, not a container
-  session docs are an antipattern — use specs and handoffs
   dropped threads are the highest-value finding
   decisions not written down are lost forever
+  the human's judgment is what makes triage durable
 ```
 
 ## Chain
@@ -125,5 +152,5 @@ Read this repo's CLAUDE.md for execution protocol and known issues.
 ```
   this skill closes the cycle
   boot prompt tells next agent: /roadmap-orient
-  full chain: orient → auto → spec → endcontext → orient
+  chain: orient → auto → spec → term → orient
 ```

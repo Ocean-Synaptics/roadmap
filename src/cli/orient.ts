@@ -201,11 +201,11 @@ async function runFleetOrient(repoRoot: string, outputOpts: OutputOpts): Promise
   const loopReady = repos.length > 0 && allDone;
 
   const suggestedSkill = loopReady
-    ? { skill: '/roadmap-review', reason: 'All repos complete. Assess convergence before closing.' }
+    ? { skill: '/roadmap-term', reason: 'All repos complete. Assess convergence before closing.' }
     : globalFrontier.length > 0
       ? { skill: '/roadmap-auto', reason: `${globalFrontier.length} frontier node(s) ready across fleet.` }
       : blockers.length > 0
-        ? { skill: '/roadmap-review', reason: 'Fleet blocked. Review cross-repo dependencies.' }
+        ? { skill: '/roadmap-term', reason: 'Fleet blocked. Review cross-repo dependencies.' }
         : { skill: '/roadmap-spec', reason: 'No active work. Design a new roadmap.' };
 
   const fleetStatus: FleetStatus = {
@@ -380,7 +380,7 @@ export async function run(
 
   // Suggest next skill based on state
   if (result.chainReady) {
-    result.suggestedSkill = { skill: '/roadmap-review', reason: 'DAG complete. Assess convergence before chaining or closing.' };
+    result.suggestedSkill = { skill: '/roadmap-term', reason: 'DAG complete. Assess convergence before chaining or closing.' };
   } else if (nextPosition.length > 0) {
     result.suggestedSkill = { skill: '/roadmap-auto', reason: `${nextPosition.length} node(s) ready in current batch.` };
   }

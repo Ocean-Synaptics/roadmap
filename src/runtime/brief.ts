@@ -57,8 +57,6 @@ export interface Brief {
   producesPreview?: FileSummary[];
   /** Terminal context: enriched when position === dag.term */
   terminalContext?: TerminalBrief;
-  /** Dispatch constraint: 'main' = must execute in orchestrator context, never background agent */
-  dispatch?: 'main';
 }
 
 // --- TerminalBrief type ---
@@ -155,7 +153,6 @@ export function brief(
     ...(slice?.topology ? { topology: slice.topology } : {}),
     ...(slice?.producesPreview?.length ? { producesPreview: slice.producesPreview } : {}),
     ...(terminalContext ? { terminalContext } : {}),
-    ...((spec as any).dispatch === 'main' ? { dispatch: 'main' as const } : {}),
   };
 }
 
@@ -293,7 +290,7 @@ function renderPattern(spec: { id: string; desc: string; produces: readonly stri
       `ROOT INTENT: ${rootIntent}`,
       `ITERATION: ${iteration} (read chain history for what previous iterations attempted)`,
       `PRODUCE: ${successorFile}`,
-      `USE: /roadmap-spec to design the successor — do not write spec.json directly`,
+      `USE: /roadmap-term to assess and close — do not write spec.json directly`,
       `CONVERGED: if intent satisfied, write {"dag_id":"...","converged":true,"rationale":"why"}`,
       `CONTINUE: if gaps remain, use /roadmap-spec to design a narrower successor DAG`,
       `ORBITING: if same problems persist across iterations, STOP and surface to human`,
