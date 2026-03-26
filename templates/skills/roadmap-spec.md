@@ -49,6 +49,66 @@ Schema is source of truth. If anything below contradicts it, the API wins.
 ╰─────────────────────────────────────────────────────────────────╯
 ```
 
+## Observation First
+
+```
+  the first spec you write from assumptions will be wrong
+  at the boundaries between systems.
+
+  every spec starts with observation:
+    what exists today?
+    what are the boundaries between systems?
+    what will surprise us?
+
+  the first batch is not "build the thing"
+  the first batch is "learn what we don't know"
+
+  ❌ jumping straight to implementation:
+     "build mesh → test mesh → ship mesh" (24 nodes)
+
+  ✅ observation then implementation:
+     "mine 6 repos for patterns → extract boundary contracts →
+      design from findings → build → verify against findings" (35 nodes)
+
+  the observation batch is naturally wide — reading 6 repos
+  is 6 parallel nodes. the implementation narrows because it
+  has dependencies. verification widens again for parallel testing.
+```
+
+## Boundary Questions
+
+```
+  most bugs live at boundaries, not inside components.
+  before writing implementation nodes, answer:
+
+  ownership        who owns this data? what happens when two
+                   systems claim the same resource?
+
+  merge semantics  when system A pushes an update and system B
+                   has local state, who wins? which fields
+                   are preserved vs overwritten?
+
+  stacking/layers  for visual work: what renders above what?
+                   z-index manifest. blend modes. does it work
+                   with position:fixed? with backdrop-filter?
+
+  process inventory what long-running processes does this depend on?
+                   how are they started, stopped, verified current?
+                   zombie processes will waste hours.
+
+  performance budget what's the frame/latency budget?
+                   what does each pass cost today?
+                   measure BEFORE implementing, not after.
+
+  scope leaks      does this CSS/style/config reach into child
+                   components? across iframes? into shadow DOM?
+                   scoped styles fail silently.
+
+  these become observation nodes in the first batch.
+  each one produces a findings document.
+  implementation nodes consume those findings.
+```
+
 ## Two Loops
 
 ```
@@ -172,10 +232,11 @@ The pattern: **implementation + inspect + iterate + condition for commit.** Ever
 ## Self-check
 
 ```
+  □ does the first batch observe before it builds?
+  □ are boundary questions answered before implementation starts?
   □ stranger can execute every node from desc alone?
   □ terminal uses the thing the way a human would?
   □ verifying intent, not implementation?
-  □ terminal discovers what to do next?
   □ full workflow exercised end-to-end?
   □ no grep/exists as behavioral evidence?
   □ for visual work: does terminal screenshot and evaluate?
@@ -214,5 +275,5 @@ roadmap orient --note "begin <dag-id>"
 ```
   this skill is called when you need a new DAG
   after make + orient → /roadmap-auto to execute
-  the chain: orient → spec → make → orient → auto → review → {endcontext | spec}
+  the chain: orient → spec → make → orient → auto → term → orient
 ```
