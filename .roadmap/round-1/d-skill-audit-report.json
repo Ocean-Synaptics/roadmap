@@ -1,0 +1,31 @@
+{
+  "node": "skill-audit-diff-empty",
+  "round": 1,
+  "dag_id": "roadmap-r1-skill-maintenance-viewer-migration",
+  "date": "2026-04-27",
+  "wd": "/home/griffin/src/.dev/roadmap",
+  "method": "diff ~/.claude/skills/<name>/SKILL.md templates/skills/<name>.md for each template",
+  "templates_total": 6,
+  "diff_empty": false,
+  "desync_count": 2,
+  "in_sync": ["roadmap-night", "roadmap-orient", "roadmap-term", "threads"],
+  "per_skill": [
+    { "name": "roadmap-auto",   "drift_lines": 3, "drift_kind": "template-only-banner", "detail": "templates/skills/roadmap-auto.md inserts a 48-emoji rainbow banner (line 7) + blank line (line 8) absent from live SKILL.md. Cosmetic; no semantic drift." },
+    { "name": "roadmap-night",  "drift_lines": 0, "drift_kind": "in-sync", "detail": "ported by skill-port-roadmap-night dependency" },
+    { "name": "roadmap-orient", "drift_lines": 0, "drift_kind": "in-sync" },
+    { "name": "roadmap-spec",   "drift_lines": 3, "drift_kind": "template-only-banner", "detail": "templates/skills/roadmap-spec.md inserts the same 48-emoji rainbow banner (line 7) + blank line (line 8) absent from live SKILL.md. Cosmetic; no semantic drift." },
+    { "name": "roadmap-term",   "drift_lines": 0, "drift_kind": "in-sync" },
+    { "name": "threads",        "drift_lines": 0, "drift_kind": "in-sync" }
+  ],
+  "no_live_counterpart": [],
+  "live_skills_without_template": [
+    "bug-class-hunting","core-loop","cross-page-sweep","demo","fleet-doctrine","fleet-doctrine-history","griffin-voice","keel-boundary-thesis","linear-audit","meta-directives","pcode-ir-lowering","peon-ping-config","peon-ping-log","peon-ping-toggle","peon-ping-use","per-page-convergence","pipeline-thesis","pixel-diffuse","rovmk3-thesis","sift-review","stance"
+  ],
+  "live_skills_without_template_count": 21,
+  "live_skills_without_template_note": "Out of scope for this node — templates/ is the roadmap-engine-owned subset (roadmap-* + threads). Other live skills are owned by their respective repos (fleet · stance · etc.) and shouldn't be templated here. Recorded for reference only.",
+  "follow_up_nodes_already_in_dag": ["skill-sync-roadmap-auto", "skill-sync-roadmap-spec"],
+  "auto_fix_intent": "NONE — this node is a manifest. Drift fixes downstream per spec.",
+  "validator_jq_probe": "jq -e '.desync_count == 2 and (.per_skill | length) == 6' .roadmap/round-1/d-skill-audit-report.json",
+  "claim_count": { "templates": 6, "in_sync": 4, "drift": 2, "drift_kind_unique": 1 },
+  "outcome": "GREEN-manifest"
+}
