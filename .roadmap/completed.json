@@ -5530,5 +5530,35 @@
     "gitSha": "5ecae932ffdae533aeaf8d40e671ad601fc4a411",
     "treeSha": "3c5078bda3578d3d9afa2b1ab36fe0800d8bd406",
     "branch": "feat/r1-skill-maintenance-and-viewer"
+  },
+  {
+    "nodeId": "viewer-build-search-filter",
+    "completedAt": "2026-04-27T11:01:33.217Z",
+    "dagId": "roadmap-r1.5-viewer-extract-and-skill-sweep",
+    "validationChecks": [
+      {
+        "rule": "artifact-exists:viewer/src/components/SearchBar.vue",
+        "passed": true,
+        "evidence": "artifact exists: viewer/src/components/SearchBar.vue"
+      },
+      {
+        "rule": "artifact-exists:viewer/src/composables/useViewerSearch.ts",
+        "passed": true,
+        "evidence": "file exists"
+      },
+      {
+        "rule": "artifact-exists:viewer/src/components/SearchBar.vue",
+        "passed": true,
+        "evidence": "file exists"
+      },
+      {
+        "rule": "artifact-exists:.roadmap/round-1.5/d-viewer-build-search-filter.json",
+        "passed": true,
+        "evidence": "file exists"
+      }
+    ],
+    "gitSha": "243e54b95c830f73862d118dfe229b834c7b2db3",
+    "treeSha": "5e1d46b27f5b0147cc253c73d129f6daa8b031f0",
+    "branch": "feat/r1-skill-maintenance-and-viewer"
   }
 ]
