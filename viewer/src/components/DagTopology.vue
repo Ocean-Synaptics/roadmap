@@ -27,9 +27,24 @@
       <button type="button" class="dag-topology__btn" @click="$emit('reheat')">
         reheat
       </button>
+      <button
+        v-if="hasGraph"
+        type="button"
+        class="dag-topology__btn"
+        :disabled="exporting"
+        @click="onExportSvg"
+      >Export SVG</button>
+      <button
+        v-if="hasGraph"
+        type="button"
+        class="dag-topology__btn"
+        :disabled="exporting"
+        @click="onExportPng"
+      >Export PNG</button>
     </div>
 
     <svg
+      ref="svgRef"
       :viewBox="`0 0 ${width} ${height}`"
       :width="width"
       :height="height"
@@ -73,8 +88,10 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
+import type { ComputedRef, Ref } from "vue";
 import type { ForceNode, ForceLink } from "../composables/useForceLayout";
+import { useGraphExport } from "../composables/useGraphExport";
 
 interface Props {
   nodes: ForceNode[];
@@ -84,9 +101,21 @@ interface Props {
   groupBy: "depth" | "cluster";
   zoom: number;
   pan: { x: number; y: number };
+  exportName?: string;
 }
 
-const props = defineProps<Props>();
+const props = withDefaults(defineProps<Props>(), { exportName: "roadmap-dag" });
+
+const svgRef: Ref<SVGSVGElement | null> = ref<SVGSVGElement | null>(null);
+const { exporting, exportSvg, exportPng } = useGraphExport();
+const hasGraph: ComputedRef<boolean> = computed<boolean>(() => props.nodes.length > 0);
+
+async function onExportSvg(): Promise<void> {
+  await exportSvg(svgRef.value, `${props.exportName}-topology`);
+}
+async function onExportPng(): Promise<void> {
+  await exportPng(svgRef.value, `${props.exportName}-topology`);
+}
 
 defineEmits<{
   (e: "select", id: string): void;

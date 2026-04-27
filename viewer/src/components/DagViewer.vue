@@ -1,6 +1,21 @@
 <template>
   <div class="dag-viewer" :class="{ 'dag-viewer--tablet': tablet }">
+    <div v-if="hasGraph" class="dag-viewer__toolbar">
+      <button
+        type="button"
+        class="dag-viewer__btn"
+        :disabled="exporting"
+        @click="onExportSvg"
+      >Export SVG</button>
+      <button
+        type="button"
+        class="dag-viewer__btn"
+        :disabled="exporting"
+        @click="onExportPng"
+      >Export PNG</button>
+    </div>
     <svg
+      ref="svgRef"
       :viewBox="`0 0 ${layout.width} ${layout.height}`"
       :width="layout.width"
       :height="layout.height"
@@ -66,16 +81,28 @@
 import { computed, ref } from "vue";
 import type { ComputedRef, Ref } from "vue";
 import type { DagLayout, LaidOutEdge, LaidOutNode } from "../composables/useDagLayout";
+import { useGraphExport } from "../composables/useGraphExport";
 
 interface Props {
   layout: DagLayout;
   tablet?: boolean;
+  exportName?: string;
 }
 
-const props = withDefaults(defineProps<Props>(), { tablet: false });
+const props = withDefaults(defineProps<Props>(), { tablet: false, exportName: "roadmap-dag" });
 const emit = defineEmits<{ (event: "node-selected", nodeId: string): void }>();
 
 const hoveredId: Ref<string | null> = ref<string | null>(null);
+const svgRef: Ref<SVGSVGElement | null> = ref<SVGSVGElement | null>(null);
+const { exporting, exportSvg, exportPng } = useGraphExport();
+const hasGraph: ComputedRef<boolean> = computed<boolean>(() => props.layout.nodes.length > 0);
+
+async function onExportSvg(): Promise<void> {
+  await exportSvg(svgRef.value, `${props.exportName}-hierarchical`);
+}
+async function onExportPng(): Promise<void> {
+  await exportPng(svgRef.value, `${props.exportName}-hierarchical`);
+}
 
 const directDeps: ComputedRef<Set<string>> = computed<Set<string>>(() => {
   const current = hoveredId.value;
@@ -129,12 +156,32 @@ function emitClick(nodeId: string): void {
 
 <style scoped>
 .dag-viewer {
+  position: relative;
   overflow: auto;
   width: 100%;
   height: 100%;
   background: var(--chrome-05, #0a0a0a);
   border: 1px solid var(--chrome-25, #333);
 }
+.dag-viewer__toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 4px;
+  z-index: 2;
+}
+.dag-viewer__btn {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  background: var(--chrome-10, #151515);
+  color: var(--text-primary, #eee);
+  border: 1px solid var(--chrome-25, #333);
+  cursor: pointer;
+}
+.dag-viewer__btn:hover { border-color: var(--accent-red, #d33); }
+.dag-viewer__btn:disabled { opacity: 0.5; cursor: wait; }
 .dag-svg { display: block; font-family: var(--font-mono, ui-monospace, monospace); }
 .edge {
   stroke: var(--chrome-30, #444);
