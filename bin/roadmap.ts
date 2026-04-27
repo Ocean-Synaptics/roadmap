@@ -86,6 +86,12 @@ if (!KNOWN_COMMANDS.has(cmd)) {
 
 // --- Per-command --help ---
 if (args.slice(1).some(a => a === '--help' || a === '-h')) {
+  if (cmd === 'viewer') {
+    // viewer prints its own structured help (flags incl. --host-repo, examples)
+    // run() is sync up to its first emit() for the --help branch.
+    await cliViewer.run(args, repoRoot, '', _outputOpts);
+    process.exit(0);
+  }
   showCommandHelp();
   process.exit(0);
 }
