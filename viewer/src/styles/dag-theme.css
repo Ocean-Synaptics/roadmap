@@ -1,0 +1,233 @@
+/*
+ * DAG Theme — Poster-H visual primitives ported to CSS.
+ *
+ * Source:
+ *   /home/griffin/src/ml-prague/poster/mlprague-poster-H.typ
+ *   /home/griffin/src/ml-prague/render-harness/typst/profiles/mythic.typ
+ *
+ * The poster uses gold foil + holographic rainbow over dark ink. Here we
+ * reproduce the foil borders, drop shadows, and the IN-PROGRESS rainbow
+ * conic-gradient + glow-modulate animation. SVG nodes get an animated
+ * dashoffset stroke; HTML containers get the conic-gradient mask trick.
+ *
+ * Tokens (poster-mythic ↔ dashboard mapping):
+ *   --ink-dark   #1A1D28  (mythic.ink-dark)
+ *   --ink-white  #FFFFFF  (mythic.ink-white) — display purposes only
+ *   --ink-dim    #B8B0A0  (mythic.ink-dim)
+ *   --foil       #D7A432  (mythic.gold)
+ */
+
+:root {
+  /* Poster-H ink palette */
+  --ink-dark:   #1A1D28;
+  --ink-white:  #F5F2E8;
+  --ink-dim:    #B8B0A0;
+  --ink-faint:  #706858;
+
+  /* Foil — gold at full coverage and reduced */
+  --foil:       #D7A432;
+  --foil-90:    rgba(215, 164, 50, 0.9);
+  --foil-50:    rgba(215, 164, 50, 0.5);
+  --foil-30:    rgba(215, 164, 50, 0.3);
+
+  /* Card fill — ink-dark lifted and held semi-translucent */
+  --card-fill:  rgba(28, 31, 42, 0.85);
+
+  /* Rainbow holo stops — muted toward warm gray (matches poster-H mute()) */
+  --rainbow-1: #C68080;  /* red */
+  --rainbow-2: #C69870;  /* orange */
+  --rainbow-3: #C6BC70;  /* gold */
+  --rainbow-4: #80C690;  /* green */
+  --rainbow-5: #70AAC6;  /* blue */
+  --rainbow-6: #9080C6;  /* purple */
+
+  /* Shadows */
+  --shadow-soft:   rgba(0, 0, 0, 0.6);
+  --shadow-deep:   rgba(0, 0, 0, 0.8);
+
+  /* RED-honest signal */
+  --red-honest:    #C81E2C;
+
+  /* Animation timings */
+  --dag-glow-period:    2.4s;
+  --dag-rotate-period:  6s;
+  --dag-march-period:   1.6s;
+}
+
+/* @property enables animating the conic-gradient angle (Chrome 85+, Firefox 128+) */
+@property --dag-angle {
+  syntax: "<angle>";
+  initial-value: 0deg;
+  inherits: false;
+}
+
+/* ── HTML in-progress wrapper · conic-gradient foil halo ─────────── */
+/* Used on the tooltip-pane and any HTML containers that mirror node state. */
+.dag-foil-halo {
+  position: relative;
+  border-radius: 0;
+}
+.dag-foil-halo::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  pointer-events: none;
+  background: conic-gradient(
+    from var(--dag-angle),
+    var(--rainbow-1), var(--rainbow-2), var(--rainbow-3),
+    var(--rainbow-4), var(--rainbow-5), var(--rainbow-6), var(--rainbow-1)
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+          mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+          mask-composite: exclude;
+  border-radius: 0;
+  opacity: 0.55;
+  animation: dag-rotate-border var(--dag-rotate-period) linear infinite;
+  z-index: 0;
+}
+
+@keyframes dag-rotate-border {
+  to { --dag-angle: 360deg; }
+}
+
+@keyframes dag-glow-modulate {
+  0%, 100% { box-shadow: 0 0 16px var(--foil-50), 6px 6px 0 var(--shadow-soft); }
+  50%      { box-shadow: 0 0 32px var(--foil-90), 6px 6px 0 var(--shadow-soft); }
+}
+
+/* ── SVG · per-node primitives ───────────────────────────────────── */
+/* Drop shadows: applied via filter to node groups. Defined per status in
+   DagViewer's <defs>. The shadow offsets and blurs live there. */
+
+/* Foil border colors for SVG node-rect strokes. Stroke widths set in
+   component CSS so per-status differences (dashed/double-thickness) read. */
+.dag-svg .node-rect {
+  stroke: var(--foil-30);
+  stroke-width: 1;
+  fill: var(--card-fill);
+  shape-rendering: crispEdges;
+}
+.dag-svg .node--done .node-rect {
+  stroke: var(--foil-30);
+  stroke-width: 1;
+  fill: rgba(40, 60, 50, 0.85);
+}
+.dag-svg .node--ready .node-rect {
+  stroke: var(--foil);
+  stroke-width: 1;
+  fill: var(--card-fill);
+}
+.dag-svg .node--in-progress .node-rect {
+  stroke: var(--foil);
+  stroke-width: 1.5;
+  fill: rgba(60, 50, 30, 0.85);
+}
+.dag-svg .node--blocked .node-rect {
+  stroke: var(--ink-dim);
+  stroke-width: 1;
+  stroke-dasharray: 4 3;
+  fill: var(--card-fill);
+}
+.dag-svg .node--plan-mode .node-rect,
+.dag-svg .node--gbd-r43 .node-rect {
+  stroke: var(--foil);
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  fill: var(--card-fill);
+}
+.dag-svg .node--red-honest .node-rect {
+  stroke: var(--red-honest);
+  stroke-width: 2;
+  fill: rgba(60, 30, 30, 0.85);
+}
+.dag-svg .node--selected .node-rect {
+  stroke: var(--foil);
+  stroke-width: 2.5;
+  filter: drop-shadow(8px 8px 0 var(--shadow-deep));
+}
+
+/* Animated rainbow stroke for in-progress (SVG fallback to conic-gradient) */
+.dag-svg .node--in-progress .node-rainbow-rect {
+  fill: none;
+  stroke-width: 2;
+  stroke-dasharray: 8 6;
+  stroke: url(#dag-rainbow-stroke);
+  animation:
+    dag-march var(--dag-march-period) linear infinite,
+    dag-glow-modulate var(--dag-glow-period) ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes dag-march {
+  to { stroke-dashoffset: -28; }
+}
+
+/* Edge styling — thin gold lines, march on active dispatch */
+.dag-svg .edge {
+  stroke: var(--foil-30);
+  stroke-width: 1;
+  fill: none;
+  transition: stroke 150ms, opacity 150ms;
+}
+.dag-svg .edge--active {
+  stroke: var(--foil);
+  stroke-width: 1;
+  opacity: 0.4;
+  stroke-dasharray: 4 3;
+  animation: dag-march var(--dag-march-period) linear infinite;
+}
+.dag-svg .edge--dim { opacity: 0.15; }
+
+/* ── SVG · text · small-caps mono with gold base ─────────────────── */
+.dag-svg .node-id {
+  fill: var(--foil);
+  font-family: 'Fira Code', ui-monospace, 'Cascadia Code', Consolas, monospace;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  font-feature-settings: "smcp", "c2sc";
+  pointer-events: none;
+}
+.dag-svg .node-status {
+  fill: var(--ink-dim);
+  font-family: 'Fira Code', ui-monospace, monospace;
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  pointer-events: none;
+}
+
+/* Selected text gets the mono-rainbow shimmer (poster-H punch-text port) */
+.dag-svg .node--selected .node-id {
+  fill: var(--foil);
+  paint-order: stroke fill;
+  stroke: rgba(0, 0, 0, 0.3);
+  stroke-width: 0.5px;
+  filter: drop-shadow(2px 2px 0 rgba(0, 0, 0, 0.55));
+}
+.dag-svg .node--selected .node-id-shimmer {
+  fill: url(#dag-rainbow-text);
+  font-family: 'Fira Code', ui-monospace, monospace;
+  font-weight: 500;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+  font-feature-settings: "smcp", "c2sc";
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+/* ── Reduced motion ──────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .dag-foil-halo::before,
+  .dag-svg .node--in-progress .node-rainbow-rect,
+  .dag-svg .edge--active {
+    animation: none !important;
+  }
+  .dag-foil-halo::before { opacity: 0.45; }
+}
+</content>
+</invoke>

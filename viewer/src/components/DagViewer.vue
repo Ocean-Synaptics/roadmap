@@ -31,6 +31,20 @@
             <feMergeNode in="SourceGraphic" />
           </feMerge>
         </filter>
+        <linearGradient id="dag-rainbow-stroke" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#C68080" />
+          <stop offset="20%" stop-color="#C69870" />
+          <stop offset="40%" stop-color="#C6BC70" />
+          <stop offset="60%" stop-color="#80C690" />
+          <stop offset="80%" stop-color="#70AAC6" />
+          <stop offset="100%" stop-color="#9080C6" />
+        </linearGradient>
+        <linearGradient id="dag-rainbow-text" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#C68080" />
+          <stop offset="33%" stop-color="#C6BC70" />
+          <stop offset="66%" stop-color="#80C690" />
+          <stop offset="100%" stop-color="#9080C6" />
+        </linearGradient>
       </defs>
 
       <g class="edges">
@@ -54,16 +68,30 @@
           :filter="node.isFrontier ? 'url(#dag-frontier-glow)' : undefined"
           @mouseenter="hoveredId = node.id"
           @mouseleave="clearHover"
-          @click="emitClick(node.id)"
+          @click.stop="emitClick(node.id, $event)"
         >
           <rect
             :width="node.width"
             :height="node.height"
-            rx="4"
-            ry="4"
+            rx="0"
+            ry="0"
             class="node-rect"
           />
+          <rect
+            v-if="node.status === 'in-progress'"
+            :width="node.width"
+            :height="node.height"
+            rx="0"
+            ry="0"
+            class="node-rainbow-rect"
+          />
           <text :x="8" :y="18" class="node-id">{{ node.id }}</text>
+          <text
+            v-if="selectedNodeId === node.id"
+            :x="8"
+            :y="18"
+            class="node-id-shimmer"
+          >{{ node.id }}</text>
           <text v-if="!tablet" :x="8" :y="36" class="node-status">{{ node.status }}</text>
         </g>
       </g>
@@ -87,10 +115,17 @@ interface Props {
   layout: DagLayout;
   tablet?: boolean;
   exportName?: string;
+  selectedNodeId?: string;
 }
 
-const props = withDefaults(defineProps<Props>(), { tablet: false, exportName: "roadmap-dag" });
-const emit = defineEmits<{ (event: "node-selected", nodeId: string): void }>();
+const props = withDefaults(defineProps<Props>(), {
+  tablet: false,
+  exportName: "roadmap-dag",
+  selectedNodeId: "",
+});
+const emit = defineEmits<{
+  (event: "node-selected", nodeId: string, anchorRect: DOMRect): void;
+}>();
 
 const hoveredId: Ref<string | null> = ref<string | null>(null);
 const svgRef: Ref<SVGSVGElement | null> = ref<SVGSVGElement | null>(null);
@@ -125,6 +160,7 @@ function nodeClass(node: LaidOutNode): Record<string, boolean> {
   return {
     [`node--${node.status}`]: true,
     "node--frontier": node.isFrontier,
+    "node--selected": props.selectedNodeId === id,
     "node--hovered": hoveredId.value === id,
     "node--related":
       hoveredId.value !== null && (directDeps.value.has(id) || directDependents.value.has(id)),
@@ -149,8 +185,10 @@ function clearHover(): void {
   hoveredId.value = null;
 }
 
-function emitClick(nodeId: string): void {
-  emit("node-selected", nodeId);
+function emitClick(nodeId: string, ev: MouseEvent): void {
+  const target = ev.currentTarget as SVGGraphicsElement | null;
+  const rect = target ? target.getBoundingClientRect() : new DOMRect(ev.clientX, ev.clientY, 0, 0);
+  emit("node-selected", nodeId, rect);
 }
 </script>
 

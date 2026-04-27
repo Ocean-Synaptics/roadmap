@@ -14,6 +14,9 @@ import NodeSidePanel from "./components/NodeSidePanel.vue";
 import type { InspectedNode } from "./components/NodeSidePanel.vue";
 import DagViewer from "./components/DagViewer.vue";
 import DagTopology from "./components/DagTopology.vue";
+import NodeTooltipPane from "./components/NodeTooltipPane.vue";
+import { onMounted, onUnmounted } from "vue";
+import type { AnchorRect } from "./composables/useTooltipPosition";
 import { useDagPayload } from "./services/dagReader";
 import { DEFAULT_LAYOUT_OPTIONS, useDagLayout } from "./composables/useDagLayout";
 import {
@@ -62,9 +65,69 @@ const selectedNode: ComputedRef<InspectedNode | null> = computed(() => {
   return n as unknown as InspectedNode;
 });
 
-function onNodeSelected(nodeId: string): void {
-  selectedNodeId.value = nodeId;
+// Tooltip-pane state — click → adjacent tooltip; "pin to side" promotes
+// the content into the persistent NodeSidePanel. Side panel no longer
+// auto-opens on click.
+const tooltipNodeId: Ref<string> = ref<string>("");
+const tooltipAnchor: Ref<AnchorRect | null> = ref<AnchorRect | null>(null);
+const tooltipExpanded: Ref<boolean> = ref<boolean>(false);
+const tooltipNode: ComputedRef<InspectedNode | null> = computed(() => {
+  const p = payload.value;
+  if (p === null || !tooltipNodeId.value) return null;
+  const n = p.head.nodes[tooltipNodeId.value];
+  if (!n) return null;
+  return n as unknown as InspectedNode;
+});
+const tooltipNodeData = computed<(Record<string, unknown> & { id: string }) | null>(() => {
+  const n = tooltipNode.value;
+  return n === null ? null : (n as unknown as Record<string, unknown> & { id: string });
+});
+
+function onNodeSelected(nodeId: string, anchorRect?: DOMRect): void {
+  tooltipNodeId.value = nodeId;
+  tooltipExpanded.value = false;
+  if (anchorRect) {
+    tooltipAnchor.value = {
+      top: anchorRect.top,
+      left: anchorRect.left,
+      right: anchorRect.right,
+      bottom: anchorRect.bottom,
+      width: anchorRect.width,
+      height: anchorRect.height,
+    };
+  }
 }
+
+function dismissTooltip(): void {
+  tooltipNodeId.value = "";
+  tooltipAnchor.value = null;
+  tooltipExpanded.value = false;
+}
+
+function pinTooltipToSide(): void {
+  if (tooltipNodeId.value) selectedNodeId.value = tooltipNodeId.value;
+  dismissTooltip();
+}
+
+function onGlobalClick(ev: MouseEvent): void {
+  if (!tooltipNodeId.value) return;
+  const t = ev.target as HTMLElement | null;
+  if (!t) return;
+  if (t.closest(".dag-tooltip")) return;
+  if (t.closest(".node")) return;
+  dismissTooltip();
+}
+function onGlobalKey(ev: KeyboardEvent): void {
+  if (ev.key === "Escape" && tooltipNodeId.value) dismissTooltip();
+}
+onMounted(() => {
+  window.addEventListener("click", onGlobalClick, true);
+  window.addEventListener("keydown", onGlobalKey);
+});
+onUnmounted(() => {
+  window.removeEventListener("click", onGlobalClick, true);
+  window.removeEventListener("keydown", onGlobalKey);
+});
 
 // raw inspector (collapsed by default — DAG is the headline)
 const detailsOpen: Ref<boolean> = ref<boolean>(false);
@@ -115,8 +178,17 @@ const dagId: ComputedRef<string> = computed<string>(() =>
       <DagViewer
         v-if="viewMode === 'hierarchical'"
         :layout="layout"
+        :selected-node-id="tooltipNodeId || selectedNodeId"
         export-name="roadmap-dag"
         @node-selected="onNodeSelected"
+      />
+      <NodeTooltipPane
+        :node-data="tooltipNodeData"
+        :anchor-rect="tooltipAnchor"
+        :expanded="tooltipExpanded"
+        @close="dismissTooltip"
+        @expand="tooltipExpanded = !tooltipExpanded"
+        @pin-to-side="pinTooltipToSide"
       />
       <DagTopology
         v-else
