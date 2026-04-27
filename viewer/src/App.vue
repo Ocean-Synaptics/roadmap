@@ -85,6 +85,7 @@ const tooltipNodeData = computed<(Record<string, unknown> & { id: string }) | nu
 
 function onNodeSelected(nodeId: string, anchorRect?: DOMRect): void {
   tooltipNodeId.value = nodeId;
+  selectedNodeId.value = nodeId;
   tooltipExpanded.value = false;
   if (anchorRect) {
     tooltipAnchor.value = {
