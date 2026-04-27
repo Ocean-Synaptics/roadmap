@@ -1,463 +1,784 @@
 {
-  "id": "roadmap-r1-skill-maintenance-viewer-migration",
-  "desc": "Roadmap engine repo · r1 · skill-template hygiene + fleet-dashboard → roadmap-viewer migration. Plumbing-and-cleanup round: merge feat/stance-register-skills, sync templates with live skills, port the untracked roadmap-night template, register `roadmap viewer` as a first-class subcommand (PLAN-MODE expansion at runtime), refresh docs, capture LATE doctrine on §Skill-template-must-match-live and §Roadmap-viewer-as-first-class-subcommand. Narrower-by-design than fleet rounds — engine repo owns its own round, fleet's lane registry knits them.",
-  "init": "init",
-  "term": "term-r1",
+  "id": "roadmap-r1.5-viewer-extract-and-skill-sweep",
+  "desc": "r1.5 sub-DAG · expansion of viewer-decompose-plan per Griffin-directed scope. Two parallel sweeps: (A) skill-template parity for the 21 live skills currently lacking templates (finite, mechanical, per-skill node); (B) extract fleet's dashboard out of /home/griffin/src/fleet/dashboard/ into this repo at ./viewer/, then rebuild it roadmap-FIRST with a strictly nicer UX than fleet's (real-time DAG topology · per-node side panel · cross-lane rollup · trail timeline · search/filter · dark+light · PNG/SVG export). Migrate realtimeBridge off hard-coded fleet paths to read host-repo `.roadmap/`. Closes with per-page convergence loop on the new viewer.",
+  "init": "viewer-extract-init",
+  "term": "viewer-r1.5-validator",
   "nodes": {
-    "init": {
-      "id": "init",
-      "desc": "Synthetic init — roots all independent tasks",
+    "viewer-extract-init": {
+      "id": "viewer-extract-init",
+      "desc": "Synthetic init for r1.5. Creates the ./viewer/ directory in /home/griffin/src/.dev/roadmap and writes a placeholder marker. Both sweeps (skill-template parity · dashboard extract) root from this init.",
       "produces": [
-        "init.marker"
+        "viewer/.r1.5-init.marker"
       ],
       "consumes": [],
       "deps": [],
-      "validate": [],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "viewer/.r1.5-init.marker"
+        }
+      ],
       "idempotent": true
     },
-    "pr-merge-stance-register": {
-      "id": "pr-merge-stance-register",
-      "desc": "Merge feat/stance-register-skills → main. Open or update the PR (https://github.com/Ocean-Synaptics/roadmap/pull/new/feat/stance-register-skills), self-review the /stance-register diff against templates/skills/{roadmap-spec,roadmap-auto}.md, fast-merge with squash. If the branch is explicitly retained as a long-lived feat branch, write a named-successor reason into the receipt instead. Pre-commit hook blocks main; merge must go through the PR path.",
+    "skill-template-bug-class-hunting": {
+      "id": "skill-template-bug-class-hunting",
+      "desc": "Author templates/skills/bug-class-hunting.md by reading ~/.claude/skills/bug-class-hunting/SKILL.md and committing a byte-identical (or banner-augmented) template. Owned-by-roadmap-engine question: this skill is currently live-only · decide if roadmap-engine should own its template (yes if cited from roadmap-spec/auto/orient/term/threads/night skill family). Receipt records ownership decision.",
       "produces": [
-        ".roadmap/round-1/d-pr-merge-stance-register.json"
+        "templates/skills/bug-class-hunting.md",
+        ".roadmap/round-1.5/d-skill-template-bug-class-hunting.json"
       ],
-      "consumes": [
-        "init.marker"
-      ],
+      "consumes": [],
       "deps": [
-        "init"
+        "viewer-extract-init"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-pr-merge-stance-register.json"
+          "target": ".roadmap/round-1.5/d-skill-template-bug-class-hunting.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-core-loop": {
+      "id": "skill-template-core-loop",
+      "desc": "Author templates/skills/core-loop.md from live ~/.claude/skills/core-loop/SKILL.md. Cited by user-global CLAUDE.md as §Core-loop summary pointer; high-value template to ship.",
+      "produces": [
+        "templates/skills/core-loop.md",
+        ".roadmap/round-1.5/d-skill-template-core-loop.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-core-loop.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-cross-page-sweep": {
+      "id": "skill-template-cross-page-sweep",
+      "desc": "Author templates/skills/cross-page-sweep.md from live SKILL.md. Sibling to core-loop; cited in user-global CLAUDE.md.",
+      "produces": [
+        "templates/skills/cross-page-sweep.md",
+        ".roadmap/round-1.5/d-skill-template-cross-page-sweep.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-cross-page-sweep.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-demo": {
+      "id": "skill-template-demo",
+      "desc": "Author templates/skills/demo.md from live SKILL.md. Trivial scaffolding skill; ship template for completeness.",
+      "produces": [
+        "templates/skills/demo.md",
+        ".roadmap/round-1.5/d-skill-template-demo.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-demo.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-fleet-doctrine": {
+      "id": "skill-template-fleet-doctrine",
+      "desc": "Author templates/skills/fleet-doctrine.md from live SKILL.md. Fleet-owned · ownership decision likely PUNT to fleet repo · receipt records punt rationale if so (don't fabricate parity).",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-fleet-doctrine.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-fleet-doctrine.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-fleet-doctrine-history": {
+      "id": "skill-template-fleet-doctrine-history",
+      "desc": "Author templates/skills/fleet-doctrine-history.md from live SKILL.md. Same fleet-ownership question as fleet-doctrine; likely PUNT.",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-fleet-doctrine-history.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-fleet-doctrine-history.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-griffin-voice": {
+      "id": "skill-template-griffin-voice",
+      "desc": "Author templates/skills/griffin-voice.md from live SKILL.md. User-global · decide if roadmap-engine ships it or punts to user-global skills repo.",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-griffin-voice.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-griffin-voice.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-keel-boundary-thesis": {
+      "id": "skill-template-keel-boundary-thesis",
+      "desc": "Author templates/skills/keel-boundary-thesis.md from live SKILL.md. Fleet-owned doctrine; PUNT candidate.",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-keel-boundary-thesis.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-keel-boundary-thesis.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-linear-audit": {
+      "id": "skill-template-linear-audit",
+      "desc": "Author templates/skills/linear-audit.md from live SKILL.md. Fleet-specific Linear protocol; PUNT candidate.",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-linear-audit.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-linear-audit.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-meta-directives": {
+      "id": "skill-template-meta-directives",
+      "desc": "Author templates/skills/meta-directives.md from live SKILL.md. Cross-cutting (cited in fleet CLAUDE.md AND user-global). Ship in roadmap-engine because the 8 directives govern any agent loop.",
+      "produces": [
+        "templates/skills/meta-directives.md",
+        ".roadmap/round-1.5/d-skill-template-meta-directives.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-meta-directives.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-pcode-ir-lowering": {
+      "id": "skill-template-pcode-ir-lowering",
+      "desc": "Author templates/skills/pcode-ir-lowering.md from live SKILL.md. Fleet-specific Ghidra/IR doctrine; PUNT candidate.",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-pcode-ir-lowering.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-pcode-ir-lowering.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-peon-ping-config": {
+      "id": "skill-template-peon-ping-config",
+      "desc": "Author templates/skills/peon-ping-config.md from live SKILL.md. User-global UX skill; PUNT candidate to peon-ping repo.",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-peon-ping-config.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-peon-ping-config.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-peon-ping-log": {
+      "id": "skill-template-peon-ping-log",
+      "desc": "Author templates/skills/peon-ping-log.md from live SKILL.md. PUNT candidate.",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-peon-ping-log.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-peon-ping-log.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-peon-ping-toggle": {
+      "id": "skill-template-peon-ping-toggle",
+      "desc": "Author templates/skills/peon-ping-toggle.md from live SKILL.md. PUNT candidate.",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-peon-ping-toggle.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-peon-ping-toggle.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-peon-ping-use": {
+      "id": "skill-template-peon-ping-use",
+      "desc": "Author templates/skills/peon-ping-use.md from live SKILL.md. PUNT candidate.",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-peon-ping-use.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-peon-ping-use.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-per-page-convergence": {
+      "id": "skill-template-per-page-convergence",
+      "desc": "Author templates/skills/per-page-convergence.md from live SKILL.md. Used DIRECTLY by the viewer convergence loop in this same DAG; ship template.",
+      "produces": [
+        "templates/skills/per-page-convergence.md",
+        ".roadmap/round-1.5/d-skill-template-per-page-convergence.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-per-page-convergence.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-pipeline-thesis": {
+      "id": "skill-template-pipeline-thesis",
+      "desc": "Author templates/skills/pipeline-thesis.md from live SKILL.md. Fleet-specific; PUNT candidate.",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-pipeline-thesis.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-pipeline-thesis.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-pixel-diffuse": {
+      "id": "skill-template-pixel-diffuse",
+      "desc": "Author templates/skills/pixel-diffuse.md from live SKILL.md. Fleet-specific; PUNT candidate.",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-pixel-diffuse.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-pixel-diffuse.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-rovmk3-thesis": {
+      "id": "skill-template-rovmk3-thesis",
+      "desc": "Author templates/skills/rovmk3-thesis.md from live SKILL.md. Fleet-specific; PUNT candidate.",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-rovmk3-thesis.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-rovmk3-thesis.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-sift-review": {
+      "id": "skill-template-sift-review",
+      "desc": "Author templates/skills/sift-review.md from live SKILL.md. C++ review · fleet-specific; PUNT candidate.",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-sift-review.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-sift-review.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-stance": {
+      "id": "skill-template-stance",
+      "desc": "Author templates/skills/stance.md from live SKILL.md. User-global voice doctrine; ship in roadmap-engine because /stance register is invoked by roadmap-spec/auto.",
+      "produces": [
+        "templates/skills/stance.md",
+        ".roadmap/round-1.5/d-skill-template-stance.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-extract-init"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-stance.json"
+        }
+      ],
+      "idempotent": true
+    },
+    "skill-template-sweep-validator": {
+      "id": "skill-template-sweep-validator",
+      "desc": "Aggregator + validator for the 21 skill-template nodes. Re-run skill-audit on the populated templates/ tree, emit a delta report: {authored, punted_with_reason, still_missing}. Asserts authored + punted == 21 (no dropped intent). §Honest-zero discipline: punted-with-reason is GREEN, dropped-without-reason is RED.",
+      "produces": [
+        ".roadmap/round-1.5/d-skill-template-sweep-validator.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "skill-template-bug-class-hunting",
+        "skill-template-core-loop",
+        "skill-template-cross-page-sweep",
+        "skill-template-demo",
+        "skill-template-fleet-doctrine",
+        "skill-template-fleet-doctrine-history",
+        "skill-template-griffin-voice",
+        "skill-template-keel-boundary-thesis",
+        "skill-template-linear-audit",
+        "skill-template-meta-directives",
+        "skill-template-pcode-ir-lowering",
+        "skill-template-peon-ping-config",
+        "skill-template-peon-ping-log",
+        "skill-template-peon-ping-toggle",
+        "skill-template-peon-ping-use",
+        "skill-template-per-page-convergence",
+        "skill-template-pipeline-thesis",
+        "skill-template-pixel-diffuse",
+        "skill-template-rovmk3-thesis",
+        "skill-template-sift-review",
+        "skill-template-stance"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": ".roadmap/round-1.5/d-skill-template-sweep-validator.json"
         },
         {
           "type": "shell",
-          "command": "git log --oneline main | head -5 | grep -qi 'stance.*register\\|register.*skills' || echo retained-as-feat-branch"
+          "command": "jq -e '(.authored + .punted_with_reason) == 21' .roadmap/round-1.5/d-skill-template-sweep-validator.json"
         }
       ],
       "idempotent": true
     },
-    "skill-port-roadmap-night": {
-      "id": "skill-port-roadmap-night",
-      "desc": "Port live ~/.claude/skills/roadmap-night/SKILL.md (179 lines) into templates/skills/roadmap-night.md. The file is currently untracked and a prior session left it there; this commits the synced version. Diff-empty between live and template after this node.",
+    "viewer-extract-scaffold": {
+      "id": "viewer-extract-scaffold",
+      "desc": "Create ./viewer/ as a sibling to ./templates/ in the roadmap-engine repo. Initialize package.json (vue@^3.4 + vue-router@^4.6 + pinia@^2.1 + vite@^7 + vitest@^4 + tailwindcss@^4 · mirror fleet/dashboard manifest deps), tsconfig.json, vite.config.ts (no fleet hard-codes — host repo discovered via env or CLI flag), index.html, src/main.ts, src/App.vue placeholder. NO copy from fleet yet · just the empty shell.",
       "produces": [
-        "templates/skills/roadmap-night.md",
-        ".roadmap/round-1/d-skill-port-roadmap-night.json"
+        "viewer/package.json",
+        "viewer/tsconfig.json",
+        "viewer/vite.config.ts",
+        "viewer/index.html",
+        "viewer/src/main.ts",
+        "viewer/src/App.vue",
+        ".roadmap/round-1.5/d-viewer-extract-scaffold.json"
       ],
-      "consumes": [
-        "init.marker"
-      ],
+      "consumes": [],
       "deps": [
-        "init"
+        "viewer-extract-init"
       ],
       "validate": [
         {
-          "type": "artifact-exists",
-          "target": "templates/skills/roadmap-night.md"
+          "type": "shell",
+          "command": "test -f viewer/package.json && test -f viewer/vite.config.ts"
         },
         {
           "type": "shell",
-          "command": "diff -q ~/.claude/skills/roadmap-night/SKILL.md templates/skills/roadmap-night.md"
+          "command": "cd viewer && pnpm install --frozen-lockfile=false && pnpm exec vue-tsc --noEmit"
         }
       ],
       "idempotent": true
     },
-    "skill-audit-diff-empty": {
-      "id": "skill-audit-diff-empty",
-      "desc": "Diff every templates/skills/*.md against its corresponding live skill at ~/.claude/skills/<name>/SKILL.md. Produce a desync report: which templates need sync, which are diff-empty, which lack a live counterpart (templates that aren't installed). §Underused-IR-verb-audit analog applied to skills. Don't ship desync — open follow-up nodes if any survive.",
+    "viewer-port-core-readers": {
+      "id": "viewer-port-core-readers",
+      "desc": "Port the core-viewer readers from fleet/dashboard into viewer/src/services/: dagReader{,server}.ts, roadmapReader{,server}.ts, trailReader{,server}.ts. Generalize: replace any /home/griffin/src/fleet hard-codes with a HOST_REPO env (default cwd). Keep the test files (.test.ts) — port them too and adapt fixtures to the roadmap-engine repo's own .roadmap/ as a self-test corpus.",
       "produces": [
-        ".roadmap/round-1/d-skill-audit-report.json"
+        "viewer/src/services/dagReader.ts",
+        "viewer/src/services/dagReader.server.ts",
+        "viewer/src/services/roadmapReader.ts",
+        "viewer/src/services/roadmapReader.server.ts",
+        "viewer/src/services/trailReader.ts",
+        "viewer/src/services/trailReader.server.ts",
+        ".roadmap/round-1.5/d-viewer-port-core-readers.json"
       ],
       "consumes": [],
       "deps": [
-        "skill-port-roadmap-night",
-        "pr-merge-stance-register"
+        "viewer-extract-scaffold"
       ],
       "validate": [
         {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-skill-audit-report.json"
+          "type": "shell",
+          "command": "cd viewer && pnpm vitest run src/services/dagReader.test.ts src/services/roadmapReader.test.ts"
         },
         {
           "type": "shell",
-          "command": "jq -e '.diff_empty == true or (.desync_count | tonumber) == 0' .roadmap/round-1/d-skill-audit-report.json"
+          "command": "! grep -RIn '/home/griffin/src/fleet' viewer/src"
         }
       ],
       "idempotent": true
     },
-    "skill-sync-roadmap-auto": {
-      "id": "skill-sync-roadmap-auto",
-      "desc": "Sync templates/skills/roadmap-auto.md against live ~/.claude/skills/roadmap-auto/SKILL.md (currently differs · likely the /stance register clause not yet round-tripped). Walk both directions: if live has clauses worth templating, pull them in; if template has clauses missing live, push out via /stance register or note divergence rationale.",
+    "viewer-rewrite-realtime-bridge": {
+      "id": "viewer-rewrite-realtime-bridge",
+      "desc": "Rewrite realtimeBridge.ts off fleet's hard-coded paths. New design: SSE server reads HOST_REPO/.roadmap/{head.json,trail.jsonl,completed.json,heads/} via fs.watch · emits a typed event stream with discriminated union (head-changed · trail-appended · node-advanced · batch-rolled). Multi-lane aware: HOST_REPO can be a fleet.json registry pointing at sibling repos · bridge merges streams.",
       "produces": [
-        "templates/skills/roadmap-auto.md",
-        ".roadmap/round-1/d-skill-sync-roadmap-auto.json"
+        "viewer/src/services/realtimeBridge.ts",
+        "viewer/src/services/realtimeBridge.test.ts",
+        ".roadmap/round-1.5/d-viewer-rewrite-realtime-bridge.json"
       ],
       "consumes": [],
       "deps": [
-        "skill-audit-diff-empty"
+        "viewer-extract-scaffold"
       ],
       "validate": [
         {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-skill-sync-roadmap-auto.json"
+          "type": "shell",
+          "command": "cd viewer && pnpm vitest run src/services/realtimeBridge.test.ts"
         },
         {
           "type": "shell",
-          "command": "diff -q ~/.claude/skills/roadmap-auto/SKILL.md templates/skills/roadmap-auto.md"
+          "command": "! grep -n 'fleet' viewer/src/services/realtimeBridge.ts"
         }
       ],
       "idempotent": true
     },
-    "skill-sync-roadmap-spec": {
-      "id": "skill-sync-roadmap-spec",
-      "desc": "Sync templates/skills/roadmap-spec.md against live ~/.claude/skills/roadmap-spec/SKILL.md (currently differs). Same walk as roadmap-auto: bidirectional, prefer-live for newly landed clauses, document divergence if any survives.",
+    "viewer-port-dag-component": {
+      "id": "viewer-port-dag-component",
+      "desc": "Port DagViewer.vue + useDagLayout.ts composable from fleet. Strip any fleet-specific assumptions (e.g. cluster names hard-coded). Render contract: takes typed `dag: DagSnapshot`, emits `nodeSelected(id)`. NO data fetching in component — props in, events out (§Dumb-components).",
       "produces": [
-        "templates/skills/roadmap-spec.md",
-        ".roadmap/round-1/d-skill-sync-roadmap-spec.json"
+        "viewer/src/components/DagViewer.vue",
+        "viewer/src/composables/useDagLayout.ts",
+        ".roadmap/round-1.5/d-viewer-port-dag-component.json"
       ],
       "consumes": [],
       "deps": [
-        "skill-audit-diff-empty"
+        "viewer-port-core-readers"
       ],
       "validate": [
         {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-skill-sync-roadmap-spec.json"
+          "type": "shell",
+          "command": "cd viewer && pnpm exec vue-tsc --noEmit"
         },
         {
           "type": "shell",
-          "command": "diff -q ~/.claude/skills/roadmap-spec/SKILL.md templates/skills/roadmap-spec.md"
+          "command": "! grep -E 'fetch\\(|axios|setTimeout|new XMLHttpRequest' viewer/src/components/DagViewer.vue"
         }
       ],
       "idempotent": true
     },
-    "viewer-locate-fleet-dashboard": {
-      "id": "viewer-locate-fleet-dashboard",
-      "desc": "Locate fleet's roadmap-state dashboard code: /home/griffin/src/fleet/dashboard/ (confirmed exists). Inventory: components, data sources, build pipeline, deps, render entry. Output a manifest naming every file that must travel and every dependency that must be vendored or replaced. §Probe-before-anchor — don't assume structure.",
+    "viewer-build-force-layout": {
+      "id": "viewer-build-force-layout",
+      "desc": "NICER-THAN-FLEET feature #1: force-directed DAG topology layout with d3-force (or equivalent). Interactive zoom/pan · group-by-depth and group-by-cluster toggles. Replaces fleet's static dagre-only layout. Composable: useForceLayout(dag, opts) returns reactive {nodes, edges} positions.",
       "produces": [
-        ".roadmap/round-1/d-viewer-fleet-dashboard-manifest.json"
+        "viewer/src/composables/useForceLayout.ts",
+        "viewer/src/components/DagTopology.vue",
+        ".roadmap/round-1.5/d-viewer-build-force-layout.json"
       ],
-      "consumes": [
-        "init.marker"
-      ],
+      "consumes": [],
       "deps": [
-        "init"
+        "viewer-port-dag-component"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-viewer-fleet-dashboard-manifest.json"
+          "target": "viewer/src/components/DagTopology.vue"
         },
         {
           "type": "shell",
-          "command": "jq -e '.files | length > 0' .roadmap/round-1/d-viewer-fleet-dashboard-manifest.json"
+          "command": "cd viewer && pnpm exec vue-tsc --noEmit"
         }
       ],
       "idempotent": true
     },
-    "template-license-banners": {
-      "id": "template-license-banners",
-      "desc": "Templates carry rainbow banners + emoji headers per /stance form discipline (without /stance being the doctrine source — /stance is voice-not-roadmap-engine). Audit templates/skills/*.md for: (1) opening rainbow banner, (2) emoji section markers, (3) 💀 closer. Fix any drift. /stance walk-back narrowed INFECTION clause to human-facing only — the rainbow-banner styling discipline survives intact.",
+    "viewer-build-node-side-panel": {
+      "id": "viewer-build-node-side-panel",
+      "desc": "NICER feature #2: NodeSidePanel.vue — selecting any DAG node opens a panel with full desc · validators (rendered as checklist with pass/fail icons) · receipt JSON pretty-printed (collapsible jq-like tree) · git log of files in produces[] · live status badge (pending/in-progress/green/red driven off realtimeBridge stream).",
       "produces": [
-        ".roadmap/round-1/d-template-license-banners.json"
+        "viewer/src/components/NodeSidePanel.vue",
+        ".roadmap/round-1.5/d-viewer-build-node-side-panel.json"
       ],
       "consumes": [],
       "deps": [
-        "skill-sync-roadmap-auto",
-        "skill-sync-roadmap-spec",
-        "skill-port-roadmap-night"
+        "viewer-port-dag-component",
+        "viewer-rewrite-realtime-bridge"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-template-license-banners.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "viewer-decompose-plan": {
-      "id": "viewer-decompose-plan",
-      "desc": "PLAN-MODE parent: decompose fleet-dashboard → roadmap-viewer migration into executable sub-nodes based on the manifest. Expansion at runtime — exact sub-node count depends on what fleet's dashboard actually contains. Likely children: vendor-or-link-deps, port-render-entry, adapt-data-source-to-roadmap-context, register-cli-subcommand, smoke-test, docs. Plan-children-executor-doctrine applies: this node's executor ONLY decomposes, doesn't implement.",
-      "produces": [
-        ".roadmap/round-1/d-viewer-decompose-plan.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "viewer-locate-fleet-dashboard"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-viewer-decompose-plan.json"
+          "target": "viewer/src/components/NodeSidePanel.vue"
         },
         {
           "type": "shell",
-          "command": "jq -e '.children | length >= 3' .roadmap/round-1/d-viewer-decompose-plan.json"
+          "command": "! grep -E 'fetch\\(|axios' viewer/src/components/NodeSidePanel.vue"
         }
       ],
-      "idempotent": true,
-      "mode": "plan"
+      "idempotent": true
     },
-    "viewer-cli-subcommand-stub": {
-      "id": "viewer-cli-subcommand-stub",
-      "desc": "Register `roadmap viewer` as a first-class subcommand in src/cli/. Body may be a stub or first-page placeholder this round — the point is to claim the namespace and document the expansion path. `roadmap viewer --help` returns 0 and prints a meaningful help string. §Roadmap-viewer-as-first-class-subcommand lands here.",
+    "viewer-build-cross-lane-rollup": {
+      "id": "viewer-build-cross-lane-rollup",
+      "desc": "NICER feature #3: CrossLaneRollup.vue — reads fleet.json multi-lane registry · per-repo health cards (lane name · DAG id · current batch · ready/blocked count · last-trail-event timestamp) · 7-day throughput sparkline computed from each lane's trail.jsonl. This is the headline differentiator from fleet's dashboard, which is single-repo-centric.",
       "produces": [
-        "src/cli/viewer.ts",
-        ".roadmap/round-1/d-viewer-cli-stub.json"
+        "viewer/src/components/CrossLaneRollup.vue",
+        "viewer/src/services/laneRollupReader.ts",
+        ".roadmap/round-1.5/d-viewer-build-cross-lane-rollup.json"
       ],
       "consumes": [],
       "deps": [
-        "viewer-decompose-plan"
+        "viewer-rewrite-realtime-bridge"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": "src/cli/viewer.ts"
+          "target": "viewer/src/components/CrossLaneRollup.vue"
+        }
+      ],
+      "idempotent": true
+    },
+    "viewer-build-trail-timeline": {
+      "id": "viewer-build-trail-timeline",
+      "desc": "NICER feature #4: TrailTimeline.vue — scrollable virtualized timeline of trail.jsonl events across all lanes. Each event is a row: timestamp · lane · node-id · event-kind · short summary · click-to-jump to NodeSidePanel. Filter chips: by kind, by lane, by date range.",
+      "produces": [
+        "viewer/src/components/TrailTimeline.vue",
+        ".roadmap/round-1.5/d-viewer-build-trail-timeline.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-port-core-readers"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "viewer/src/components/TrailTimeline.vue"
+        }
+      ],
+      "idempotent": true
+    },
+    "viewer-build-search-filter": {
+      "id": "viewer-build-search-filter",
+      "desc": "NICER feature #5: global search/filter bar. Index across all loaded DAGs: by status, owner, tag, anchor cite (e.g. `cite:§Spec-as-typed-knowledge-graph`), free-text on desc. Composable useViewerSearch(query) returns {nodes, trailEvents, lanes} matches.",
+      "produces": [
+        "viewer/src/composables/useViewerSearch.ts",
+        "viewer/src/components/SearchBar.vue",
+        ".roadmap/round-1.5/d-viewer-build-search-filter.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-build-node-side-panel",
+        "viewer-build-trail-timeline"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "viewer/src/components/SearchBar.vue"
+        }
+      ],
+      "idempotent": true
+    },
+    "viewer-build-themes-and-export": {
+      "id": "viewer-build-themes-and-export",
+      "desc": "NICER feature #6+#7: dark/light theme toggle (CSS variables · prefers-color-scheme default · persisted to localStorage) AND PNG/SVG export of current DAG topology view (for paper figures · uses canvas/svg serialization). One node because both are presentation-layer polish.",
+      "produces": [
+        "viewer/src/composables/useTheme.ts",
+        "viewer/src/services/dagExport.ts",
+        ".roadmap/round-1.5/d-viewer-build-themes-and-export.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-build-force-layout"
+      ],
+      "validate": [
+        {
+          "type": "artifact-exists",
+          "target": "viewer/src/services/dagExport.ts"
+        }
+      ],
+      "idempotent": true
+    },
+    "viewer-cli-register-subcommand": {
+      "id": "viewer-cli-register-subcommand",
+      "desc": "Register `roadmap viewer` as a first-class CLI subcommand. Spawns `pnpm --dir viewer dev` (or `vite preview` against viewer/dist if pre-built) with HOST_REPO=$PWD. `roadmap viewer --help` documents flags. Updates roadmap CLI's command registry; help-text in `roadmap help` lists viewer alongside make/orient/advance.",
+      "produces": [
+        "src/cli/commands/viewer.ts",
+        ".roadmap/round-1.5/d-viewer-cli-register-subcommand.json"
+      ],
+      "consumes": [],
+      "deps": [
+        "viewer-build-themes-and-export",
+        "viewer-build-search-filter",
+        "viewer-build-cross-lane-rollup"
+      ],
+      "validate": [
+        {
+          "type": "shell",
+          "command": "roadmap help 2>&1 | grep -q viewer"
         },
         {
           "type": "shell",
-          "command": "node dist/cli.js viewer --help 2>&1 | grep -qi viewer || npx tsx src/cli.ts viewer --help 2>&1 | grep -qi viewer"
+          "command": "roadmap viewer --help 2>&1 | grep -qi 'host.repo\\|HOST_REPO'"
         }
       ],
       "idempotent": true
     },
-    "viewer-vendor-or-link-deps": {
-      "id": "viewer-vendor-or-link-deps",
-      "desc": "Make fleet's dashboard renderable from this repo. Either vendor (copy + license) the dashboard's runtime deps into this repo, or document the cross-repo link path with explicit pre-requisite. Decision recorded with rationale. §Fail-hard — pick ONE canonical path, no graceful both-paths.",
+    "viewer-smoke-test-self-host": {
+      "id": "viewer-smoke-test-self-host",
+      "desc": "Self-hosting smoke test: `roadmap viewer` against this repo's own .roadmap/ MUST render the live r1 DAG · current batch · trail events from the last 24h. Headless-Chromium screenshot diff against an enshrined reference (committed under tests/viewer/baseline/r1-self-host.png · re-baselined by Griffin only).",
       "produces": [
-        ".roadmap/round-1/d-viewer-deps-decision.json"
+        "tests/viewer/self-host.spec.ts",
+        "tests/viewer/baseline/r1-self-host.png",
+        ".roadmap/round-1.5/d-viewer-smoke-test-self-host.json"
       ],
       "consumes": [],
       "deps": [
-        "viewer-decompose-plan"
+        "viewer-cli-register-subcommand"
       ],
       "validate": [
         {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-viewer-deps-decision.json"
+          "type": "shell",
+          "command": "cd viewer && pnpm vitest run tests/viewer/self-host.spec.ts"
         }
       ],
       "idempotent": true
     },
-    "viewer-data-source-adapter": {
-      "id": "viewer-data-source-adapter",
-      "desc": "Adapt fleet's dashboard data source (currently fleet-shaped roadmap state) to roadmap-engine context: read .roadmap/head.json, .roadmap/round-N/, .roadmap/trail.jsonl via existing roadmap CLI/lib functions. Pure adapter — fleet-flavored shape mapped to engine-flavored shape. Tests cover: empty round, partial round, completed round.",
+    "viewer-per-page-convergence": {
+      "id": "viewer-per-page-convergence",
+      "desc": "Apply /per-page-convergence skill to the new viewer. Pages = top-level routes (Topology · Lanes · Trail · Search · NodeDetail). Per-page DAG: enshrined screenshot · functional-clickability checklist · pixel-similarity ≥0.95 against baseline. Closes only when all pages converge OR explicit punt with named successor.",
       "produces": [
-        "src/viewer/data-source.ts",
-        "tests/viewer-data-source.test.ts",
-        ".roadmap/round-1/d-viewer-data-source.json"
+        ".roadmap/round-1.5/d-viewer-convergence-topology.json",
+        ".roadmap/round-1.5/d-viewer-convergence-lanes.json",
+        ".roadmap/round-1.5/d-viewer-convergence-trail.json",
+        ".roadmap/round-1.5/d-viewer-convergence-search.json",
+        ".roadmap/round-1.5/d-viewer-convergence-nodedetail.json",
+        ".roadmap/round-1.5/d-viewer-per-page-convergence.json"
       ],
       "consumes": [],
       "deps": [
-        "viewer-cli-subcommand-stub",
-        "viewer-vendor-or-link-deps"
+        "viewer-smoke-test-self-host"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": "src/viewer/data-source.ts"
+          "target": ".roadmap/round-1.5/d-viewer-per-page-convergence.json"
         },
         {
           "type": "shell",
-          "command": "npx tsx tests/viewer-data-source.test.ts"
+          "command": "jq -e '.pages_converged + .pages_punted_with_successor == 5' .roadmap/round-1.5/d-viewer-per-page-convergence.json"
         }
       ],
       "idempotent": true
     },
-    "doc-audit-readme": {
-      "id": "doc-audit-readme",
-      "desc": "Audit README.md against this round's skill changes and viewer registration. Update sections that mention skill list (now includes roadmap-night), CLI subcommand list (now includes viewer). Don't bloat — additive, surgical edits.",
+    "viewer-r1.5-validator": {
+      "id": "viewer-r1.5-validator",
+      "desc": "Round-terminal validator. Aggregates skill-template-sweep-validator + viewer-per-page-convergence + viewer-smoke-test-self-host into one rollup. Asserts: (a) all 21 skill rows accounted for (authored or punted-with-reason), (b) viewer renders self-host without error, (c) all 5 viewer pages converged-or-punted, (d) NO `/home/griffin/src/fleet` strings in viewer/src/. Emits LATE doctrine §Roadmap-viewer-as-host-repo-renderer if landed GREEN.",
       "produces": [
-        "README.md",
-        ".roadmap/round-1/d-doc-audit-readme.json"
+        ".roadmap/round-1.5/d-viewer-r1.5-validator.json",
+        "docs/roadmap-r1.5-viewer-extract-and-skill-sweep-successor.spec.json"
       ],
       "consumes": [],
       "deps": [
-        "template-license-banners",
-        "viewer-cli-subcommand-stub"
+        "skill-template-sweep-validator",
+        "viewer-per-page-convergence"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-doc-audit-readme.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "doc-audit-claudemd": {
-      "id": "doc-audit-claudemd",
-      "desc": "Audit CLAUDE.md (currently 21295 bytes — already over the conceptual 16K target). Acceptance scenario says ≤16K bytes; either trim toward target or explicitly defer with rationale. §No-doctrine-in-CLAUDE-md applies: pointer file, not doctrine library. Anchored-section mutation only.",
-      "produces": [
-        "CLAUDE.md",
-        ".roadmap/round-1/d-doc-audit-claudemd.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "template-license-banners"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-doc-audit-claudemd.json"
+          "target": ".roadmap/round-1.5/d-viewer-r1.5-validator.json"
         },
         {
           "type": "shell",
-          "command": "test $(wc -c < CLAUDE.md) -le 16384 || jq -e '.deferred == true and (.rationale | length > 0)' .roadmap/round-1/d-doc-audit-claudemd.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "doc-audit-topology": {
-      "id": "doc-audit-topology",
-      "desc": "Audit ROADMAP_TOPOLOGY.txt against post-round state: skill list reflects roadmap-night addition, viewer subcommand registered, template/live sync invariant codified.",
-      "produces": [
-        "ROADMAP_TOPOLOGY.txt",
-        ".roadmap/round-1/d-doc-audit-topology.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "template-license-banners",
-        "viewer-cli-subcommand-stub"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-doc-audit-topology.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "viewer-smoke-test": {
-      "id": "viewer-smoke-test",
-      "desc": "End-to-end smoke: `roadmap viewer` invoked against this repo's own .roadmap/ produces the expected first-page artifact (HTML or terminal output). The viewer doesn't have to be feature-complete — it has to render SOMETHING from real engine state without crashing. SHOW-DON'T-ASSERT.",
-      "produces": [
-        ".roadmap/round-1/d-viewer-smoke.json",
-        ".roadmap/round-1/artifacts/viewer-smoke.html"
-      ],
-      "consumes": [],
-      "deps": [
-        "viewer-data-source-adapter"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-1/artifacts/viewer-smoke.html"
+          "command": "jq -e '.outcome == \"GREEN\" or .outcome == \"GREEN-WITH-PUNTS\"' .roadmap/round-1.5/d-viewer-r1.5-validator.json"
         },
         {
           "type": "shell",
-          "command": "test -s .roadmap/round-1/artifacts/viewer-smoke.html"
-        }
-      ],
-      "idempotent": true
-    },
-    "doctrine-skill-template-must-match-live": {
-      "id": "doctrine-skill-template-must-match-live",
-      "desc": "LATE-doctrine §Skill-template-must-match-live: every templates/skills/<x>.md MUST be diff-empty against ~/.claude/skills/<x>/SKILL.md at round-close. Test: `for f in templates/skills/*.md; do diff -q $f ~/.claude/skills/$(basename $f .md)/SKILL.md; done` returns clean. Empirical anchor: r1 — roadmap-night untracked + roadmap-auto/spec divergence. Author into the appropriate doctrine surface (NOT CLAUDE.md per §No-doctrine-in-CLAUDE-md).",
-      "produces": [
-        ".roadmap/round-1/d-doctrine-skill-template-must-match-live.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "skill-audit-diff-empty",
-        "template-license-banners"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-doctrine-skill-template-must-match-live.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "doctrine-viewer-as-subcommand": {
-      "id": "doctrine-viewer-as-subcommand",
-      "desc": "LATE-doctrine §Roadmap-viewer-as-first-class-subcommand: visualization is part of the engine, not an external viewer. The viewer migrates from fleet-internal dashboard to `roadmap viewer` because the engine repo owns its own observability surface. Empirical anchor: r1 — fleet dashboard promoted. Captures §Sidecar-promotion-rule for the viewer specifically.",
-      "produces": [
-        ".roadmap/round-1/d-doctrine-viewer-as-subcommand.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "viewer-cli-subcommand-stub"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-doctrine-viewer-as-subcommand.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "doctrine-late-r1-bundle": {
-      "id": "doctrine-late-r1-bundle",
-      "desc": "Bundle late-doctrine-r1 receipts. Both new §-anchors land in the roadmap repo's doctrine surface (skill or doc — NOT CLAUDE.md). Receipt cross-references load-bearing prior doctrine: §Spec-as-typed-knowledge-graph cluster, §Sidecar-promotion-rule, §Validator-as-process, §Plan-children-executor-doctrine, §No-doctrine-in-CLAUDE-md, §Doctrine-author-cannot-violate.",
-      "produces": [
-        ".roadmap/round-1/d-doctrine-late-r1-bundle.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "doctrine-skill-template-must-match-live",
-        "doctrine-viewer-as-subcommand"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-doctrine-late-r1-bundle.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "gap-survey-pass-1": {
-      "id": "gap-survey-pass-1",
-      "desc": "Final round survey: enumerate gaps remaining after this round (viewer is stub-not-feature-complete · any surviving skill desync · any deferred CLAUDE.md trim). Each gap gets a successor node nominated for r2. §Validator-as-process: every count claim paired with jq_probe_cmd.",
-      "produces": [
-        ".roadmap/round-1/d-gap-survey-pass-1.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "viewer-smoke-test",
-        "doc-audit-readme",
-        "doc-audit-claudemd",
-        "doc-audit-topology",
-        "doctrine-late-r1-bundle"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-gap-survey-pass-1.json"
+          "command": "! grep -RIn '/home/griffin/src/fleet' viewer/src"
         },
         {
           "type": "shell",
-          "command": "jq -e '.gaps | type == \"array\"' .roadmap/round-1/d-gap-survey-pass-1.json"
-        }
-      ],
-      "idempotent": true
-    },
-    "term-r1": {
-      "id": "term-r1",
-      "desc": "Round terminal: convergence assessment, write successor (r2 scope: viewer feature-completeness + any spillover from gap-survey), close cleanly via /roadmap-term. Stratum-cadence n/a for this repo. Doctrine output goes to skills not CLAUDE.md (§No-doctrine-in-CLAUDE-md round-terminal clause).",
-      "produces": [
-        ".roadmap/round-1/d-term-r1.json",
-        ".roadmap/round-1/successor.md",
-        "docs/roadmap-r1-skill-maintenance-viewer-migration-successor.spec.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "gap-survey-pass-1"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-1/d-term-r1.json"
-        },
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-1/successor.md"
-        },
-        {
-          "type": "shell",
-          "command": "node -e \"const d=JSON.parse(require('fs').readFileSync('docs/roadmap-r1-skill-maintenance-viewer-migration-successor.spec.json','utf-8')); if(!d.dag_id && !d.converged) process.exit(1)\""
+          "command": "node -e \"const d=JSON.parse(require('fs').readFileSync('docs/roadmap-r1.5-viewer-extract-and-skill-sweep-successor.spec.json','utf-8')); if(!d.dag_id && !d.converged) process.exit(1)\""
         }
       ],
       "idempotent": true
@@ -469,9 +790,9 @@
     "schemaVersion": 1,
     "engine": "spec-kit",
     "version": "1.0.0",
-    "compile_hash": "46aa0891dd9dbea091b965605a2fe10b733b42747f32fb8726f733a7fd45951e",
-    "spec_sha": "ad9001a342fc2b773c19339a5169e71bf2e248715fba1dec3b48bcf724c35581",
-    "importedAt": "2026-04-27T09:09:10.450Z",
-    "dagId": "roadmap-r1-skill-maintenance-viewer-migration"
+    "compile_hash": "d9020c1000c93c6bb541aafda6149a609f554cc48fa94d9276eb2ea78b30e6fa",
+    "spec_sha": "afcfe33d84fe06377022437642a1ab8e6ec8f74da0ad086bcb3f2b54a8e2d58c",
+    "importedAt": "2026-04-27T10:18:52.034Z",
+    "dagId": "roadmap-r1.5-viewer-extract-and-skill-sweep"
   }
 }
