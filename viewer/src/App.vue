@@ -379,6 +379,11 @@ function buildStars(): Star[] {
     <div v-if="printMode" class="starfield" aria-hidden="true">
       <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
         <defs>
+          <radialGradient id="star-halo">
+            <stop offset="0%"   stop-color="white" stop-opacity="0.55"/>
+            <stop offset="35%"  stop-color="white" stop-opacity="0.18"/>
+            <stop offset="100%" stop-color="white" stop-opacity="0"/>
+          </radialGradient>
           <symbol id="sparkle" viewBox="-12 -12 24 24">
             <path
               d="M 0,-10 L 1.2,-1.2 L 10,0 L 1.2,1.2 L 0,10 L -1.2,1.2 L -10,0 L -1.2,-1.2 Z"
@@ -402,20 +407,16 @@ function buildStars(): Star[] {
           </filter>
         </defs>
         <g class="sparkles">
-          <g
-            v-for="(s, i) in stars"
-            :key="i"
-            :transform="`rotate(${s.rot} ${s.x + s.size/2} ${s.y + s.size/2})`"
-          >
-            <!-- per-star diffuse halo · soft circular glow under the sparkle -->
+          <template v-for="(s, i) in stars" :key="i">
+            <!-- per-star diffuse halo · radial-gradient soft circular glow · NOT rotated -->
             <circle
               :cx="s.x + s.size/2"
               :cy="s.y + s.size/2"
-              :r="s.size * (s.tier === 'huge' ? 1.4 : s.tier === 'big' ? 1.1 : 0.85)"
-              :fill="s.color"
-              :opacity="s.tier === 'huge' ? 0.28 : s.tier === 'big' ? 0.22 : 0.16"
-              filter="url(#sparkle-bloom)"
+              :r="s.size * (s.tier === 'huge' ? 2.4 : s.tier === 'big' ? 1.9 : s.tier === 'mid' ? 1.4 : 1.1)"
+              fill="url(#star-halo)"
+              :opacity="s.tier === 'huge' ? 0.85 : s.tier === 'big' ? 0.7 : s.tier === 'mid' ? 0.55 : 0.45"
             />
+            <!-- sparkle · rotated around its own center -->
             <use
               href="#sparkle"
               :x="s.x"
@@ -423,6 +424,7 @@ function buildStars(): Star[] {
               :width="s.size"
               :height="s.size"
               :class="['star', `star--${s.tier}`]"
+              :transform="`rotate(${s.rot} ${s.x + s.size/2} ${s.y + s.size/2})`"
               :style="{
                 animationDuration: s.dur + 's',
                 animationDelay: s.delay + 's',
@@ -430,7 +432,7 @@ function buildStars(): Star[] {
               }"
               :filter="s.tier === 'huge' || s.tier === 'big' ? 'url(#sparkle-bloom)' : 'url(#sparkle-glow)'"
             />
-          </g>
+          </template>
         </g>
       </svg>
     </div>
