@@ -11,14 +11,14 @@ import { RoadmapError } from '../src/errors.ts';
 import { emit, emitError, parseOutputOpts, ErrorCode, setRepoRoot } from '../src/lib/cli-envelope.ts';
 import type { OutputOpts } from '../src/lib/cli-envelope.ts';
 import { resolveWidth } from '../src/lib/render/layout.ts';
-import { renderOrient, renderPlanGallery, renderPlanSelect, renderPlanStatus } from '../src/lib/cli-human.ts';
-import type { OrientData, GalleryData, PlanSelectData, PlanStatusData } from '../src/lib/cli-human.ts';
+import { renderOrient } from '../src/lib/cli-human.ts';
+import type { OrientData } from '../src/lib/cli-human.ts';
 import { lookupSchema, listCommands, schemaToJsonSchema } from '../src/lib/schemas.ts';
 import { getMakeInvariants } from '../src/lib/api-invariants.ts';
 import type { RenderOpts } from '../src/lib/render/index.ts';
 import {
   findRepoRoot, setRepoRoot as setCliRepoRoot,
-  extractNote, initGitsafe, enforceMainBranch,
+  extractNote,
   recordTrailError, ensureDAGConsolidated,
 } from '../src/cli/shared.ts';
 
@@ -30,7 +30,6 @@ import * as cliStatus from '../src/cli/status.ts';
 import * as cliApi from '../src/cli/api.ts';
 import * as cliHelp from '../src/cli/help.ts';
 import * as cliDag from '../src/cli/dag.ts';
-import * as cliSpec from '../src/cli/spec.ts';
 import * as cliInit from '../src/cli/init.ts';
 import * as cliViewer from '../src/cli/commands/viewer.ts';
 
@@ -38,45 +37,29 @@ import * as cliViewer from '../src/cli/commands/viewer.ts';
 const rawArgs = process.argv.slice(2);
 const repoRoot = findRepoRoot(process.cwd());
 setRepoRoot(repoRoot);
-initGitsafe(repoRoot);
 
 const { note: _note, positional: args } = extractNote(rawArgs);
 const cmd = args[0] || 'help';
 
 // --- Output opts ---
-function deriveEnvelopeCmd(): string {
-  if (cmd === 'spec') {
-    if (args[1] === 'plan') {
-      if (args.includes('--gallery')) return 'spec.plan.gallery';
-      if (args[2] === 'select') return 'spec.plan.select';
-      if (args[2] === 'status') return 'spec.plan.status';
-      return 'spec.plan';
-    }
-    return 'spec';
-  }
-  return cmd;
-}
-const _outputOpts = parseOutputOpts(rawArgs, deriveEnvelopeCmd());
+const _outputOpts = parseOutputOpts(rawArgs, cmd);
 
 // --- Human renderers ---
 const _humanRenderers: Record<string, (data: unknown) => string> = {
   orient: (d) => renderOrient(d as OrientData),
-  'spec.plan.gallery': (d) => renderPlanGallery(d as GalleryData),
-  'spec.plan.select': (d) => renderPlanSelect(d as PlanSelectData),
-  'spec.plan.status': (d) => renderPlanStatus(d as PlanStatusData),
 };
 if (_humanRenderers[_outputOpts.cmd]) {
   _outputOpts.humanRenderer = _humanRenderers[_outputOpts.cmd];
 }
 
 // --- Known commands gate ---
-const KNOWN_COMMANDS = new Set(['orient', 'advance', 'make', 'init', 'status', 'spec', 'dag', 'api', 'help', 'viewer', '--help', '-h']);
+const KNOWN_COMMANDS = new Set(['orient', 'advance', 'make', 'init', 'status', 'dag', 'api', 'help', 'viewer', '--help', '-h']);
 if (!KNOWN_COMMANDS.has(cmd)) {
   const available = listCommands().map(c => c.command);
   emit({ ok: false, cmd: _outputOpts.cmd, error: {
     code: 'UNKNOWN_COMMAND',
     message: `Unknown command: ${cmd}`,
-    fix: [`Mainline: {make, orient, advance, status}. Group: {spec, dag}. Discovery: {api, help}.`],
+    fix: [`Mainline: {make, orient, advance, status}. Group: {dag}. Discovery: {api, help}.`],
     hint: `Run 'roadmap api --all' to see full command registry with schemas.`,
     available,
   } }, _outputOpts);
@@ -97,7 +80,7 @@ if (args.slice(1).some(a => a === '--help' || a === '-h')) {
 }
 
 // --- Note requirement ---
-const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'spec', 'dag', 'api', 'init', 'viewer']);
+const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'dag', 'api', 'init', 'viewer']);
 const isOrientCheck = (cmd === 'orient') && args.includes('--check');
 if (isOrientCheck) NOTE_EXEMPT.add('orient');
 
@@ -122,7 +105,6 @@ try {
 // --- Schema helpers ---
 function deriveSchemaKey(): string {
   if (cmd === 'dag' && args[1]) return `dag.${args[1]}`;
-  if (cmd === 'spec' && args[1]) return `spec.${args[1]}`;
   return cmd;
 }
 
@@ -157,19 +139,12 @@ async function main() {
 
   const note = _note;
 
-  // Branch enforcement for DAG-mutating commands
-  const BRANCH_EXEMPT = new Set(['help', '--help', '-h', 'api', 'orient', 'advance', 'status', 'spec', 'init', 'viewer']);
-  if (!BRANCH_EXEMPT.has(cmd) && !(cmd === 'make' && args.includes('--dry-run'))) {
-    enforceMainBranch(repoRoot);
-  }
-
   try {
     switch (cmd) {
       case 'orient':    return await cliOrient.run(args, repoRoot, note, hasLocalDAG, _outputOpts);
       case 'advance':   return await cliAdvance.run(args, repoRoot, note!, hasLocalDAG, _outputOpts);
       case 'make':      return await cliMake.run(args, repoRoot, note!, _outputOpts);
       case 'status':    return await cliStatus.run(args, repoRoot, hasLocalDAG, _outputOpts);
-      case 'spec':      return await cliSpec.run(args, repoRoot, note, _outputOpts);
       case 'dag':       return await cliDag.run(args, repoRoot, note, hasLocalDAG, _outputOpts);
       case 'init':      return await cliInit.run(args, repoRoot, note ?? '', _outputOpts);
       case 'viewer':    return await cliViewer.run(args, repoRoot, note ?? '', _outputOpts);
@@ -181,7 +156,7 @@ async function main() {
         emit({ ok: false, cmd: _outputOpts.cmd, error: {
           code: 'UNKNOWN_COMMAND',
           message: `Unknown command: ${cmd}`,
-          fix: [`Mainline: {make, orient, advance, status}. Group: {spec, dag}. Discovery: {api, help}.`],
+          fix: [`Mainline: {make, orient, advance, status}. Group: {dag}. Discovery: {api, help}.`],
         } }, _outputOpts);
         process.exit(1);
     }

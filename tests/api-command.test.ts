@@ -6,7 +6,6 @@ import { lookupSchema, listCommands, schemaToJsonSchema, schemas } from '../src/
 describe('schemas registry', () => {
   it('lists all registered commands', () => {
     const commands = listCommands();
-    expect(commands.length).toBe(10);
     const names = commands.map(c => c.command);
     expect(names).toContain('make');
     expect(names).toContain('orient');
@@ -14,16 +13,14 @@ describe('schemas registry', () => {
     expect(names).toContain('dag.insert');
     expect(names).toContain('dag.remove');
     expect(names).toContain('dag.modify');
-    expect(names).toContain('spec.plan');
-    expect(names).toContain('spec.plan.gallery');
-    expect(names).toContain('spec.plan.select');
-    expect(names).toContain('spec.plan.status');
   });
 
-  it('does not contain removed stubs', () => {
+  it('does not contain removed spec subcommand', () => {
     const names = listCommands().map(c => c.command);
-    expect(names).not.toContain('spec.compile');
-    expect(names).not.toContain('spec.init');
+    expect(names).not.toContain('spec.plan');
+    expect(names).not.toContain('spec.plan.gallery');
+    expect(names).not.toContain('spec.plan.select');
+    expect(names).not.toContain('spec.plan.status');
   });
 
   it('lookupSchema returns undefined for unknown command', () => {

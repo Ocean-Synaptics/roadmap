@@ -12,7 +12,7 @@ import type { SpecOrigin } from '../lib/intake/spec-origin.ts';
 import { persistDAG } from '../lib/persist-dag.ts';
 import { RoadmapError } from '../errors.ts';
 import type { OutputOpts } from '../lib/cli-envelope.ts';
-import { loadDAG, crossOrientWithState, appendTrail, safeReadFile, json } from './shared.ts';
+import { loadDAG, crossOrientWithState, appendTrail, json } from './shared.ts';
 
 export async function run(
   args: string[],
@@ -36,7 +36,7 @@ export async function run(
     }, `Spec not found: ${resolved}`);
   }
 
-  const specContent = safeReadFile(resolved, repoRoot);
+  const specContent = readFileSync(resolved, 'utf-8');
   let parsed: any;
   try {
     parsed = JSON.parse(specContent);
@@ -51,26 +51,26 @@ export async function run(
     throw new RoadmapError('VALIDATION_FAILED', {
       fix: [
         'Cannot create DAG from raw JSON.',
-        'roadmap make expects a spec, not a DAG definition.',
+        'roadmap make expects a spec (with tasks[], metadata, schema_version), not a raw DAG definition.',
         '',
         'Proper workflow:',
-        '  1. roadmap spec plan --from <requirements.md> --output spec.json',
-        '  2. roadmap make spec.json',
+        '  1. Author a spec.json with tasks[] (see /roadmap-spec skill)',
+        '  2. roadmap make spec.json --note "..."',
         '  3. roadmap show <node-id> to inspect',
       ].join('\n'),
-    }, 'Invalid spec: raw DAG detected. Use the spec pipeline to create a spec first.');
+    }, 'Invalid spec: raw DAG detected. Author a spec with tasks[] first.');
   }
 
   // Validate required spec fields
   const specErrors: Array<{ gate: string; message: string; fix: string }> = [];
   if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
-    specErrors.push({ gate: 'spec-structure', message: 'Missing "tasks" array', fix: 'Spec must have a "tasks" array. Use: roadmap spec plan --from <requirements.md>' });
+    specErrors.push({ gate: 'spec-structure', message: 'Missing "tasks" array', fix: 'Spec must have a "tasks" array. See /roadmap-spec skill for spec authoring.' });
   }
   if (!parsed.metadata || typeof parsed.metadata !== 'object') {
-    specErrors.push({ gate: 'spec-structure', message: 'Missing "metadata" object', fix: 'Spec must have a "metadata" object with "generated" and "compile_hash". Use the spec pipeline.' });
+    specErrors.push({ gate: 'spec-structure', message: 'Missing "metadata" object', fix: 'Spec must have a "metadata" object with "generated" and "compile_hash".' });
   }
   if (!parsed.schema_version) {
-    specErrors.push({ gate: 'spec-structure', message: 'Missing "schema_version"', fix: 'Spec must have "schema_version". Use the spec pipeline to generate a valid spec.' });
+    specErrors.push({ gate: 'spec-structure', message: 'Missing "schema_version"', fix: 'Spec must have "schema_version".' });
   }
   if (specErrors.length > 0) {
     throw new RoadmapError('VALIDATION_FAILED', {

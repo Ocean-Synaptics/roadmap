@@ -40,7 +40,7 @@ export async function run(
   outputOpts: OutputOpts,
 ): Promise<void> {
   if (!hasLocalDAG) {
-    json({ error: 'No roadmap tracked in this repo', fix: 'Initialize with: roadmap spec plan --gallery --note "..."' }, outputOpts);
+    json({ error: 'No roadmap tracked in this repo', fix: 'Initialize with: roadmap make <spec.json> --note "..."' }, outputOpts);
     process.exit(1);
     return;
   }

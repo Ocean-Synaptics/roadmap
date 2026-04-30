@@ -100,7 +100,7 @@ describe('CLI intake enforcement', () => {
     const result = runRoadmap(repo, `make raw-dag.json --note "test"`);
     expect(result.exitCode).not.toBe(0);
     expect(result.stdout).toContain('raw DAG detected');
-    expect(result.stdout).toContain('spec pipeline');
+    expect(result.stdout).toContain('tasks[]');
   });
 
   it('rejects spec missing tasks array', () => {
@@ -158,7 +158,6 @@ describe('CLI intake enforcement', () => {
 
     const result = runRoadmap(repo, `make raw.json --note "test"`);
     expect(result.exitCode).not.toBe(0);
-    expect(result.stdout).toContain('roadmap spec plan');
     expect(result.stdout).toContain('roadmap make');
     expect(result.stdout).toContain('roadmap show');
   });
