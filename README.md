@@ -3,6 +3,8 @@
 [![test](https://github.com/Ocean-Synaptics/roadmap/actions/workflows/test.yml/badge.svg)](https://github.com/Ocean-Synaptics/roadmap/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
+> **Status:** Released for ML Prague 2026 (May 2026). The repository is public; **issues are open**; **external PRs are deferred until ~2026-05-15** while the maintainer is at the conference. See [docs/ROLLOUT.md](docs/ROLLOUT.md) for the contribution timeline.
+
 DAG-governed development protocol. Define a typed graph of work — nodes produce artifacts, edges encode dependencies. The system validates structure, tracks position from filesystem state, and enforces completion via runtime gates.
 
 ## Install
