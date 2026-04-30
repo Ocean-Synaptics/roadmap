@@ -135,7 +135,7 @@
 
     {
       "id": "s-rip-gitsafe",
-      "desc": "Delete the gitsafe pattern. Files removed: src/lib/gitsafe-loader.ts (203 LOC), src/lib/topology/enforcement-rules.ts (clone-role rules referencing /home/griffin paths), .roadmap/enforcement.json, tests/gitsafe-multirepo.test.ts. Call sites: src/cli/make.ts (1 call to safeReadFile) and src/cli/shared.ts (safeReadFile + enforceMainBranch + getGitsafe + initGitsafe + denylist plumbing) — replace safeReadFile with readFileSync, drop enforceMainBranch from shared.ts exports + all callers, drop the gitsafe loader init from CLI entry. Topology module's surviving exports (if any are non-gitsafe) move into other lib/ files or are deleted with the module. SCENARIO · given a contributor is reading src/cli/shared.ts trying to understand why a wrapper around fs.readFileSync exists · when they grep for the threat model · then they find none and the wrapper itself is gone, not just commented out. Validators verify zero residual references in src/ + tests/.",
+      "desc": "Delete the gitsafe pattern. Files removed: src/lib/gitsafe-loader.ts (203 LOC), src/lib/topology/enforcement-rules.ts (clone-role rules referencing ~ paths), .roadmap/enforcement.json, tests/gitsafe-multirepo.test.ts. Call sites: src/cli/make.ts (1 call to safeReadFile) and src/cli/shared.ts (safeReadFile + enforceMainBranch + getGitsafe + initGitsafe + denylist plumbing) — replace safeReadFile with readFileSync, drop enforceMainBranch from shared.ts exports + all callers, drop the gitsafe loader init from CLI entry. Topology module's surviving exports (if any are non-gitsafe) move into other lib/ files or are deleted with the module. SCENARIO · given a contributor is reading src/cli/shared.ts trying to understand why a wrapper around fs.readFileSync exists · when they grep for the threat model · then they find none and the wrapper itself is gone, not just commented out. Validators verify zero residual references in src/ + tests/.",
       "priority": 1,
       "depends": ["init"],
       "produces": [".roadmap/round-2/s-rip-gitsafe.json"],
@@ -152,7 +152,7 @@
 
     {
       "id": "s-strip-husky",
-      "desc": "Move active hooks to scripts/dev-hooks/ for Griffin's local dogfooding; remove husky from the public surface. Concrete moves: .husky/{pre-commit,commit-msg,prepare-commit-msg,post-commit,post-push} → scripts/dev-hooks/{pre-commit,commit-msg,prepare-commit-msg,post-commit,post-push}. Then `git rm -r .husky/`. Drop 'husky' from package.json devDependencies. Change package.json prepare script from 'pnpm run build && husky' to 'pnpm run build' (so a clone-and-install for a contributor never auto-installs hooks). Edit scripts/dev-hooks/post-push to read the dev-clone path from env (`ROADMAP_DEV_CLONE`) instead of hardcoded /home/griffin/src/.dev/roadmap; document. Edit scripts/dev-hooks/pre-commit to drop the gitsafe denylist gate (gitsafe is gone) and the DAG-origin gate; keep typecheck + DAG-define for main only. Write scripts/dev-hooks/README.md explaining: 'these are the maintainer's local hooks; activate with `git config core.hooksPath scripts/dev-hooks/`; not run on `pnpm install`.' SCENARIO · given a contributor clones the repo and runs `pnpm install && git commit` · when they commit · then no roadmap-specific hook fires and the commit lands; AND given Griffin runs the one-line activate command in his clone · when he commits · then his hooks fire as before. Validators check husky is gone from package.json + .husky removed + scripts/dev-hooks/ exists.",
+      "desc": "Move active hooks to scripts/dev-hooks/ for Griffin's local dogfooding; remove husky from the public surface. Concrete moves: .husky/{pre-commit,commit-msg,prepare-commit-msg,post-commit,post-push} → scripts/dev-hooks/{pre-commit,commit-msg,prepare-commit-msg,post-commit,post-push}. Then `git rm -r .husky/`. Drop 'husky' from package.json devDependencies. Change package.json prepare script from 'pnpm run build && husky' to 'pnpm run build' (so a clone-and-install for a contributor never auto-installs hooks). Edit scripts/dev-hooks/post-push to read the dev-clone path from env (`ROADMAP_DEV_CLONE`) instead of hardcoded ~/src/.dev/roadmap; document. Edit scripts/dev-hooks/pre-commit to drop the gitsafe denylist gate (gitsafe is gone) and the DAG-origin gate; keep typecheck + DAG-define for main only. Write scripts/dev-hooks/README.md explaining: 'these are the maintainer's local hooks; activate with `git config core.hooksPath scripts/dev-hooks/`; not run on `pnpm install`.' SCENARIO · given a contributor clones the repo and runs `pnpm install && git commit` · when they commit · then no roadmap-specific hook fires and the commit lands; AND given Griffin runs the one-line activate command in his clone · when he commits · then his hooks fire as before. Validators check husky is gone from package.json + .husky removed + scripts/dev-hooks/ exists.",
       "priority": 1,
       "depends": ["init"],
       "produces": [
@@ -172,7 +172,7 @@
         { "type": "artifact-exists", "target": "scripts/dev-hooks/README.md" },
         { "type": "shell", "command": "test ! -d .husky" },
         { "type": "shell", "command": "! jq -e '.devDependencies.husky // .scripts.prepare | test(\"husky\")' package.json" },
-        { "type": "shell", "command": "! grep -F '/home/griffin' scripts/dev-hooks/post-push" }
+        { "type": "shell", "command": "! grep -F '~' scripts/dev-hooks/post-push" }
       ]
     },
 
@@ -253,7 +253,7 @@
 
     {
       "id": "c-scrub-claude-md",
-      "desc": "Audit CLAUDE.md (426 lines) for customer/fleet-domain references and Griffin-specific paths. Concrete: grep for 'fleet' (the multi-repo CLI feature is allowed; references to ~/src/fleet or fleet-doctrine are not), 'fnpgrov', 'stratum', 'tablet', '/home/griffin', 'rovmk3', 'keel-boundary', 'pcode-ir', 'pixel-diffuse', 'bug-class', 'hmi'. Each hit either gets removed or rewritten to a generic example. Preserve: the architecture diagrams, the DAG protocol explanation, the core loop, the tool descriptions, the ML Prague paper reference (it's the public artifact). Net length should drop modestly (~50-100 lines if generous). SCENARIO · given a contributor reads CLAUDE.md to understand the project's conventions · when they finish · then they have not encountered a customer name or a Griffin-specific path. Validator: no blocked terms, no /home/griffin paths.",
+      "desc": "Audit CLAUDE.md (426 lines) for sibling-project / maintainer-machine references. Read the gitignored sidecar at .roadmap/leak-patterns.local.json for the literal blocklist (codenames + reserved paths) and the per-path allowlist (e.g. 'fleet' is allowed when describing the multi-repo CLI feature, blocked when describing other-project doctrine). Each hit either gets removed or rewritten to a generic example. Preserve: the architecture diagrams, the DAG protocol explanation, the core loop, the tool descriptions, the ML Prague paper reference. Net length should drop modestly. SCENARIO · given a contributor reads CLAUDE.md to understand the project's conventions · when they finish · then they have encountered no sibling-project codename or maintainer-specific absolute path. Validator: scripts/leak-scan.js CLAUDE.md exits 0.",
       "priority": 2,
       "depends": ["init"],
       "produces": ["CLAUDE.md", ".roadmap/round-2/c-scrub-claude-md.json"],
@@ -417,7 +417,7 @@
 
     {
       "id": "v-fresh-install",
-      "desc": "Integration gate · simulate a public user's install path end-to-end. Concrete: cp -r the current repo to a tmpdir, cd in, `pnpm install --frozen-lockfile`, `pnpm run build`, `node bin/roadmap.ts --help`, then exercise a tiny DAG: write a 4-node example spec to /tmp, `roadmap make` it, `roadmap orient`, `roadmap advance` each node, terminal. The whole thing must exit 0 on a fresh tree with no maintainer-specific config. SCENARIO · given a contributor following the README install instructions · when they execute every command verbatim · then it works. Falsifier: any non-zero exit, any reference to /home/griffin in output, any hook-prompt blocking the flow.",
+      "desc": "Integration gate · simulate a public user's install path end-to-end. Concrete: cp -r the current repo to a tmpdir, cd in, `pnpm install --frozen-lockfile`, `pnpm run build`, `node bin/roadmap.ts --help`, then exercise a tiny DAG: write a 4-node example spec to /tmp, `roadmap make` it, `roadmap orient`, `roadmap advance` each node, terminal. The whole thing must exit 0 on a fresh tree with no maintainer-specific config. SCENARIO · given a contributor following the README install instructions · when they execute every command verbatim · then it works. Falsifier: any non-zero exit, any reference to ~ in output, any hook-prompt blocking the flow.",
       "priority": 4,
       "depends": [
         "s-author-leak-scanner",
