@@ -13,10 +13,6 @@ export const CANONICAL_COMMANDS: readonly string[] = [
   'dag.insert',
   'dag.remove',
   'dag.modify',
-  'spec.plan',
-  'spec.plan.gallery',
-  'spec.plan.select',
-  'spec.plan.status',
 ];
 
 export interface ApiViolation {

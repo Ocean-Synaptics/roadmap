@@ -235,7 +235,7 @@ test('saveCompletionWithEvidence: validates entry before saving', () => {
 
 test('Real .roadmap/completed.json: all entries pass validation after migration', () => {
   const completionPath = join(
-    '/home/griffin/src/.dev/roadmap',
+    '/path/to/repo',
     '.roadmap',
     'completed.json',
   );

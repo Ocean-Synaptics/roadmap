@@ -11,8 +11,8 @@ describe('FleetManifest', () => {
   const valid = {
     compiler: '.',
     repos: [
-      { name: 'keel', path: '~/src/keel', request: 'request-gallery/keel.json' },
-      { name: 'stratum', path: '~/src/stratum' },
+      { name: 'auth-svc', path: '~/src/auth-svc', request: 'request-gallery/auth-svc.json' },
+      { name: 'data-store', path: '~/src/data-store' },
     ],
   };
 
@@ -20,7 +20,7 @@ describe('FleetManifest', () => {
     const result = parseFleetManifest(valid);
     expect(result.compiler).toBe('.');
     expect(result.repos).toHaveLength(2);
-    expect(result.repos[0].name).toBe('keel');
+    expect(result.repos[0].name).toBe('auth-svc');
     expect(result.repos[1].request).toBeUndefined();
   });
 
@@ -44,13 +44,13 @@ describe('LoopReceipt', () => {
     closedAt: '2026-03-12T18:00:00Z',
     compilerCommit: 'abc123',
     generations: [
-      { repo: 'keel', dagId: 'seed-3', headCommit: 'def456', status: 'complete' as const },
-      { repo: 'stratum', dagId: 'seed-3', headCommit: '789abc', status: 'stalled' as const, stalledAt: 'validate-bridge' },
+      { repo: 'auth-svc', dagId: 'seed-3', headCommit: 'def456', status: 'complete' as const },
+      { repo: 'data-store', dagId: 'seed-3', headCommit: '789abc', status: 'stalled' as const, stalledAt: 'validate-auth' },
     ],
     mining: {
-      extracted: ['bridge-composables → generator'],
-      requestFixes: ['keel.json: added authorityModel field'],
-      stalled: [{ repo: 'stratum', node: 'validate-bridge', reason: 'NAPI bridge not yet implemented' }],
+      extracted: ['event-aggregator → generator'],
+      requestFixes: ['auth-svc.json: added authorityModel field'],
+      stalled: [{ repo: 'data-store', node: 'validate-auth', reason: 'event aggregator not yet implemented' }],
       observations: ['All three repos independently wrote the same topic-validator pattern'],
     },
     previousSha: null,
@@ -85,13 +85,13 @@ describe('FleetStatus', () => {
       iteration: 2,
       compiler: { repo: '.', headCommit: 'abc' },
       repos: [
-        { name: 'keel', path: '/src/keel', dagId: 'seed', status: 'complete', level: 4, done: 10, remaining: 0 },
-        { name: 'stratum', path: '/src/stratum', dagId: 'seed', status: 'stalled', level: 2, stalledAt: 'validate-bridge', reason: 'failed' },
+        { name: 'auth-svc', path: '/src/auth-svc', dagId: 'seed', status: 'complete', level: 4, done: 10, remaining: 0 },
+        { name: 'data-store', path: '/src/data-store', dagId: 'seed', status: 'stalled', level: 2, stalledAt: 'validate-auth', reason: 'failed' },
       ],
       loopReady: false,
-      blockers: ['stratum stalled'],
+      blockers: ['data-store stalled'],
     });
     expect(result.loopReady).toBe(false);
-    expect(result.repos[1].stalledAt).toBe('validate-bridge');
+    expect(result.repos[1].stalledAt).toBe('validate-auth');
   });
 });

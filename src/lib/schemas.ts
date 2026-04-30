@@ -205,56 +205,6 @@ export const schemas: Record<string, CommandSchema> = {
     }],
   },
 
-  'spec.plan': {
-    description: 'Spec planning: gallery, selection, status',
-    examples: [
-      { cli: 'roadmap spec plan --gallery --note "show candidates"' },
-      { cli: 'roadmap spec plan select <id> --note "choose plan"' },
-      { cli: 'roadmap spec plan status' },
-    ],
-  },
-
-  'spec.plan.gallery': {
-    description: 'Show Pareto-filtered plan candidates',
-    output: z.object({
-      candidates: z.array(z.object({
-        id: z.string(),
-        estimates: z.object({
-          nodes: z.number(),
-          wallClockMinutes: z.number(),
-          costUSD: z.number(),
-          risk: z.number(),
-        }),
-      })),
-      specSource: z.string(),
-    }),
-    examples: [{
-      cli: 'roadmap spec plan --gallery --note "show candidates"',
-    }],
-  },
-
-  'spec.plan.select': {
-    description: 'Select a plan candidate and write as head.json',
-    output: z.object({
-      ok: z.literal(true),
-      selectedId: z.string(),
-      nodeCount: z.number(),
-    }),
-    examples: [{
-      cli: 'roadmap spec plan select auth-plan --note "choose plan"',
-    }],
-  },
-
-  'spec.plan.status': {
-    description: 'Show current plan selection status',
-    output: z.object({
-      selected: z.string().nullable(),
-      specSource: z.string(),
-    }),
-    examples: [{
-      cli: 'roadmap spec plan status',
-    }],
-  },
 };
 
 // --- Lookup ---

@@ -1,5 +1,0 @@
-{
-  "nodeId": "kill-head-index",
-  "completedAt": "2026-03-10",
-  "evidence": "Deleted .roadmap/head-index.json and all code that reads/writes it: HeadIndexEntry type from chain.ts, HEAD_INDEX_FILE constant, archiveHead() index writes, index-extractor.ts (deleted), lazy-graph-loader.ts (deleted), cli-auto-merge.ts ensureIndexExists removed, dag-consolidator.ts skip-list updated. All validators pass: pnpm run check, pnpm vitest run (575 tests), ! test -f .roadmap/head-index.json, ! grep head-index src/"
-}

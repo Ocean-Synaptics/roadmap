@@ -1,34 +1,60 @@
 {
-  "name": "roadmap",
+  "name": "@ocean-synaptics/roadmap",
   "version": "0.2.0",
   "type": "module",
   "bin": {
     "roadmap": "./dist/roadmap.js"
   },
-  "exports": {
-    ".": "./dist/src/index.js",
-    "./protocol": "./dist/src/protocol.js",
-    "./recovery": "./dist/src/index.recovery.js",
-    "./validation": "./dist/src/index.validation.js",
-    "./versioning": "./dist/src/index.versioning.js",
-    "./agent": "./dist/src/index.agent.js"
-  },
+  "exports": "./dist/src/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.build.json && esbuild bin/roadmap.ts --bundle --outfile=dist/roadmap.js --format=esm --platform=node --packages=external",
     "check": "tsc --noEmit",
     "check:dag:define": "npx tsx bin/roadmap.ts validate --note ci",
     "test": "vitest run",
-    "prepare": "pnpm run build && husky"
+    "prepare": "pnpm run build"
   },
   "devDependencies": {
     "@types/node": "^25.3.0",
     "@vitest/coverage-v8": "^4.0.18",
     "esbuild": "^0.27.3",
-    "husky": "^9.1.7",
     "typescript": "^5.8.0",
     "vitest": "^4.0.0"
   },
   "dependencies": {
     "zod": "^4.3.6"
+  },
+  "license": "MIT",
+  "description": "DAG-governed development protocol — declare typed graphs of work, validate structure, track position via filesystem state",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Ocean-Synaptics/roadmap.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Ocean-Synaptics/roadmap/issues"
+  },
+  "homepage": "https://github.com/Ocean-Synaptics/roadmap#readme",
+  "keywords": [
+    "dag",
+    "workflow",
+    "agent",
+    "claude-code",
+    "typescript",
+    "cli",
+    "build-tool",
+    "governance",
+    "ml-prague-2026"
+  ],
+  "author": "Griffin Downs / Ocean Synaptics <griffin.downs@oceansynaptics.com>",
+  "files": [
+    "dist/",
+    "bin/",
+    "LICENSE",
+    "README.md",
+    "CLAUDE.md",
+    "docs/SETUP.md",
+    "templates/"
+  ],
+  "publishConfig": {
+    "access": "public"
   }
 }

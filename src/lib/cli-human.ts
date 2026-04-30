@@ -1,5 +1,5 @@
 // @module cli-human
-// @exports renderOrient, renderChart, renderPlanGallery, renderPlanSelect, renderPlanStatus, renderDoctor, renderValidate, renderTrail, renderRemaining, formatProgressBar, formatTable
+// @exports renderOrient, renderChart, renderDoctor, renderValidate, renderTrail, renderRemaining, formatProgressBar, formatTable
 // @entry roadmap/cli-human
 
 // --- Shared helpers ---
@@ -136,102 +136,6 @@ export function renderChart(d: ChartData): string {
     lines.push(`  ➡️  Next: ${next}${desc ? ` — ${desc}` : ''}`);
   }
   lines.push('');
-  return lines.join('\n');
-}
-
-// --- Plan Gallery ---
-
-export interface GalleryCandidate {
-  id: string;
-  summary: string;
-  estimates: { nodes: number; wallClockMinutes: number; costUSD: number; risk: number };
-}
-
-export interface GalleryData {
-  candidates: GalleryCandidate[];
-  recommended?: string;
-}
-
-export function renderPlanGallery(d: GalleryData): string {
-  const widths = [20, 6, 14, 10, 8];
-  const headers = ['id', 'nodes', 'wallClockMin', 'costUSD', 'risk'];
-  const rows = d.candidates.map(c => [
-    c.id,
-    String(c.estimates.nodes),
-    c.estimates.wallClockMinutes.toFixed(1),
-    c.estimates.costUSD.toFixed(4),
-    c.estimates.risk.toFixed(2),
-  ]);
-
-  const lines: string[] = [];
-  lines.push('');
-  lines.push('Plan Gallery — Pareto-filtered candidates');
-  lines.push('');
-  lines.push(formatTable(headers, rows, widths));
-  lines.push('');
-
-  const rec = d.recommended
-    ? d.candidates.find(c => c.id === d.recommended)
-    : d.candidates.reduce((best, c) => c.estimates.risk < best.estimates.risk ? c : best, d.candidates[0]);
-
-  if (rec) {
-    lines.push(`Recommendation: ${rec.id} (risk=${rec.estimates.risk.toFixed(2)}, cost=$${rec.estimates.costUSD.toFixed(4)})`);
-    lines.push('');
-    lines.push(`Select: roadmap plan --gallery --select <id> --note "..."`);
-  }
-  lines.push('');
-  return lines.join('\n');
-}
-
-// --- Plan Select ---
-
-export interface PlanSelectData {
-  selected: string;
-  headSha: string | null;
-  receipt: string;
-  selector?: string;
-  selectedAt?: string;
-}
-
-export function renderPlanSelect(d: PlanSelectData): string {
-  const lines: string[] = [];
-  lines.push(`✅ Selected: ${d.selected}`);
-  lines.push(`   Head SHA: ${d.headSha ?? 'unknown'}`);
-  lines.push(`   Receipt: ${d.receipt}`);
-  if (d.selector) lines.push(`   Selector: ${d.selector}`);
-  if (d.selectedAt) lines.push(`   At: ${d.selectedAt}`);
-  return lines.join('\n');
-}
-
-// --- Plan Status ---
-
-export interface PlanStatusData {
-  status: 'valid' | 'invalid';
-  candidateId?: string;
-  headSha?: string;
-  headShaMatch?: boolean;
-  receipt?: string;
-  reason?: string;
-  fix?: string;
-  selectedAt?: string;
-  selector?: string;
-}
-
-export function renderPlanStatus(d: PlanStatusData): string {
-  if (d.status === 'valid') {
-    const lines: string[] = [];
-    lines.push(`✅ Plan: ${d.candidateId ?? 'unknown'}`);
-    lines.push(`   SHA match: ${d.headShaMatch ? 'yes' : 'no'}`);
-    if (d.selector) lines.push(`   Selector: ${d.selector}`);
-    if (d.selectedAt) lines.push(`   Selected: ${d.selectedAt}`);
-    if (d.receipt) lines.push(`   Receipt: ${d.receipt}`);
-    return lines.join('\n');
-  }
-
-  const lines: string[] = [];
-  lines.push(`❌ Plan invalid: ${d.reason ?? 'unknown reason'}`);
-  if (d.headShaMatch === false) lines.push('   Head SHA mismatch — DAG has changed since selection');
-  if (d.fix) lines.push(`   Fix: ${d.fix}`);
   return lines.join('\n');
 }
 

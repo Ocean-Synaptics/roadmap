@@ -332,6 +332,7 @@ export async function validateNode<T extends string>(
             // Try to import and execute the explore script
             let playwrightAvailable = false;
             try {
+              // @ts-ignore — playwright is an optional peer dep; runtime-only
               await import('playwright');
               playwrightAvailable = true;
             } catch {
@@ -350,6 +351,7 @@ export async function validateNode<T extends string>(
                   passed = false;
                   evidence = `explore script has no default export function: ${script}`;
                 } else {
+                  // @ts-ignore — playwright is an optional peer dep; runtime-only
                   const { chromium } = await import('playwright');
                   const browser = await chromium.launch({ headless: true });
                   const page = await browser.newPage();

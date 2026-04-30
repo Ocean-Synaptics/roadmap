@@ -1,9 +1,0 @@
-{
-  "timestamp": "2026-03-10T14:29:50.883Z",
-  "progress": 0.5,
-  "discovered": [],
-  "blockers": [
-    "artifact-exists:.roadmap/tasks/kill-head-index.artifact.json"
-  ],
-  "currentFile": ""
-}

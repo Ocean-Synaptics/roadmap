@@ -13,7 +13,6 @@ Core commands (mainline execution):
   viewer             Start the roadmap viewer dev server (host repo's .roadmap/)
 
 Command groups (use 'roadmap <group> help' for details):
-  spec <sub>         Spec planning: plan (gallery, select, status)
   dag <sub>          DAG mutations: insert, remove, modify, log
 
 Discovery:

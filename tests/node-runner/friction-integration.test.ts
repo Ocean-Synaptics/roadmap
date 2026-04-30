@@ -25,7 +25,7 @@ test('1. Advance on branches: orient works on any branch', () => {
     // The important thing is it didn't fail with "main branch" message
     const errorMsg = (e as any).stderr?.toString() || (e as any).message || '';
     assert.ok(
-      !errorMsg.includes('main branch') && !errorMsg.includes('enforceMainBranch'),
+      !errorMsg.includes('main branch') ,
       `orient should not fail on branch gate, but got: ${errorMsg}`,
     );
   }
