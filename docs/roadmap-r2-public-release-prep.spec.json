@@ -1,62 +1,94 @@
 {
-  "id": "roadmap-r2-public-release-prep",
-  "desc": "Roadmap engine repo · r2 · public-release prep for ML Prague 2026 (poster ~2026-05-07). The repo is currently a private GitHub mirror of one solo developer's dogfooding; flipping it public exposes ~500 LOC of theater-tier defensive wrappers, 350K+ of internal execution state (timestamps, customer references, handoff notes), 16 of 21 skill templates that document customer/HMI/fleet domain work, hardcoded-path mirror-sync hooks, a commit-msg hook that walls off contributors, and an `npm install roadmap` README instruction that points at someone else's package. The strategic shape is two-phase: pre-conference is ship-shape minimum (scrub + license + repo metadata + minimum contributor surface + verify), post-conference (~2 weeks later) is full contribution surface (CONTRIBUTING.md, Discussions, PR acceptance). Phase 2 is plan-mode because its concrete shape depends on conference feedback that does not yet exist. The terminal flips repo visibility to public and tags v0.2.0 — that is the human-meaningful 'done.' Anti-pattern guard: this round contains zero observation nodes; surfaces were inventoried in conversation with Griffin during spec authoring, findings embedded here. CLUSTERS · STRIP (rip cruft) · CURATE (clean remaining content) · CONTRIB-MIN (minimum contributor surface for conference burst) · GH-SETTINGS (repo metadata + branch protection) · CI (replace husky's gates with workflows) · VERIFY (pre-flip integration gates) · PUBLIC (flip + tag). NO BATCH PARTITIONING · clusters group by concern · depends:[] is the only sequencing.",
-  "init": "init",
-  "term": "p-post-conference-contribution",
-  "nodes": {
-    "init": {
+  "schema_version": 1,
+  "engine": { "name": "spec-kit", "version": "1.0.0", "config_hash": null },
+  "dag_id": "roadmap-r2-public-release-prep",
+  "dag_desc": "Roadmap engine repo · r2 · public-release prep for ML Prague 2026 (poster ~2026-05-07). The repo is currently a private GitHub mirror of one solo developer's dogfooding; flipping it public exposes ~500 LOC of theater-tier defensive wrappers, 350K+ of internal execution state (timestamps, customer references, handoff notes), 16 of 21 skill templates that document customer/HMI/fleet domain work, hardcoded-path mirror-sync hooks, a commit-msg hook that walls off contributors, and an `npm install roadmap` README instruction that points at someone else's package. The strategic shape is two-phase: pre-conference is ship-shape minimum (scrub + license + repo metadata + minimum contributor surface + verify), post-conference (~2 weeks later) is full contribution surface (CONTRIBUTING.md, Discussions, PR acceptance). Phase 2 is plan-mode because its concrete shape depends on conference feedback that does not yet exist. The terminal flips repo visibility to public and tags v0.2.0 — that is the human-meaningful 'done.' Anti-pattern guard: this round contains zero observation nodes; surfaces were inventoried in conversation with Griffin during spec authoring, findings embedded here. CLUSTERS · STRIP (rip cruft) · CURATE (clean remaining content) · CONTRIB-MIN (minimum contributor surface for conference burst) · GH-SETTINGS (repo metadata + branch protection) · CI (replace husky's gates with workflows) · VERIFY (pre-flip integration gates) · PUBLIC (flip + tag). NO BATCH PARTITIONING · clusters group by concern · depends:[] is the only sequencing.",
+  "metadata": {
+    "round": "r2",
+    "release_target": {
+      "milestone": "ML Prague 2026 poster",
+      "target_window_start": "2026-05-05",
+      "target_window_end": "2026-05-07",
+      "current_date": "2026-04-30"
+    },
+    "license": "MIT",
+    "npm_target": {
+      "scoped_name": "@ocean-synaptics/roadmap",
+      "rationale": "unscoped 'roadmap' is already published by another author; scope is verified available (404 on registry probe 2026-04-30)"
+    },
+    "rollout_stance": {
+      "phase_1": "ship public · issues ON · PRs technically allowed but README + PR template say 'deferred until ~2026-05-15' · Discussions OFF",
+      "phase_2": "post-conference · open Discussions · publish CONTRIBUTING.md · accept PRs · npm publish",
+      "phase_2_trigger": "conference + ~1 week of issue triage informs concrete shape"
+    },
+    "repo_target": {
+      "owner": "Ocean-Synaptics",
+      "name": "roadmap",
+      "current_visibility": "PRIVATE",
+      "target_visibility": "PUBLIC",
+      "current_head": "fc1e902"
+    },
+    "leak_allowlist": {
+      "rationale": "the multi-repo CLI feature is named 'fleet' as a generic primitive; some test files + docs reference it by name. allow these literal terms in tests/ and docs/ describing the fleet feature",
+      "allowed_terms_in_paths": {
+        "fleet": ["tests/fleet-*.test.ts", "src/runtime/fleet.ts", "src/lib/fleet-types.ts", "src/cli/orient.ts", "docs/*fleet*.spec.json", "examples/fleet-*"]
+      },
+      "blocked_anywhere": ["fnpgrov", "stratum", "tablet", "/home/griffin", "griffin\\.downs", "ocean-synaptics-internal", "hmi-port", "rovmk3", "linear-audit", "keel-boundary"]
+    },
+    "dev_hook_relocation": {
+      "from": ".husky/",
+      "to": "scripts/dev-hooks/",
+      "activation": "git config core.hooksPath scripts/dev-hooks/ (manual, documented in scripts/dev-hooks/README.md)",
+      "rationale": "public users get no surprise hooks on `pnpm install`; Griffin re-enables locally via one command"
+    },
+    "human_window_nodes": ["term-flip-public-and-tag"],
+    "autonomy_policy": "execute scrub + curate + ci nodes autonomously; pause for human approval before term-flip-public-and-tag (visibility change is irreversible without coordination)"
+  },
+  "inputs": [
+    { "path": "CLAUDE.md", "sha256": "46aa0891dd9dbea091b965605a2fe10b733b42747f32fb8726f733a7fd45951e", "role": "spec" },
+    { "path": "README.md", "sha256": "da3b314b40ba7288ab917451486c6a96ebfb3cffefbe6ea8d6608567b1e6bba5", "role": "spec" },
+    { "path": "package.json", "sha256": "eb2a715ed29367cb14b26dba3f511032a3e6376efa4fbe3d9f676c98de47c1d8", "role": "spec" },
+    { "path": "src/lib/gitsafe-loader.ts", "sha256": "91a765c32e8cdb8b340fa16b210b37c2fbb6f514a98dc0c458633f97eb5b1735", "role": "data-model" },
+    { "path": "src/lib/topology/enforcement-rules.ts", "sha256": "a354ce27267aed6fb73a3a9b70ed8cd0ccf32ea51a98f8977a5962d88b9f4855", "role": "data-model" },
+    { "path": ".roadmap/enforcement.json", "sha256": "e24d9138f85f8c6406b493290e8e6811cdef2db26a559f282195fbb0449f7e6f", "role": "data-model" }
+  ],
+  "tasks": [
+    {
       "id": "init",
       "desc": "Round-2 entry. Confirm session state: feat/r2-public-release-prep checked out, CLAUDE.md sha matches inputs[], no in-flight uncommitted work. The receipt names the operator and time and pins the starting head. SCENARIO · given main is at fc1e902 and this branch is created from main · when init runs · then the round is open and downstream nodes can begin.",
-      "produces": [
-        ".roadmap/round-2/init.json"
-      ],
+      "priority": 0,
+      "depends": [],
+      "produces": [".roadmap/round-2/init.json"],
       "consumes": [],
-      "deps": [],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/init.json"
-        },
-        {
-          "type": "shell",
-          "command": "git rev-parse --abbrev-ref HEAD | grep -qE '^(feat/r2-|main$)'"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/init.json" },
+        { "type": "shell", "command": "git rev-parse --abbrev-ref HEAD | grep -qE '^(feat/r2-|main$)'" }
+      ]
     },
-    "s-rip-gitsafe": {
+
+    {
       "id": "s-rip-gitsafe",
       "desc": "Delete the gitsafe pattern. Files removed: src/lib/gitsafe-loader.ts (203 LOC), src/lib/topology/enforcement-rules.ts (clone-role rules referencing /home/griffin paths), .roadmap/enforcement.json, tests/gitsafe-multirepo.test.ts. Call sites: src/cli/make.ts (1 call to safeReadFile) and src/cli/shared.ts (safeReadFile + enforceMainBranch + getGitsafe + initGitsafe + denylist plumbing) — replace safeReadFile with readFileSync, drop enforceMainBranch from shared.ts exports + all callers, drop the gitsafe loader init from CLI entry. Topology module's surviving exports (if any are non-gitsafe) move into other lib/ files or are deleted with the module. SCENARIO · given a contributor is reading src/cli/shared.ts trying to understand why a wrapper around fs.readFileSync exists · when they grep for the threat model · then they find none and the wrapper itself is gone, not just commented out. Validators verify zero residual references in src/ + tests/.",
-      "produces": [
-        ".roadmap/round-2/s-rip-gitsafe.json"
-      ],
+      "priority": 1,
+      "depends": ["init"],
+      "produces": [".roadmap/round-2/s-rip-gitsafe.json"],
       "consumes": [],
-      "deps": [
-        "init"
-      ],
+      "ambient": ["src/cli/shared.ts", "src/cli/make.ts", "src/lib/gitsafe-loader.ts", "src/lib/topology/enforcement-rules.ts", "tests/gitsafe-multirepo.test.ts"],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/s-rip-gitsafe.json"
-        },
-        {
-          "type": "shell",
-          "command": "test ! -e src/lib/gitsafe-loader.ts && test ! -e src/lib/topology/enforcement-rules.ts && test ! -e .roadmap/enforcement.json && test ! -e tests/gitsafe-multirepo.test.ts"
-        },
-        {
-          "type": "shell",
-          "command": "! grep -rE 'gitsafe-loader|safeReadFile|enforceMainBranch|getGitsafe|initGitsafe' src/ tests/ --include='*.ts' -l"
-        },
-        {
-          "type": "shell",
-          "command": "pnpm run check && pnpm test"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/s-rip-gitsafe.json" },
+        { "type": "shell", "command": "test ! -e src/lib/gitsafe-loader.ts && test ! -e src/lib/topology/enforcement-rules.ts && test ! -e .roadmap/enforcement.json && test ! -e tests/gitsafe-multirepo.test.ts" },
+        { "type": "shell", "command": "! grep -rE 'gitsafe-loader|safeReadFile|enforceMainBranch|getGitsafe|initGitsafe' src/ tests/ --include='*.ts' -l" },
+        { "type": "shell", "command": "pnpm run check && pnpm test" }
+      ]
     },
-    "s-strip-husky": {
+
+    {
       "id": "s-strip-husky",
       "desc": "Move active hooks to scripts/dev-hooks/ for Griffin's local dogfooding; remove husky from the public surface. Concrete moves: .husky/{pre-commit,commit-msg,prepare-commit-msg,post-commit,post-push} → scripts/dev-hooks/{pre-commit,commit-msg,prepare-commit-msg,post-commit,post-push}. Then `git rm -r .husky/`. Drop 'husky' from package.json devDependencies. Change package.json prepare script from 'pnpm run build && husky' to 'pnpm run build' (so a clone-and-install for a contributor never auto-installs hooks). Edit scripts/dev-hooks/post-push to read the dev-clone path from env (`ROADMAP_DEV_CLONE`) instead of hardcoded /home/griffin/src/.dev/roadmap; document. Edit scripts/dev-hooks/pre-commit to drop the gitsafe denylist gate (gitsafe is gone) and the DAG-origin gate; keep typecheck + DAG-define for main only. Write scripts/dev-hooks/README.md explaining: 'these are the maintainer's local hooks; activate with `git config core.hooksPath scripts/dev-hooks/`; not run on `pnpm install`.' SCENARIO · given a contributor clones the repo and runs `pnpm install && git commit` · when they commit · then no roadmap-specific hook fires and the commit lands; AND given Griffin runs the one-line activate command in his clone · when he commits · then his hooks fire as before. Validators check husky is gone from package.json + .husky removed + scripts/dev-hooks/ exists.",
+      "priority": 1,
+      "depends": ["init"],
       "produces": [
         "scripts/dev-hooks/pre-commit",
         "scripts/dev-hooks/commit-msg",
@@ -67,316 +99,184 @@
         ".roadmap/round-2/s-strip-husky.json"
       ],
       "consumes": [],
-      "deps": [
-        "init"
-      ],
+      "ambient": [".husky/", "package.json"],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/s-strip-husky.json"
-        },
-        {
-          "type": "artifact-exists",
-          "target": "scripts/dev-hooks/README.md"
-        },
-        {
-          "type": "shell",
-          "command": "test ! -d .husky"
-        },
-        {
-          "type": "shell",
-          "command": "! jq -e '.devDependencies.husky // .scripts.prepare | test(\"husky\")' package.json"
-        },
-        {
-          "type": "shell",
-          "command": "! grep -F '/home/griffin' scripts/dev-hooks/post-push"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/s-strip-husky.json" },
+        { "type": "artifact-exists", "target": "scripts/dev-hooks/README.md" },
+        { "type": "shell", "command": "test ! -d .husky" },
+        { "type": "shell", "command": "! jq -e '.devDependencies.husky // .scripts.prepare | test(\"husky\")' package.json" },
+        { "type": "shell", "command": "! grep -F '/home/griffin' scripts/dev-hooks/post-push" }
+      ]
     },
-    "s-gitignore-runtime-state": {
+
+    {
       "id": "s-gitignore-runtime-state",
       "desc": "Extend .gitignore so future trail/handoff/completed emissions don't re-pollute the public tree. Add: dist/ (build output should never be committed), .roadmap/trail.jsonl, .roadmap/completed.json, .roadmap/.handoff/, .roadmap/round-*/, .roadmap/tasks/, .roadmap/heads/ (curate node will repopulate with one example), .boot/, .specify/, *.tsbuildinfo, .r1.5-init.marker, init.marker, BRANCH_INTENT_GAPS.txt, ROADMAP_TOPOLOGY.txt, .vitest-results.json. Keep .gitignore-existing entries intact. SCENARIO · given the maintainer runs `roadmap orient` and `roadmap advance` after this round · when receipts and trail entries get written · then `git status` shows them as ignored, not modified. Validator: every listed path appears in .gitignore.",
-      "produces": [
-        ".gitignore",
-        ".roadmap/round-2/s-gitignore-runtime-state.json"
-      ],
+      "priority": 1,
+      "depends": ["init"],
+      "produces": [".gitignore", ".roadmap/round-2/s-gitignore-runtime-state.json"],
       "consumes": [],
-      "deps": [
-        "init"
-      ],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/s-gitignore-runtime-state.json"
-        },
-        {
-          "type": "shell",
-          "command": "for p in 'dist/' '.roadmap/trail.jsonl' '.roadmap/completed.json' '.roadmap/.handoff/' '.roadmap/round-' '.roadmap/heads/' '*.tsbuildinfo' 'BRANCH_INTENT_GAPS.txt' 'ROADMAP_TOPOLOGY.txt' 'init.marker'; do grep -qF \"$p\" .gitignore || { echo missing: $p; exit 1; }; done"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/s-gitignore-runtime-state.json" },
+        { "type": "shell", "command": "for p in 'dist/' '.roadmap/trail.jsonl' '.roadmap/completed.json' '.roadmap/.handoff/' '.roadmap/round-' '.roadmap/heads/' '*.tsbuildinfo' 'BRANCH_INTENT_GAPS.txt' 'ROADMAP_TOPOLOGY.txt' 'init.marker'; do grep -qF \"$p\" .gitignore || { echo missing: $p; exit 1; }; done" }
+      ]
     },
-    "c-license": {
-      "id": "c-license",
-      "desc": "Add an MIT LICENSE file at repo root with exact OSI text, copyright '2026 Ocean Synaptics'. Source the canonical text from https://opensource.org/license/mit (verify text matches the SPDX-listed MIT template; do not paraphrase). SCENARIO · given a license-checker bot scans the repo · when it reads LICENSE · then it identifies MIT cleanly. Validator: file exists, first non-blank line says 'MIT License', text contains the canonical phrases.",
-      "produces": [
-        "LICENSE",
-        ".roadmap/round-2/c-license.json"
-      ],
-      "consumes": [],
-      "deps": [
-        "init"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "target": "LICENSE"
-        },
-        {
-          "type": "shell",
-          "command": "head -5 LICENSE | grep -q 'MIT License' && grep -q 'Permission is hereby granted, free of charge' LICENSE && grep -q 'WITHOUT WARRANTY OF ANY KIND' LICENSE"
-        }
-      ],
-      "idempotent": true
-    },
-    "s-purge-private-files": {
+
+    {
       "id": "s-purge-private-files",
       "desc": "Remove private notes and committed build output from the working tree. Concretely git rm: BRANCH_INTENT_GAPS.txt, init.marker, ROADMAP_TOPOLOGY.txt, viewer/.r1.5-init.marker, viewer/tsconfig.tsbuildinfo, governance/ (any tracked files), .boot/ (if tracked), dist/ (whole directory; rebuild from source). Sweep for other `*.marker` and `*GAPS*.txt` and `*TOPOLOGY*.txt`. Depends on s-gitignore-runtime-state so the patterns are already in place when files are removed (prevents re-add via subsequent build). SCENARIO · given a fresh clone of the repo · when a user runs `ls -la` · then they see no private notes, no committed build output, no leftover marker files. Validator: each deleted path no longer exists; dist/ rebuild produces same files but ignored.",
-      "produces": [
-        ".roadmap/round-2/s-purge-private-files.json"
-      ],
+      "priority": 2,
+      "depends": ["s-gitignore-runtime-state"],
+      "produces": [".roadmap/round-2/s-purge-private-files.json"],
       "consumes": [],
-      "deps": [
-        "s-gitignore-runtime-state"
-      ],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/s-purge-private-files.json"
-        },
-        {
-          "type": "shell",
-          "command": "for p in BRANCH_INTENT_GAPS.txt init.marker ROADMAP_TOPOLOGY.txt viewer/.r1.5-init.marker viewer/tsconfig.tsbuildinfo; do test ! -e \"$p\" || { echo still present: $p; exit 1; }; done"
-        },
-        {
-          "type": "shell",
-          "command": "! git ls-files | grep -E '^(dist/|governance/|\\.boot/)'"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/s-purge-private-files.json" },
+        { "type": "shell", "command": "for p in BRANCH_INTENT_GAPS.txt init.marker ROADMAP_TOPOLOGY.txt viewer/.r1.5-init.marker viewer/tsconfig.tsbuildinfo; do test ! -e \"$p\" || { echo still present: $p; exit 1; }; done" },
+        { "type": "shell", "command": "! git ls-files | grep -E '^(dist/|governance/|\\.boot/)'" }
+      ]
     },
-    "s-delete-customer-skill-templates": {
+
+    {
       "id": "s-delete-customer-skill-templates",
       "desc": "Delete customer/fleet-domain skill templates from templates/skills/. KEEP (5): roadmap-orient.md, roadmap-spec.md, roadmap-auto.md, roadmap-night.md, roadmap-term.md (if present), stance.md (generic-enough — audit content first). DELETE (16): bug-class-hunting.md, core-loop.md, cross-page-sweep.md, demo.md, fleet-doctrine.md, fleet-doctrine-history.md, griffin-voice.md, keel-boundary-thesis.md, linear-audit.md, meta-directives.md, pcode-ir-lowering.md, per-page-convergence.md, pipeline-thesis.md, pixel-diffuse.md, rovmk3-thesis.md, threads.md (and sift-review.md if present). These templates were authored against fleet/HMI/Ghidra-extraction work and are not generic-enough to ship; they will live in the maintainer's private ~/.claude/skills/. Audit stance.md content for customer references before keeping; if it references fleet-specific anchors, also delete. SCENARIO · given a public-repo browser opens templates/skills/ · when they read each surviving file · then every file describes a generic roadmap concept, not a customer-domain doctrine. Validator: directory contains exactly the keep-list, no more.",
-      "produces": [
-        ".roadmap/round-2/s-delete-customer-skill-templates.json"
-      ],
+      "priority": 2,
+      "depends": ["init"],
+      "produces": [".roadmap/round-2/s-delete-customer-skill-templates.json"],
       "consumes": [],
-      "deps": [
-        "init"
-      ],
+      "ambient": ["templates/skills/"],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/s-delete-customer-skill-templates.json"
-        },
-        {
-          "type": "shell",
-          "command": "test $(find templates/skills -name '*.md' -type f | wc -l) -le 6"
-        },
-        {
-          "type": "shell",
-          "command": "! find templates/skills -name '*.md' -exec grep -liE 'fnpgrov|stratum|tablet|hmi|rovmk3|keel|ghidra|pixel-diffuse|bug-class|customer|fleet-doctrine' {} +"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/s-delete-customer-skill-templates.json" },
+        { "type": "shell", "command": "test $(find templates/skills -name '*.md' -type f | wc -l) -le 6" },
+        { "type": "shell", "command": "! find templates/skills -name '*.md' -exec grep -liE 'fnpgrov|stratum|tablet|hmi|rovmk3|keel|ghidra|pixel-diffuse|bug-class|customer|fleet-doctrine' {} +" }
+      ]
     },
-    "s-delete-internal-docs": {
+
+    {
       "id": "s-delete-internal-docs",
       "desc": "Sweep docs/ for round-internal artifacts that describe completed maintainer work and don't contribute to public understanding. DELETE: docs/fleet-intelligence-spec.md, docs/fleet-intelligence-verification.md, docs/fleet-loop-spec.md, docs/review-response.md, docs/pattern-enrichment-spec.md, docs/validator-strength-spec.md, docs/fix-discovered-iterable-verified.md, docs/receipt-protocol-spec.md (audit first; if it documents the receipt protocol generically, keep). KEEP candidates: docs/Downs-CompilingAgentState-MLPrague2026.pdf if present (the paper); any doc that names a generic concept (e.g. validator strength). For surviving .spec.json files in docs/ (e.g. fleet-intelligence.spec.json), audit for customer-name leaks; if clean, keep — they tell the project's evolution story. specs/ directory (older roadmap rounds: chain-terminal, cli-decompose, codebase-hygiene, convergence, hardening, node25-compat, purge-non-algebra, surface-coverage, terminal-enrichment, topology-simplify) — keep these; they're the project's archeology, generic in content. SCENARIO · given a contributor browses docs/ to understand the project · when they read · then every doc surviving is either reference material or a public-relevant spec. Validator: blocked-leak-terms grep finds nothing in docs/.",
-      "produces": [
-        ".roadmap/round-2/s-delete-internal-docs.json"
-      ],
+      "priority": 2,
+      "depends": ["init"],
+      "produces": [".roadmap/round-2/s-delete-internal-docs.json"],
       "consumes": [],
-      "deps": [
-        "init"
-      ],
+      "ambient": ["docs/", "specs/", "playbooks/"],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/s-delete-internal-docs.json"
-        },
-        {
-          "type": "shell",
-          "command": "! grep -rilE 'fnpgrov|stratum|tablet|/home/griffin|hmi-port|rovmk3|keel-boundary' docs/ specs/ playbooks/ 2>/dev/null"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/s-delete-internal-docs.json" },
+        { "type": "shell", "command": "! grep -rilE 'fnpgrov|stratum|tablet|/home/griffin|hmi-port|rovmk3|keel-boundary' docs/ specs/ playbooks/ 2>/dev/null" }
+      ]
     },
-    "c-curate-roadmap-example": {
+
+    {
       "id": "c-curate-roadmap-example",
       "desc": "Replace the live dogfooding state in .roadmap/ with one curated example DAG that tells the project's own story without leaking timestamps, customer references, or internal handoffs. Concrete actions: (1) `git rm -r .roadmap/{trail.jsonl,completed.json,.handoff,round-1,round-1.5,tasks,heads}` — full reset since the gitignore from s-gitignore-runtime-state now covers them. (2) Author a small `.roadmap/heads/example-public-release.json` (or use a simplified version of the current head.json with customer refs scrubbed and node descs rewritten in generic prose). Aim for ~10-15 nodes, illustrates the produce/consume/depends shape. (3) Author a tiny `.roadmap/completed.json` showing 2-3 completion receipts in the canonical schema. (4) Write `.roadmap/README.md` (one screen) explaining: 'this directory shows roadmap dogfooding itself; the example DAG is illustrative; live runtime state is gitignored.' SCENARIO · given a visitor opens .roadmap/ on the public repo · when they read the README and example DAG · then they understand the protocol shape via a clean small example, not 350K of internal logs. Validator: total .roadmap/ tracked-file size < 30KB; no leak-blocked terms anywhere in tracked .roadmap/ files.",
-      "produces": [
-        ".roadmap/heads/example-public-release.json",
-        ".roadmap/README.md",
-        ".roadmap/round-2/c-curate-roadmap-example.json"
-      ],
+      "priority": 2,
+      "depends": ["s-gitignore-runtime-state"],
+      "produces": [".roadmap/heads/example-public-release.json", ".roadmap/README.md", ".roadmap/round-2/c-curate-roadmap-example.json"],
       "consumes": [],
-      "deps": [
-        "s-gitignore-runtime-state"
-      ],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/README.md"
-        },
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/heads/example-public-release.json"
-        },
-        {
-          "type": "shell",
-          "command": "test $(git ls-files .roadmap/ | xargs wc -c 2>/dev/null | tail -1 | awk '{print $1}') -lt 30000"
-        },
-        {
-          "type": "shell",
-          "command": "! git ls-files .roadmap/ | xargs grep -lE 'fnpgrov|stratum|tablet|/home/griffin|fleet-doctrine|hmi|rovmk3|keel-boundary|customer' 2>/dev/null"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/README.md" },
+        { "type": "artifact-exists", "target": ".roadmap/heads/example-public-release.json" },
+        { "type": "shell", "command": "test $(git ls-files .roadmap/ | xargs wc -c 2>/dev/null | tail -1 | awk '{print $1}') -lt 30000" },
+        { "type": "shell", "command": "! git ls-files .roadmap/ | xargs grep -lE 'fnpgrov|stratum|tablet|/home/griffin|fleet-doctrine|hmi|rovmk3|keel-boundary|customer' 2>/dev/null" }
+      ]
     },
-    "c-scrub-claude-md": {
+
+    {
       "id": "c-scrub-claude-md",
       "desc": "Audit CLAUDE.md (426 lines) for customer/fleet-domain references and Griffin-specific paths. Concrete: grep for 'fleet' (the multi-repo CLI feature is allowed; references to ~/src/fleet or fleet-doctrine are not), 'fnpgrov', 'stratum', 'tablet', '/home/griffin', 'rovmk3', 'keel-boundary', 'pcode-ir', 'pixel-diffuse', 'bug-class', 'hmi'. Each hit either gets removed or rewritten to a generic example. Preserve: the architecture diagrams, the DAG protocol explanation, the core loop, the tool descriptions, the ML Prague paper reference (it's the public artifact). Net length should drop modestly (~50-100 lines if generous). SCENARIO · given a contributor reads CLAUDE.md to understand the project's conventions · when they finish · then they have not encountered a customer name or a Griffin-specific path. Validator: no blocked terms, no /home/griffin paths.",
-      "produces": [
-        "CLAUDE.md",
-        ".roadmap/round-2/c-scrub-claude-md.json"
-      ],
+      "priority": 2,
+      "depends": ["init"],
+      "produces": ["CLAUDE.md", ".roadmap/round-2/c-scrub-claude-md.json"],
       "consumes": [],
-      "deps": [
-        "init"
-      ],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/c-scrub-claude-md.json"
-        },
-        {
-          "type": "shell",
-          "command": "! grep -iE 'fnpgrov|stratum|tablet|/home/griffin|fleet-doctrine|rovmk3|keel-boundary|pcode-ir|pixel-diffuse|bug-class-hunting|hmi-port' CLAUDE.md"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/c-scrub-claude-md.json" },
+        { "type": "shell", "command": "! grep -iE 'fnpgrov|stratum|tablet|/home/griffin|fleet-doctrine|rovmk3|keel-boundary|pcode-ir|pixel-diffuse|bug-class-hunting|hmi-port' CLAUDE.md" }
+      ]
     },
-    "c-package-metadata": {
+
+    {
+      "id": "c-license",
+      "desc": "Add an MIT LICENSE file at repo root with exact OSI text, copyright '2026 Ocean Synaptics'. Source the canonical text from https://opensource.org/license/mit (verify text matches the SPDX-listed MIT template; do not paraphrase). SCENARIO · given a license-checker bot scans the repo · when it reads LICENSE · then it identifies MIT cleanly. Validator: file exists, first non-blank line says 'MIT License', text contains the canonical phrases.",
+      "priority": 1,
+      "depends": ["init"],
+      "produces": ["LICENSE", ".roadmap/round-2/c-license.json"],
+      "consumes": [],
+      "mode": "execute",
+      "validate": [
+        { "type": "artifact-exists", "target": "LICENSE" },
+        { "type": "shell", "command": "head -5 LICENSE | grep -q 'MIT License' && grep -q 'Permission is hereby granted, free of charge' LICENSE && grep -q 'WITHOUT WARRANTY OF ANY KIND' LICENSE" }
+      ]
+    },
+
+    {
       "id": "c-package-metadata",
       "desc": "Populate package.json with public-package metadata. Set: name='@ocean-synaptics/roadmap' (unscoped 'roadmap' is taken on npm), license='MIT', description='DAG-governed development protocol — declare typed graphs of work, validate structure, track position via filesystem state', repository={type:'git', url:'git+https://github.com/Ocean-Synaptics/roadmap.git'}, bugs={url:'https://github.com/Ocean-Synaptics/roadmap/issues'}, homepage='https://github.com/Ocean-Synaptics/roadmap#readme', keywords=['dag','workflow','agent','claude-code','typescript','cli','build-tool','governance','ml-prague-2026'], author='Griffin Downs / Ocean Synaptics <griffin.downs@oceansynaptics.com>', files=['dist/','bin/','LICENSE','README.md','CLAUDE.md','templates/'], publishConfig={access:'public'}. Drop husky from devDependencies (already done in s-strip-husky). Update prepare script to drop '&& husky'. Verify scoped name remains available at the moment of running this node (npm view check). SCENARIO · given an npm tooling consumer reads package.json · when they query metadata · then license/repository/bugs/homepage all resolve to public URLs and the name is registry-publishable. Validator: jq queries on each field.",
-      "produces": [
-        "package.json",
-        ".roadmap/round-2/c-package-metadata.json"
-      ],
-      "consumes": [
-        "LICENSE"
-      ],
-      "deps": [
-        "c-license",
-        "s-strip-husky"
-      ],
+      "priority": 2,
+      "depends": ["c-license", "s-strip-husky"],
+      "produces": ["package.json", ".roadmap/round-2/c-package-metadata.json"],
+      "consumes": ["LICENSE"],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/c-package-metadata.json"
-        },
-        {
-          "type": "shell",
-          "command": "jq -e '.name == \"@ocean-synaptics/roadmap\" and .license == \"MIT\" and (.description | length) > 20 and .repository.url and .bugs.url and .homepage and (.keywords | length) >= 5 and (.files | length) >= 4 and .publishConfig.access == \"public\"' package.json"
-        },
-        {
-          "type": "shell",
-          "command": "! jq -e '.devDependencies.husky // false' package.json && ! (jq -r '.scripts.prepare' package.json | grep -q husky)"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/c-package-metadata.json" },
+        { "type": "shell", "command": "jq -e '.name == \"@ocean-synaptics/roadmap\" and .license == \"MIT\" and (.description | length) > 20 and .repository.url and .bugs.url and .homepage and (.keywords | length) >= 5 and (.files | length) >= 4 and .publishConfig.access == \"public\"' package.json" },
+        { "type": "shell", "command": "! jq -e '.devDependencies.husky // false' package.json && ! (jq -r '.scripts.prepare' package.json | grep -q husky)" }
+      ]
     },
-    "c-scrub-readme": {
+
+    {
       "id": "c-scrub-readme",
       "desc": "Rewrite README.md for a public reader. Current README starts with a one-liner intro and an `npm install roadmap` command that points at someone else's package. Required changes: (1) Update install to `pnpm add @ocean-synaptics/roadmap` (or yarn/npm equivalents). (2) Add a status banner at the top explaining the rollout posture (SEE NEXT NODE for exact text). (3) Add a quick-start showing one-DAG-make-orient-advance-terminal cycle on a tiny example. (4) Add a 'Concepts' section listing the four primitives (produces / consumes / depends / validate). (5) Link to the ML Prague paper PDF and the GitHub repo. (6) Add a short 'Origins' section: developed by Ocean Synaptics for managing complex agent-driven workflows; presented as a poster at ML Prague 2026. (7) Drop any reference to ~/.local/share/roadmap clone path (was solo-install instruction). SCENARIO · given a reader who arrives via the ML Prague poster · when they read the top half of the README · then they understand what this tool is, where it came from, how to install it, and that the project welcomes issues. Validator: README contains the new install command, contains 'ML Prague 2026', does NOT contain 'npm install roadmap' (without scope).",
-      "produces": [
-        "README.md",
-        ".roadmap/round-2/c-scrub-readme.json"
-      ],
-      "consumes": [
-        "package.json"
-      ],
-      "deps": [
-        "c-package-metadata"
-      ],
+      "priority": 2,
+      "depends": ["c-package-metadata"],
+      "produces": ["README.md", ".roadmap/round-2/c-scrub-readme.json"],
+      "consumes": ["package.json"],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/c-scrub-readme.json"
-        },
-        {
-          "type": "shell",
-          "command": "grep -q '@ocean-synaptics/roadmap' README.md && grep -q 'ML Prague 2026' README.md"
-        },
-        {
-          "type": "shell",
-          "command": "! grep -E '^npm install roadmap$' README.md && ! grep -F '~/.local/share/roadmap' README.md"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/c-scrub-readme.json" },
+        { "type": "shell", "command": "grep -q '@ocean-synaptics/roadmap' README.md && grep -q 'ML Prague 2026' README.md" },
+        { "type": "shell", "command": "! grep -E '^npm install roadmap$' README.md && ! grep -F '~/.local/share/roadmap' README.md" }
+      ]
     },
-    "m-readme-status-banner": {
+
+    {
       "id": "m-readme-status-banner",
       "desc": "Add a prominent status banner to README.md right under the title. Exact text (or substantially similar): '> **Status:** Released for ML Prague 2026 (May 2026). The repository is public; **issues are open**; **external PRs are deferred until ~2026-05-15** while the maintainer is at the conference. See [ROLLOUT.md](docs/ROLLOUT.md) for the contribution timeline.' This is the single most important contributor-facing communication; it sets the explicit two-phase expectation that prevents the 'opened a PR, got ghosted' failure mode. SCENARIO · given a new contributor wants to fix something · when they read the README banner · then they file an issue today and (optionally) revisit in 2 weeks for PR acceptance. Validator: banner text contains 'Status', 'ML Prague 2026', 'issues are open', 'PRs are deferred'.",
-      "produces": [
-        "README.md",
-        ".roadmap/round-2/m-readme-status-banner.json"
-      ],
+      "priority": 2,
+      "depends": ["c-scrub-readme"],
+      "produces": ["README.md", ".roadmap/round-2/m-readme-status-banner.json"],
       "consumes": [],
-      "deps": [
-        "c-scrub-readme"
-      ],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/m-readme-status-banner.json"
-        },
-        {
-          "type": "shell",
-          "command": "head -30 README.md | grep -qi 'status' && head -30 README.md | grep -q 'ML Prague 2026' && head -30 README.md | grep -qi 'issues are open' && head -30 README.md | grep -qi 'PRs.*deferred'"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/m-readme-status-banner.json" },
+        { "type": "shell", "command": "head -30 README.md | grep -qi 'status' && head -30 README.md | grep -q 'ML Prague 2026' && head -30 README.md | grep -qi 'issues are open' && head -30 README.md | grep -qi 'PRs.*deferred'" }
+      ]
     },
-    "m-rollout-doc": {
+
+    {
       "id": "m-rollout-doc",
       "desc": "Author docs/ROLLOUT.md (~1 screen) describing the two-phase rollout plan. Phase 1 (now → ~2026-05-15): public repo, issues on, PRs technically allowed but discouraged via PR template, no Discussions, no formal CONTRIBUTING.md, npm not yet published. Phase 2 (~2026-05-15+): write CONTRIBUTING.md based on conference feedback patterns, enable Discussions, accept PRs, npm publish v0.2.x or v0.3.0. Phase 2 trigger: 'maintainer has triaged the conference issue burst.' Include the v0.2.0 → v0.3.0 trajectory hint. Linked from README banner. SCENARIO · given a contributor curious about the project's posture clicks the banner link · when they read ROLLOUT.md · then they have a clear timeline and know whether to file an issue, wait, or fork. Validator: file exists, contains both phases.",
-      "produces": [
-        "docs/ROLLOUT.md",
-        ".roadmap/round-2/m-rollout-doc.json"
-      ],
+      "priority": 2,
+      "depends": ["init"],
+      "produces": ["docs/ROLLOUT.md", ".roadmap/round-2/m-rollout-doc.json"],
       "consumes": [],
-      "deps": [
-        "init"
-      ],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": "docs/ROLLOUT.md"
-        },
-        {
-          "type": "shell",
-          "command": "grep -qi 'phase 1' docs/ROLLOUT.md && grep -qi 'phase 2' docs/ROLLOUT.md && grep -q 'ML Prague' docs/ROLLOUT.md"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": "docs/ROLLOUT.md" },
+        { "type": "shell", "command": "grep -qi 'phase 1' docs/ROLLOUT.md && grep -qi 'phase 2' docs/ROLLOUT.md && grep -q 'ML Prague' docs/ROLLOUT.md" }
+      ]
     },
-    "m-issue-template": {
+
+    {
       "id": "m-issue-template",
       "desc": "Create .github/ISSUE_TEMPLATE/ with bug.yml + question.yml + config.yml. bug.yml asks for: roadmap version (output of `roadmap --version`), node + pnpm versions, OS, repro steps (minimal), expected vs actual, copy of error output. question.yml asks for: what you tried, what you expected, version. config.yml disables blank issues, links to ROLLOUT.md for the deferred-PR explanation. SCENARIO · given a contributor files an issue · when they pick a template · then the maintainer gets enough context to triage in <2 minutes. Validator: all three files exist, valid YAML.",
+      "priority": 2,
+      "depends": ["init"],
       "produces": [
         ".github/ISSUE_TEMPLATE/bug.yml",
         ".github/ISSUE_TEMPLATE/question.yml",
@@ -384,134 +284,77 @@
         ".roadmap/round-2/m-issue-template.json"
       ],
       "consumes": [],
-      "deps": [
-        "init"
-      ],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".github/ISSUE_TEMPLATE/bug.yml"
-        },
-        {
-          "type": "artifact-exists",
-          "target": ".github/ISSUE_TEMPLATE/question.yml"
-        },
-        {
-          "type": "artifact-exists",
-          "target": ".github/ISSUE_TEMPLATE/config.yml"
-        },
-        {
-          "type": "shell",
-          "command": "for f in .github/ISSUE_TEMPLATE/*.yml; do node -e \"require('fs').readFileSync('$f','utf8').length>0\" || exit 1; done"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".github/ISSUE_TEMPLATE/bug.yml" },
+        { "type": "artifact-exists", "target": ".github/ISSUE_TEMPLATE/question.yml" },
+        { "type": "artifact-exists", "target": ".github/ISSUE_TEMPLATE/config.yml" },
+        { "type": "shell", "command": "for f in .github/ISSUE_TEMPLATE/*.yml; do node -e \"require('fs').readFileSync('$f','utf8').length>0\" || exit 1; done" }
+      ]
     },
-    "m-pr-template-deferral": {
+
+    {
       "id": "m-pr-template-deferral",
       "desc": "Create .github/PULL_REQUEST_TEMPLATE.md with explicit deferral text. Exact opening (or close): 'Thanks for opening a PR. **The maintainer is presenting at ML Prague 2026 and is not reviewing external PRs until ~2026-05-15.** If your change is small (typo, README clarification, doc fix), it may still get reviewed. Otherwise, please file an issue first so we can discuss before you write code; this avoids wasted work. After 2026-05-15, this template will be replaced by full PR review guidance.' Soft-fence, not hard reject — the goal is to set expectation, not block contribution. SCENARIO · given a contributor opens a PR · when they see the template · then they understand the timeline and either close-and-file-issue or proceed knowing review is delayed. Validator: file exists, contains key phrases.",
-      "produces": [
-        ".github/PULL_REQUEST_TEMPLATE.md",
-        ".roadmap/round-2/m-pr-template-deferral.json"
-      ],
+      "priority": 2,
+      "depends": ["init"],
+      "produces": [".github/PULL_REQUEST_TEMPLATE.md", ".roadmap/round-2/m-pr-template-deferral.json"],
       "consumes": [],
-      "deps": [
-        "init"
-      ],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".github/PULL_REQUEST_TEMPLATE.md"
-        },
-        {
-          "type": "shell",
-          "command": "grep -q 'ML Prague' .github/PULL_REQUEST_TEMPLATE.md && grep -qi '2026-05-15\\|May 15' .github/PULL_REQUEST_TEMPLATE.md && grep -qi 'file an issue' .github/PULL_REQUEST_TEMPLATE.md"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".github/PULL_REQUEST_TEMPLATE.md" },
+        { "type": "shell", "command": "grep -q 'ML Prague' .github/PULL_REQUEST_TEMPLATE.md && grep -qi '2026-05-15\\|May 15' .github/PULL_REQUEST_TEMPLATE.md && grep -qi 'file an issue' .github/PULL_REQUEST_TEMPLATE.md" }
+      ]
     },
-    "ci-workflow-test": {
+
+    {
       "id": "ci-workflow-test",
       "desc": "Author .github/workflows/test.yml: a GitHub Actions workflow that runs on push to main + on pull_request to main. Steps: checkout (full history for trail.jsonl tests if any), setup-node@v4 (node 22 + 24 matrix — package.json devDeps include @types/node ^25 so target current LTS + bleeding-edge), setup-pnpm, `pnpm install --frozen-lockfile`, `pnpm run check` (typecheck), `pnpm test`. Cache pnpm store. This workflow replaces husky's pre-commit-time gates with PR-time gates, which is the right place for shared-state policy. Add a status badge to README pointing at the workflow. SCENARIO · given a contributor opens a PR · when CI runs · then typecheck + tests pass before merge is allowed. Validator: workflow file is valid YAML, references the right scripts, badge present in README.",
-      "produces": [
-        ".github/workflows/test.yml",
-        ".roadmap/round-2/ci-workflow-test.json"
-      ],
+      "priority": 3,
+      "depends": ["s-rip-gitsafe", "s-strip-husky"],
+      "produces": [".github/workflows/test.yml", ".roadmap/round-2/ci-workflow-test.json"],
       "consumes": [],
-      "deps": [
-        "s-rip-gitsafe",
-        "s-strip-husky"
-      ],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".github/workflows/test.yml"
-        },
-        {
-          "type": "shell",
-          "command": "grep -q 'pnpm run check' .github/workflows/test.yml && grep -q 'pnpm test' .github/workflows/test.yml && grep -qE 'on:\\s|on:$|push:|pull_request:' .github/workflows/test.yml"
-        },
-        {
-          "type": "shell",
-          "command": "grep -q 'github/workflows/test.yml' README.md || grep -qi 'actions/workflows/test' README.md"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".github/workflows/test.yml" },
+        { "type": "shell", "command": "grep -q 'pnpm run check' .github/workflows/test.yml && grep -q 'pnpm test' .github/workflows/test.yml && grep -qE 'on:\\s|on:$|push:|pull_request:' .github/workflows/test.yml" },
+        { "type": "shell", "command": "grep -q 'github/workflows/test.yml' README.md || grep -qi 'actions/workflows/test' README.md" }
+      ]
     },
-    "g-repo-metadata": {
+
+    {
       "id": "g-repo-metadata",
       "desc": "Set GitHub repository metadata via `gh repo edit Ocean-Synaptics/roadmap`. Fields: --description matching package.json description, --homepage 'https://github.com/Ocean-Synaptics/roadmap', --add-topic dag --add-topic workflow --add-topic agent --add-topic claude-code --add-topic typescript --add-topic cli --add-topic ml-prague-2026 --add-topic governance. License will populate from the LICENSE file automatically once committed (GitHub auto-detects). DO NOT change visibility here — that is the terminal node's job. SCENARIO · given someone searches GitHub for 'dag workflow typescript' · when GitHub indexes this repo · then it surfaces. Validator: gh repo view returns populated description, topics list >= 6, licenseInfo.key == 'mit'.",
-      "produces": [
-        ".roadmap/round-2/g-repo-metadata.json"
-      ],
+      "priority": 3,
+      "depends": ["c-package-metadata", "c-license"],
+      "produces": [".roadmap/round-2/g-repo-metadata.json"],
       "consumes": [],
-      "deps": [
-        "c-package-metadata",
-        "c-license"
-      ],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/g-repo-metadata.json"
-        },
-        {
-          "type": "shell",
-          "command": "gh repo view Ocean-Synaptics/roadmap --json description,licenseInfo,repositoryTopics | jq -e '(.description | length) > 20 and .licenseInfo.key == \"mit\" and (.repositoryTopics | length) >= 6'"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/g-repo-metadata.json" },
+        { "type": "shell", "command": "gh repo view Ocean-Synaptics/roadmap --json description,licenseInfo,repositoryTopics | jq -e '(.description | length) > 20 and .licenseInfo.key == \"mit\" and (.repositoryTopics | length) >= 6'" }
+      ]
     },
-    "g-branch-protection": {
+
+    {
       "id": "g-branch-protection",
       "desc": "Apply branch protection on main matching .github/branch-protections.yml's intent. Concrete via `gh api -X PUT /repos/Ocean-Synaptics/roadmap/branches/main/protection`: require_linear_history true, allow_force_pushes false, allow_deletions false, required_status_checks {strict:true, contexts:['test (22)','test (24)']} once ci-workflow-test runs at least once, enforce_admins true. SOFTEN for phase-1: do NOT yet require pull-request reviews (the maintainer is the only writer; require-PR-review would block self-merges). Update .github/branch-protections.yml to match the actually-applied rules. Add a comment in the YAML pointing to phase-2 ramp (require_code_review true after 2026-05-15). SCENARIO · given the maintainer pushes directly to main without a PR · when GitHub evaluates the push · then it is allowed (single maintainer) but force-pushes and history rewrites are blocked. Validator: gh api confirms required_linear_history.enabled.",
-      "produces": [
-        ".github/branch-protections.yml",
-        ".roadmap/round-2/g-branch-protection.json"
-      ],
+      "priority": 3,
+      "depends": ["init"],
+      "produces": [".github/branch-protections.yml", ".roadmap/round-2/g-branch-protection.json"],
       "consumes": [],
-      "deps": [
-        "init"
-      ],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/g-branch-protection.json"
-        },
-        {
-          "type": "shell",
-          "command": "gh api /repos/Ocean-Synaptics/roadmap/branches/main/protection 2>/dev/null | jq -e '.required_linear_history.enabled == true and .allow_force_pushes.enabled == false'"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/g-branch-protection.json" },
+        { "type": "shell", "command": "gh api /repos/Ocean-Synaptics/roadmap/branches/main/protection 2>/dev/null | jq -e '.required_linear_history.enabled == true and .allow_force_pushes.enabled == false'" }
+      ]
     },
-    "v-fresh-install": {
+
+    {
       "id": "v-fresh-install",
       "desc": "Integration gate · simulate a public user's install path end-to-end. Concrete: cp -r the current repo to a tmpdir, cd in, `pnpm install --frozen-lockfile`, `pnpm run build`, `node bin/roadmap.ts --help`, then exercise a tiny DAG: write a 4-node example spec to /tmp, `roadmap make` it, `roadmap orient`, `roadmap advance` each node, terminal. The whole thing must exit 0 on a fresh tree with no maintainer-specific config. SCENARIO · given a contributor following the README install instructions · when they execute every command verbatim · then it works. Falsifier: any non-zero exit, any reference to /home/griffin in output, any hook-prompt blocking the flow.",
-      "produces": [
-        ".roadmap/round-2/v-fresh-install.json"
-      ],
-      "consumes": [],
-      "deps": [
+      "priority": 4,
+      "depends": [
         "s-rip-gitsafe",
         "s-strip-husky",
         "s-gitignore-runtime-state",
@@ -525,74 +368,54 @@
         "c-scrub-readme",
         "ci-workflow-test"
       ],
+      "produces": [".roadmap/round-2/v-fresh-install.json"],
+      "consumes": [],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/v-fresh-install.json"
-        },
-        {
-          "type": "shell",
-          "command": "jq -e '.exit_code == 0 and (.steps | length) >= 6 and (.steps | all(.ok == true))' .roadmap/round-2/v-fresh-install.json"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/v-fresh-install.json" },
+        { "type": "shell", "command": "jq -e '.exit_code == 0 and (.steps | length) >= 6 and (.steps | all(.ok == true))' .roadmap/round-2/v-fresh-install.json" }
+      ]
     },
-    "v-leak-sweep": {
+
+    {
       "id": "v-leak-sweep",
       "desc": "Final pre-flip leak audit. Run a comprehensive grep across the whole tracked tree (`git ls-files | xargs grep -liE '<blocked-pattern>'`) for: 'fnpgrov', 'stratum', 'tablet', '/home/griffin', 'rovmk3', 'keel-boundary', 'pcode-ir', 'pixel-diffuse', 'bug-class-hunting', 'hmi-port', 'fleet-doctrine', 'griffin\\.downs(?!@)' (the email is whitelisted as the author contact), 'ocean-synaptics-internal'. Allowlist enumerated in metadata.leak_allowlist (the multi-repo CLI feature 'fleet' is allowed in tests/, src/runtime/, src/lib/fleet-types.ts, and docs/*fleet*.spec.json — these are the public surface of the feature). Any unallowlisted hit BLOCKS, with file:line for inspection. SCENARIO · given a security-conscious reader greps the public repo for customer names · when they run the same grep · then they find nothing identifying. Falsifier: any unallowlisted blocked-term hit.",
-      "produces": [
-        ".roadmap/round-2/v-leak-sweep.json"
-      ],
-      "consumes": [],
-      "deps": [
+      "priority": 4,
+      "depends": [
         "s-delete-customer-skill-templates",
         "s-delete-internal-docs",
         "c-curate-roadmap-example",
         "c-scrub-claude-md",
         "c-scrub-readme"
       ],
+      "produces": [".roadmap/round-2/v-leak-sweep.json"],
+      "consumes": [],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/v-leak-sweep.json"
-        },
-        {
-          "type": "shell",
-          "command": "jq -e '.unallowlisted_hits == 0' .roadmap/round-2/v-leak-sweep.json"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/v-leak-sweep.json" },
+        { "type": "shell", "command": "jq -e '.unallowlisted_hits == 0' .roadmap/round-2/v-leak-sweep.json" }
+      ]
     },
-    "v-history-secrets": {
+
+    {
       "id": "v-history-secrets",
       "desc": "Audit git log for secrets that would be exposed by flipping the repo public. Run: `git log --all -p | grep -nE 'BEGIN [A-Z ]*PRIVATE KEY|api[_-]?key[\"'\\\"' ]*[:=][\"'\\\"' ]*[A-Za-z0-9_-]{20,}|secret[\"'\\\"' ]*[:=][\"'\\\"' ]*[A-Za-z0-9_-]{16,}|aws_access_key_id|password[\"'\\\"' ]*[:=]'`. Any match BLOCKS pending decision (rotate + filter-repo before flip). Note that we explicitly are NOT rewriting history for stylistic concerns (commit messages mentioning fleet/ml-prague are acceptable). This node only blocks on credential-class material. SCENARIO · given a public reader runs `git log -p` looking for bad-secrets-checked-in patterns · when they search · then they find nothing matching. Falsifier: any high-entropy credential pattern.",
-      "produces": [
-        ".roadmap/round-2/v-history-secrets.json"
-      ],
+      "priority": 4,
+      "depends": ["init"],
+      "produces": [".roadmap/round-2/v-history-secrets.json"],
       "consumes": [],
-      "deps": [
-        "init"
-      ],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/v-history-secrets.json"
-        },
-        {
-          "type": "shell",
-          "command": "jq -e '.matches == 0' .roadmap/round-2/v-history-secrets.json"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/v-history-secrets.json" },
+        { "type": "shell", "command": "jq -e '.matches == 0' .roadmap/round-2/v-history-secrets.json" }
+      ]
     },
-    "term-flip-public-and-tag": {
+
+    {
       "id": "term-flip-public-and-tag",
       "desc": "TERMINAL · the human-meaningful 'done' moment. Two actions, in order: (1) `gh repo edit Ocean-Synaptics/roadmap --visibility public --accept-visibility-change-consequences` — this is irreversible without coordination; PAUSE for human approval before running. (2) `git tag -a v0.2.0 -m 'roadmap v0.2.0 · public release for ML Prague 2026'` then `git push origin v0.2.0`. Verify visibility post-flip via `gh repo view --json visibility`. Verify tag exists on origin via `git ls-remote --tags origin v0.2.0`. SCENARIO · given all upstream verifications pass · when this node runs (after explicit human approval) · then the GitHub repo is publicly visible at https://github.com/Ocean-Synaptics/roadmap and v0.2.0 is the tagged release. The poster's QR code points here. Falsifier: visibility is anything other than 'PUBLIC' or the tag is missing on origin.",
-      "produces": [
-        ".roadmap/round-2/term-flip-public-and-tag.json"
-      ],
-      "consumes": [],
-      "deps": [
+      "priority": 5,
+      "depends": [
         "v-fresh-install",
         "v-leak-sweep",
         "v-history-secrets",
@@ -603,55 +426,27 @@
         "m-issue-template",
         "m-pr-template-deferral"
       ],
+      "produces": [".roadmap/round-2/term-flip-public-and-tag.json"],
+      "consumes": [],
+      "mode": "execute",
       "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-2/term-flip-public-and-tag.json"
-        },
-        {
-          "type": "shell",
-          "command": "gh repo view Ocean-Synaptics/roadmap --json visibility | jq -e '.visibility == \"PUBLIC\"'"
-        },
-        {
-          "type": "shell",
-          "command": "git ls-remote --tags origin v0.2.0 | grep -q 'refs/tags/v0.2.0'"
-        }
-      ],
-      "idempotent": true
+        { "type": "artifact-exists", "target": ".roadmap/round-2/term-flip-public-and-tag.json" },
+        { "type": "shell", "command": "gh repo view Ocean-Synaptics/roadmap --json visibility | jq -e '.visibility == \"PUBLIC\"'" },
+        { "type": "shell", "command": "git ls-remote --tags origin v0.2.0 | grep -q 'refs/tags/v0.2.0'" }
+      ]
     },
-    "p-post-conference-contribution": {
+
+    {
       "id": "p-post-conference-contribution",
       "desc": "PLAN-MODE · post-conference contribution surface. Cannot be specified concretely now because its inputs (1) the issue burst from the conference, (2) the patterns of confusion in real installs, (3) which features of the README confused readers, (4) what kinds of PRs got submitted during the deferral window — none of these exist yet. After ~2026-05-15, this node decomposes into concrete sub-nodes: author CONTRIBUTING.md (informed by the actual confusion patterns), enable Discussions, replace the deferral PR template with a normal one, raise branch-protection to require code review, npm publish v0.2.x or v0.3.0 (the version bump depends on whether the conference window required hotfixes), update README banner from 'PRs deferred' to 'PRs welcome'. SCENARIO · given the conference is over and ~1 week of issues have been triaged · when this plan node expands · then the resulting children are concrete, falsifiable, and address the actual contributor friction observed. Validator: expanded (children exist with expandedFrom: this node).",
-      "produces": [
-        ".roadmap/round-2/p-post-conference-contribution.json",
-        "docs/roadmap-r2-public-release-prep-successor.spec.json"
-      ],
+      "priority": 5,
+      "depends": ["term-flip-public-and-tag"],
+      "produces": [".roadmap/round-2/p-post-conference-contribution.json"],
       "consumes": [],
-      "deps": [
-        "term-flip-public-and-tag"
-      ],
+      "mode": "plan",
       "validate": [
-        {
-          "type": "expanded"
-        },
-        {
-          "type": "shell",
-          "command": "node -e \"const d=JSON.parse(require('fs').readFileSync('docs/roadmap-r2-public-release-prep-successor.spec.json','utf-8')); if(!d.dag_id && !d.converged) process.exit(1)\""
-        }
-      ],
-      "idempotent": true,
-      "mode": "plan"
+        { "type": "expanded" }
+      ]
     }
-  },
-  "version": "0.3.0",
-  "protocolVersion": "0.3.0",
-  "_origin": {
-    "schemaVersion": 1,
-    "engine": "spec-kit",
-    "version": "1.0.0",
-    "compile_hash": "30fa66578f88063ae239a87d597e8642c15cb0de1fe3d4caadfdf746d3a73221",
-    "spec_sha": "c648d62d927176ae73b80caf8e8e179ab763f1831335aca04d01251b19b22b71",
-    "importedAt": "2026-04-30T17:20:05.519Z",
-    "dagId": "roadmap-r2-public-release-prep"
-  }
+  ]
 }
