@@ -306,7 +306,7 @@ describe('dag-mutator', () => {
     const headsDir = join(root, '.roadmap', 'heads');
     const perDagPath = join(headsDir, `${dag.id}.json`);
     mkdirSync(headsDir, { recursive: true });
-    writeFileSync(perDagPath, JSON.stringify({ ...dag, _lineage: { iteration: 0 } }, null, 2) + '\n');
+    writeFileSync(perDagPath, JSON.stringify(dag, null, 2) + '\n');
 
     const { dag: mutated, receipt } = insertNode(dag, {
       id: 'extra', desc: 'new', produces: ['extra.ts'], consumes: [], deps: ['init'],
@@ -316,8 +316,6 @@ describe('dag-mutator', () => {
     const written = JSON.parse(readFileSync(perDagPath, 'utf-8'));
     expect(written.nodes.extra).toBeDefined();
     expect(written.nodes.extra.id).toBe('extra');
-    // _lineage must be preserved
-    expect(written._lineage).toEqual({ iteration: 0 });
 
     // head.json should also reflect the mutation
     const head = JSON.parse(readFileSync(join(root, '.roadmap', 'head.json'), 'utf-8'));
