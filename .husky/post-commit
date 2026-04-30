@@ -1,7 +1,0 @@
-#!/bin/bash
-
-# Post-commit hook: placeholder.
-# git-state.json was removed in topology-simplify.
-# Trail.jsonl records all events — no separate breadcrumb needed.
-
-exit 0
