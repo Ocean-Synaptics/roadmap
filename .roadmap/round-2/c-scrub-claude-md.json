@@ -1,0 +1,40 @@
+{
+  "node": "c-scrub-claude-md",
+  "verdict": "GREEN",
+  "artifacts": ["CLAUDE.md", ".roadmap/round-2/c-scrub-claude-md.json"],
+  "lines_before": 426,
+  "lines_after": 426,
+  "scrub_count": {
+    "deleted_lines": 0,
+    "rewritten_lines": 0
+  },
+  "patterns_addressed": [
+    "fnpgrov: 0 hits",
+    "stratum: 0 hits",
+    "tablet: 0 hits",
+    "rovmk3: 0 hits",
+    "keel-boundary: 0 hits",
+    "pcode-ir: 0 hits",
+    "pixel-diffuse: 0 hits",
+    "bug-class-hunting: 0 hits",
+    "hmi-port: 0 hits",
+    "fleet-doctrine: 0 hits",
+    "linear-audit: 0 hits",
+    "per-page-convergence: 0 hits",
+    "cross-page-sweep: 0 hits",
+    "core-loop: 0 hits (note: '## Core Loop' as a section heading is not a hit per case-sensitive substring; sidecar matches case-insensitive but the literal 'core-loop' hyphenated form is absent)",
+    "meta-directives: 0 hits",
+    "griffin-voice: 0 hits",
+    "pipeline-thesis: 0 hits",
+    "ghidra: 0 hits",
+    "/home/griffin: 0 hits",
+    "ocean-synaptics-internal: 0 hits"
+  ],
+  "commits": [],
+  "verify": {
+    "cmd": "node -e \"const p=JSON.parse(require('fs').readFileSync('.roadmap/leak-patterns.local.json','utf8'));const c=require('fs').readFileSync('CLAUDE.md','utf8');const pats=[...p.blocked_anywhere,...p.blocked_paths];for(const t of pats){const re=new RegExp(t.replace(/[.*+?^${}()|[\\\\]\\\\\\\\]/g,'\\\\\\\\$&'),'i');if(re.test(c))console.error('LEAK:',t)}\"",
+    "exit": 0,
+    "summary": "zero unallowlisted hits"
+  },
+  "notes": "CLAUDE.md was already free of sibling-project codenames, maintainer-path strings, and §-anchor doctrine names. Re-validated full leak-pattern sweep against blocked_anywhere (19 terms) and blocked_paths (2 paths). No edits needed. The 'fleet' literal appears only in the multi-repo CLI feature context (auto-detects fleet.json, fleet scheduling globalFrontier across repos) which is allowlisted. ML Prague paper reference preserved. Architecture diagrams, DAG protocol, core loop, CLI surface — all intact."
+}
