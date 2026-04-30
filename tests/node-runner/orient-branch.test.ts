@@ -6,7 +6,7 @@ import { strict as assert } from 'node:assert';
 import { execSync } from 'child_process';
 
 test('orient: adds branch and worktree fields to output', () => {
-  const repoRoot = '/home/griffin/src/.dev/roadmap';
+  const repoRoot = '/path/to/repo';
 
   // Run orient command and parse JSON output
   const output = execSync('npx tsx bin/roadmap.ts orient --json --note "test"', {
@@ -36,7 +36,7 @@ test('orient: adds branch and worktree fields to output', () => {
 });
 
 test('orient: branch field is non-empty in current repo', () => {
-  const repoRoot = '/home/griffin/src/.dev/roadmap';
+  const repoRoot = '/path/to/repo';
 
   const output = execSync('npx tsx bin/roadmap.ts orient --json --note "test"', {
     cwd: repoRoot,

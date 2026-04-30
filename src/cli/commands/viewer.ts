@@ -71,7 +71,7 @@ function printHelp(opts: OutputOpts): void {
     examples: [
       'roadmap viewer',
       'roadmap viewer --port 5174',
-      'roadmap viewer --preview --host-repo /home/griffin/src/fleet',
+      'roadmap viewer --preview --host-repo /path/to/your/repo',
     ],
   } }, opts);
 }

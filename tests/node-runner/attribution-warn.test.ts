@@ -56,7 +56,7 @@ test('checkAttribution: warning string format includes file names and count', ()
 });
 
 test('bin/roadmap.ts includes checkAttribution call', () => {
-  const repoRoot = '/home/griffin/src/.dev/roadmap';
+  const repoRoot = '/path/to/repo';
 
   // Verify that the checkAttribution function is called in advanceNode
   const output = execSync('grep -A 2 "Attribution safety:" bin/roadmap.ts', {
@@ -70,7 +70,7 @@ test('bin/roadmap.ts includes checkAttribution call', () => {
 });
 
 test('source contains checkAttribution function', () => {
-  const repoRoot = '/home/griffin/src/.dev/roadmap';
+  const repoRoot = '/path/to/repo';
 
   const output = execSync('grep -n "function checkAttribution" bin/roadmap.ts', {
     cwd: repoRoot,
@@ -82,7 +82,7 @@ test('source contains checkAttribution function', () => {
 });
 
 test('source contains attributionWarning in result', () => {
-  const repoRoot = '/home/griffin/src/.dev/roadmap';
+  const repoRoot = '/path/to/repo';
 
   const output = execSync('grep -n "attributionWarning" bin/roadmap.ts', {
     cwd: repoRoot,

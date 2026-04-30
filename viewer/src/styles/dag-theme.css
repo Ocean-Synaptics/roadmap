@@ -1,14 +1,10 @@
 /*
- * DAG Theme — Poster-H visual primitives ported to CSS.
+ * DAG Theme — visual primitives for the viewer (originally derived from
+ * the ML Prague 2026 poster artwork).
  *
- * Source:
- *   /home/griffin/src/ml-prague/poster/mlprague-poster-H.typ
- *   /home/griffin/src/ml-prague/render-harness/typst/profiles/mythic.typ
- *
- * The poster uses gold foil + holographic rainbow over dark ink. Here we
- * reproduce the foil borders, drop shadows, and the IN-PROGRESS rainbow
- * conic-gradient + glow-modulate animation. SVG nodes get an animated
- * dashoffset stroke; HTML containers get the conic-gradient mask trick.
+ * Foil borders, drop shadows, and the IN-PROGRESS rainbow conic-gradient
+ * + glow-modulate animation. SVG nodes get an animated dashoffset stroke;
+ * HTML containers get the conic-gradient mask trick.
  *
  * Tokens (poster-mythic ↔ dashboard mapping):
  *   --ink-dark   #1A1D28  (mythic.ink-dark)
