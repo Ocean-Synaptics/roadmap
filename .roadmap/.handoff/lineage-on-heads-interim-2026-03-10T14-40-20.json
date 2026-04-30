@@ -1,9 +1,0 @@
-{
-  "timestamp": "2026-03-10T14:40:20.918Z",
-  "progress": 0.5,
-  "discovered": [],
-  "blockers": [
-    "shell:! grep 'appendLink\\|loadChain' src/lib/chain.ts"
-  ],
-  "currentFile": ""
-}

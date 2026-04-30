@@ -1,9 +1,0 @@
-{
-  "timestamp": "2026-03-08T16:36:47.563Z",
-  "progress": 0.5,
-  "discovered": [],
-  "blockers": [
-    "shell:node -e \"const r = require('./dist/protocol.js'); if (!r.define || !r.orient) throw 'missing exports'\""
-  ],
-  "currentFile": ""
-}
