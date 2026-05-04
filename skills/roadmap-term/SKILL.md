@@ -110,13 +110,27 @@ You're at the terminal node. This is the assessment moment — not a formality.
                 the rationale must be specific — what intent is satisfied
 
   continue      invoke /roadmap-spec to design the successor
-                dropped threads + gaps feed into the spec
+                NAME THE CARRIERS · each residual that didn't close in this
+                round becomes a first-class node in the successor (see
+                /roadmap-spec · Round carriers section)
                 the next DAG should be NARROWER than this one
 
   orbiting      STOP. surface to human.
                 "same problems across iterations: [list]"
                 do not write another spec. redirect needed.
 ```
+
+CARRIER REQUIREMENT · do not close a round with un-named residuals.
+
+If the falsifier landed RED at terminal upstream and you're authoring a "continue" successor, EVERY residual must be named as a carrier with:
+
+```
+- a concrete description (one plain-English sentence)
+- a successor node-id slot it'll occupy
+- a validator describing what "fixed" means for this carrier
+```
+
+A round closed without named carriers — relaxed validators, hand-waved residuals, "we'll deal with it next time" — is forge-by-narrative. The round didn't actually close; the bar moved.
 
 ## 6. Boot Prompt
 

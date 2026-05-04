@@ -122,11 +122,10 @@ doc: prose the agent loads on demand, not glue you wire by hand.
 ```
   skill              what it does
   ────────────────── ────────────────────────────────────────────────────────
-  roadmap-spec       Generate convergence-oriented roadmap specs
+  roadmap-spec       Generate specs · round-carriers discipline at HONEST-RED
   roadmap-orient     Self-orient at session start — position, fleet, next step
-  roadmap-auto       Autonomous roadmap execution with rich reporting
-  roadmap-term       Assess convergence, review session, write successor, close
-  core-loop          Iterate-upstream-propagate-downstream loop on RED outcomes
+  roadmap-auto       Autonomous execution · convergence stance · iterate loop on RED
+  roadmap-term       Assess convergence · successor with named carriers
 ```
 
 For Claude Code, install by copying (or symlinking, if you want to track

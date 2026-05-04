@@ -91,14 +91,14 @@ ON-BLOCKED   STOP · output one blocking question · do NOT guess
 
 ## Convergence stance · keep head down, surface only what's exogenous
 
-The default mode is convergence: when something fails, iterate. /core-loop fires on RED. Don't surface a blocker until you've genuinely exhausted what's in your hands.
+The default mode is convergence: when something fails, iterate. Don't surface a blocker until you've genuinely exhausted what's in your hands.
 
 ```
 ENDOGENOUS · keep head down · iterate
   validator rejects                · fix the produce, re-advance
   test fails                       · read the failure, fix the code
   schema doesn't match              · hoist the field, regenerate
-  hypothesis falsified              · /core-loop · widen scope · upstream
+  hypothesis falsified              · diffuse · widen scope · upstream
   my code doesn't compile           · I write code, I fix code
   my receipt shape is wrong         · I author receipts, I fix shape
 
@@ -110,14 +110,68 @@ EXOGENOUS · surface · don't invent workarounds
   disk full / network gone on a remote I do not control
 
 DISCRIMINATOR · can I fix this with the tools I already have?
-  yes  → keep head down · iterate · /core-loop on RED
+  yes  → keep head down · iterate
   no   → surface, name the operator action verbatim, leave a BLOCKED
          receipt as a resume handle, walk to a parallel-ready spine
 ```
 
-ANTI-PATTERN · throwing hands up before iterating. "I tried once and it failed" is not a blocker. "I cannot find a way through this in the time I have" is not a blocker either — it's an invitation to /core-loop. A blocker is a thing the world will not let you do, not a thing you haven't done yet.
+ANTI-PATTERN · throwing hands up before iterating. "I tried once and it failed" is not a blocker. "I cannot find a way through this in the time I have" is not a blocker either — it's an invitation to iterate harder. A blocker is a thing the world will not let you do, not a thing you haven't done yet.
 
 §Convergence-default · agents iterate by default · escalation is the exception · the exception is named exogenous · everything else is endogenous.
+
+### Procedure for endogenous failures · the iterate loop
+
+Iteration isn't "retry harder." It's a structured loop that bottoms out at a real cause, not a forged green.
+
+```
+1. DIFFUSE at current level         pass-1 broad · pass-2 residual · pass-3
+                                    hard-residual · count delta vs prior pass
+
+2. ASYMPTOTE TEST                   delta < 5pp AND mechanism unchanged?
+
+3a. NOT yet                         continue diffusing at this level
+
+3b. YES → SCOPE-WIDEN ONCE          is the asymptote within a narrow scope?
+                                    widen the corpus or filter once · if NEW
+                                    emissions surface, the prior asymptote
+                                    was a scope artifact · continue at widened
+                                    scope
+
+4. STILL ASYMPTOTE post-widen       MOVE UPSTREAM to the next layer
+                                    (the producer that fed your inputs)
+
+5. ITERATE diffusion at upstream    pass-1/2/3 at the new level
+
+6. CONTINUE upstream                until TERMINAL UPSTREAM (the unchallengeable
+                                    origin · primary record · ground truth ·
+                                    legacy source · whatever cannot be
+                                    interrogated further)
+
+7. PROPAGATE DOWNSTREAM             each upstream finding reshapes the next
+                                    level's emissions, populators, schema,
+                                    runtime, probes
+
+8. RE-VALIDATE descending           against the new substrate at every level
+
+9. ASYMPTOTE TEST at every level    on the way down
+
+10. ONLY THEN accept HONEST-RED     and only with NAMED CARRIERS (see
+                                    /roadmap-spec for carrier authoring)
+```
+
+Why this is load-bearing for LLMs:
+
+```
+LLM default                        iterate-loop discipline
+─────────────────────────────      ──────────────────────────────────
+narrate the residual away          count it · name it · let it block
+forge the next round on top        carrier survives to next round
+silently relax the validator       carrier validator names what "fixed" means
+"I tried, it didn't work"          which step did you reach? what did upstream say?
+"this is good enough for now"      good enough is honest only with named carriers
+```
+
+§Iterate-don't-bail · the loop is the work · skipping steps is forge-by-narrative.
 
 🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 

@@ -254,6 +254,48 @@ Streaming dispatch is the execution model. The spec does NOT pre-partition nodes
 
 A spec containing `B0/B1/B2` templates is redirected before compile. Clusters-of-concern replace batch-cohorts · streaming dispatch is the runtime.
 
+## Round carriers · when iteration meets the round boundary
+
+A round closes when the falsifier is satisfied OR when the falsifier is honestly RED with named carriers. **Carriers are residuals named at HONEST-RED · they become first-class nodes in the successor spec · they ARE the reason the next round exists.**
+
+When iteration (see /roadmap-auto · convergence stance) bottoms out at terminal upstream and the falsifier still won't drop, you have three authoring moves:
+
+```
+INTRA-NODE       fix the produce, re-advance
+                 no DAG change · iteration at the worker level
+
+INTRA-ROUND      modify the DAG · insert/modify nodes
+                 scope-widened during iteration · ratification needed ·
+                 plan-mode decomposition discovered at runtime
+
+ROUND BOUNDARY   author successor with named carriers
+                 HONEST-RED accepted at terminal upstream · carriers
+                 enumerate what the next round must address
+```
+
+Carrier discipline:
+
+```
+NAMED at HONEST-RED                  not invented in retrospect · not "we'll
+                                     figure it out next round"
+
+EACH CARRIER → A NODE                in the successor spec, a carrier becomes
+                                     a node (or cluster) with concrete
+                                     produces and validators
+
+CARRIER VALIDATORS                   describe what "fixed" means for this
+                                     carrier · the next round's exit criterion
+                                     is meeting these validators
+
+ANTI-PATTERN                         silent validator-relaxation without a
+                                     named successor carrier = forge-by-narrative
+                                     · the round closed but the work didn't
+```
+
+Carriers travel via `inputs[]` of the successor spec (sha-pinned receipts from the prior round) and via the dag_desc narrative ("this round addresses carriers from <prior-id>: X, Y, Z"). The successor's terminal validator should reference the carriers explicitly — "every carrier resolved or escalated."
+
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
+
 ## What kills specs
 
 ```
