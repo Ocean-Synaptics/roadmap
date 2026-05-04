@@ -6,15 +6,25 @@
 // Shared graph-construction logic used by the canonical SpecIR path
 // (src/lib/intake/spec-ir.ts → compileIR). The markdown-tasks surface is
 // no longer supported — see docs/MIGRATION.md.
+//
+// Ordering rule (post r-rewrite-dependency-resolver):
+//   Edges between tasks are derived EXCLUSIVELY from consumes ↔ produces.
+//   ParsedTask.depends is no longer read. If a task has no consumes, it is
+//   a root; if no other task consumes its produces, it is a leaf. Roots and
+//   leaves are wired to a synthetic init/term via a ratification receipt
+//   when there is more than one of either.
 
-import type { Graph, NodeSpec, ValidationRule } from '../../protocol.ts';
+import type { Graph, NodeSpec, ValidationRule, ConsumeSpec } from '../../protocol.ts';
+import { consumeArtifact } from '../../protocol.ts';
 
 export interface ParsedTask {
   id: string;
   desc: string;
+  /** @deprecated Ordering is derived from consumes ↔ produces. Field retained
+   *  only to avoid breaking older callers; tasksToDAG does not read it. */
   depends?: string[];
   produces: string[];
-  consumes: string[];
+  consumes: (string | ConsumeSpec)[];
   mode: 'execute' | 'plan';
   validate: ValidationRule[];
 }
@@ -35,56 +45,103 @@ export function parseTasksMd(_content: string): ParsedTask[] {
   );
 }
 
+/**
+ * Build a Graph from ParsedTask[]. Edges are derived from consumes ↔ produces.
+ *
+ * Procedure:
+ *   1. Synthesize produces for tasks without one (every node must have an artifact).
+ *   2. Index producers (artifact path → producing task id).
+ *   3. For each task, derive predecessors by matching its consumes against the index.
+ *      Unresolved consumes throw — every consumes path must trace to some produce.
+ *   4. Roots = tasks with zero predecessors. Leaves = tasks with zero successors.
+ *   5. If multiple roots: synth `init` producing a ratification receipt; every root
+ *      consumes it. If multiple leaves: synth `term` consuming every leaf's produces.
+ */
 export function tasksToDAG(tasks: ParsedTask[], opts: ImportOptions): Graph<string> {
   if (tasks.length === 0) throw new Error('No tasks provided');
 
-  const taskIds = new Set(tasks.map(t => t.id));
-
-  // Validate deps reference real tasks
-  for (const t of tasks) {
-    for (const d of t.depends ?? []) {
-      if (!taskIds.has(d)) throw new Error(`Task "${t.id}" depends on unknown task "${d}"`);
-    }
-  }
-
-  // Synthesize produces for tasks lacking them — every node must have an artifact
+  // 1. Synthesize produces for tasks lacking them — every node must have an artifact.
   for (const t of tasks) {
     if (t.produces.length === 0) {
       t.produces = [`.roadmap/tasks/${t.id}.artifact.json`];
     }
   }
 
+  // 2. Index producers.
+  const producerOf = new Map<string, string>(); // artifact path → task id
+  for (const t of tasks) {
+    for (const p of t.produces) {
+      const prior = producerOf.get(p);
+      if (prior && prior !== t.id) {
+        throw new Error(
+          `Artifact "${p}" is produced by both "${prior}" and "${t.id}" — produces must be unique`,
+        );
+      }
+      producerOf.set(p, t.id);
+    }
+  }
+
+  // 3. Derive predecessors from consumes ↔ produces.
+  const predsOf = new Map<string, Set<string>>();
+  const taskIds = new Set(tasks.map(t => t.id));
+  for (const t of tasks) {
+    const preds = new Set<string>();
+    for (const c of t.consumes) {
+      const path = consumeArtifact(c);
+      const from = producerOf.get(path);
+      if (!from) {
+        throw new Error(
+          `Task "${t.id}" consumes "${path}" but no task produces it (every consumes edge must trace to an upstream produces)`,
+        );
+      }
+      if (from !== t.id) preds.add(from);
+    }
+    predsOf.set(t.id, preds);
+  }
+
+  // 4. Roots and leaves.
+  const succsOf = new Map<string, Set<string>>();
+  for (const id of taskIds) succsOf.set(id, new Set());
+  for (const [id, preds] of predsOf) {
+    for (const p of preds) succsOf.get(p)!.add(id);
+  }
+  const rootTasks = tasks.filter(t => predsOf.get(t.id)!.size === 0);
+  const leafTasks = tasks.filter(t => succsOf.get(t.id)!.size === 0);
+  if (rootTasks.length === 0) {
+    throw new Error('No root tasks found (every task consumes something — likely a cycle)');
+  }
+
   const nodes: Record<string, NodeSpec<string, string>> = {};
 
-  // Init: tasks with no depends are roots
-  const rootTasks = tasks.filter(t => (t.depends ?? []).length === 0);
-  if (rootTasks.length === 0) throw new Error('No root tasks found (tasks with no dependencies)');
-
+  // 5a. Init: single root keeps its own id; multiple roots get a ratification receipt.
   let initId: string;
   if (rootTasks.length === 1) {
     initId = rootTasks[0].id;
   } else {
     initId = taskIds.has('init') ? '_init' : 'init';
+    const receipt = `.roadmap/${initId}.receipt.json`;
     nodes[initId] = {
       id: initId,
-      desc: 'Synthetic init — roots all independent tasks',
-      produces: [`${initId}.marker`],
+      desc: 'Synthetic init — ratification receipt for all root tasks',
+      produces: [receipt],
       consumes: [],
       deps: [],
       validate: [],
     } as NodeSpec<string, string>;
+    // Wire each root to consume the receipt — this is how ordering is expressed.
     for (const t of rootTasks) {
-      const deps = (t.depends ??= []);
-      if (!deps.includes(initId)) deps.push(initId);
-      if (!t.consumes.includes(`${initId}.marker`)) t.consumes.push(`${initId}.marker`);
+      if (!t.consumes.map(c => consumeArtifact(c)).includes(receipt)) {
+        t.consumes = [...t.consumes, receipt];
+      }
+    }
+    // Recompute predecessors for roots after wiring.
+    for (const t of rootTasks) {
+      predsOf.get(t.id)!.add(initId);
     }
   }
 
-  // Term: leaf task (nothing depends on it), or synthesized
-  const depTargets = new Set(tasks.flatMap(t => t.depends ?? []));
-  const leafTasks = tasks.filter(t => !depTargets.has(t.id));
+  // 5b. Term: single leaf keeps its own id; multiple leaves get a synth term.
   let termId: string;
-
   if (leafTasks.length === 1) {
     termId = leafTasks[0].id;
   } else {
@@ -99,14 +156,17 @@ export function tasksToDAG(tasks: ParsedTask[], opts: ImportOptions): Graph<stri
     } as NodeSpec<string, string>;
   }
 
-  // Add all parsed tasks as nodes
+  // 6. Materialize task nodes. `deps` is computed from the predecessor map,
+  //    not read from t.depends. The deps field exists for the engine's
+  //    internal ordering pass (src/core/order.ts) but is no longer authored.
   for (const t of tasks) {
+    const deps = [...(predsOf.get(t.id) ?? [])].sort();
     nodes[t.id] = {
       id: t.id,
       desc: t.desc,
       produces: t.produces,
       consumes: t.consumes,
-      deps: t.depends ?? [],
+      deps,
       validate: t.validate,
       ...(t.mode === 'plan' ? { mode: 'plan' } : {}),
     } as NodeSpec<string, string>;
