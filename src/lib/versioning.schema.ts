@@ -2,8 +2,8 @@
  * Versioning schema: DAG version + protocol compatibility
  */
 
-export type ProtocolVersion = '0.1.0' | '0.2.0' | '0.3.0';
-export const CURRENT_PROTOCOL_VERSION: ProtocolVersion = '0.3.0';
+export type ProtocolVersion = '0.1.0' | '0.2.0' | '0.3.0' | '0.4.0';
+export const CURRENT_PROTOCOL_VERSION: ProtocolVersion = '0.4.0';
 
 export interface VersionInfo {
   readonly version: string; // DAG version (semver)
@@ -18,19 +18,22 @@ export interface CompatibilityResult {
   readonly message?: string;
 }
 
+const versionOrder: Record<ProtocolVersion, number> = {
+  '0.1.0': 1,
+  '0.2.0': 2,
+  '0.3.0': 3,
+  '0.4.0': 4,
+};
+
+const versions: ProtocolVersion[] = ['0.1.0', '0.2.0', '0.3.0', '0.4.0'];
+
 /**
  * Check if a DAG's protocol version is compatible with current
  */
 export function checkCompatibility(
   dagProtocolVersion: string,
-  currentProtocolVersion: ProtocolVersion = '0.3.0'
+  currentProtocolVersion: ProtocolVersion = CURRENT_PROTOCOL_VERSION,
 ): CompatibilityResult {
-  const versionOrder: Record<ProtocolVersion, number> = {
-    '0.1.0': 1,
-    '0.2.0': 2,
-    '0.3.0': 3,
-  };
-
   const dagOrder = versionOrder[dagProtocolVersion as ProtocolVersion];
   const currentOrder = versionOrder[currentProtocolVersion];
 
@@ -55,8 +58,6 @@ export function checkCompatibility(
 
   // Compute migration path
   const migrations: ProtocolVersion[] = [];
-  const versions: ProtocolVersion[] = ['0.1.0', '0.2.0', '0.3.0'];
-
   for (let i = dagOrder; i < currentOrder; i++) {
     migrations.push(versions[i]);
   }
@@ -72,28 +73,16 @@ export function checkCompatibility(
  * Migration registry: how to upgrade from version N to N+1
  */
 export const migrations: Record<string, (dag: any) => any> = {
-  '0.1.0->0.2.0': (dag: any) => {
-    // Add optional idempotent field (no-op, just mark migration)
-    for (const node of Object.values(dag.nodes as any[]) || []) {
-      if (!('idempotent' in (node as any))) {
-        (node as any).idempotent = undefined;
-      }
-    }
-    return dag;
-  },
-
-  '0.2.0->0.3.0': (dag: any) => {
-    // Fill required idempotent field (infer from semantics)
-    for (const node of Object.values(dag.nodes as any[]) || []) {
+  '0.3.0->0.4.0': (dag: any) => {
+    // v0.4.0 strips legacy node fields: priority, depends, ambient, provenance, idempotent
+    // Wiring is now consumes ↔ produces only.
+    for (const node of Object.values(dag.nodes ?? {}) as any[]) {
       const n = node as any;
-      if (n.idempotent === undefined || n.idempotent === null) {
-        // Heuristic: manual-approval → false, else true
-        if (n.validate?.some((v: any) => v.type === 'manual-approval')) {
-          n.idempotent = false;
-        } else {
-          n.idempotent = true;
-        }
-      }
+      delete n.priority;
+      delete n.depends;
+      delete n.ambient;
+      delete n.provenance;
+      delete n.idempotent;
     }
     return dag;
   },
@@ -110,7 +99,6 @@ export function migrateDAG(dag: any, targetVersion: ProtocolVersion): any {
   }
 
   let current = dag;
-  const versions: ProtocolVersion[] = ['0.1.0', '0.2.0', '0.3.0'];
   const currentIdx = versions.indexOf(dag.protocolVersion as ProtocolVersion);
   const targetIdx = versions.indexOf(targetVersion);
 

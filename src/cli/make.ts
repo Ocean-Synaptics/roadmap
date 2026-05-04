@@ -46,6 +46,23 @@ export async function run(
     }, `Failed to parse spec: ${e instanceof Error ? e.message : String(e)}`);
   }
 
+  // Reject v1 specs that use the removed `depends` field — point at MIGRATION.md
+  if (parsed && Array.isArray(parsed.tasks)) {
+    const offenders = (parsed.tasks as any[])
+      .filter((t) => t && typeof t === 'object' && 'depends' in t)
+      .map((t) => t.id ?? '<unknown>');
+    if (offenders.length > 0) {
+      throw new RoadmapError('VALIDATION_FAILED', {
+        offenders,
+        fix: [
+          "field 'depends' is removed in v2 — use consumes ↔ produces wiring.",
+          'See docs/MIGRATION.md.',
+          `tasks with 'depends': ${offenders.join(', ')}`,
+        ].join('\n'),
+      }, "field 'depends' is removed in v2 — use consumes ↔ produces wiring. See docs/MIGRATION.md.");
+    }
+  }
+
   // Reject raw DAG JSON
   if (parsed.nodes && typeof parsed.nodes === 'object' && !parsed.tasks) {
     throw new RoadmapError('VALIDATION_FAILED', {
@@ -188,20 +205,6 @@ export async function run(
     }, `Failed to convert spec: ${e instanceof Error ? e.message : String(e)}`);
   }
 
-  // Auto-inject successor spec into term node produces + validator
-  const _dagIdForSuccessor = dag.id ?? parsed.dag_id ?? 'unknown';
-  const successorSpecFile = `docs/${_dagIdForSuccessor}-successor.spec.json`;
-  const termNode = dag.nodes[dag.term];
-  if (termNode && !termNode.produces.includes(successorSpecFile)) {
-    termNode.produces = [...termNode.produces, successorSpecFile];
-    // Validator: successor spec must exist and be valid JSON with dag_id or converged field
-    const successorValidator = {
-      type: 'shell' as const,
-      command: `node -e "const d=JSON.parse(require('fs').readFileSync('${successorSpecFile}','utf-8')); if(!d.dag_id && !d.converged) process.exit(1)"`,
-    };
-    termNode.validate = [...(termNode.validate ?? []), successorValidator];
-  }
-
   // Validate the DAG
   const isDryRun = args.includes('--dry-run');
   const allErrors = collectMakeErrors(dag, { skipTerminalIntent: args.includes('--skip-terminal-intent') });
@@ -251,17 +254,6 @@ export async function run(
   // persistDAG writes head.json + heads/<dagId>.json atomically so
   // cli-auto-merge cannot race a mutator out of existence.
   persistDAG(repoRoot, dag);
-
-  // Auto-complete init node (synthetic, no real work)
-  const initNode = dag.nodes[dag.init];
-  if (initNode && initNode.id === 'init') {
-    try {
-      const { saveCompletionWithEvidence } = await import('../runtime/completion.ts');
-      saveCompletionWithEvidence(repoRoot, initNode.id, [
-        { rule: 'auto-init', passed: true, evidence: 'Synthetic init auto-completed at make time' },
-      ]);
-    } catch { /* best-effort */ }
-  }
 
   // Commit
   let commitWarning: string | undefined;
