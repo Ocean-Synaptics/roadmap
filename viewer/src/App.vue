@@ -1,24 +1,31 @@
 <script setup lang="ts">
 // Roadmap viewer shell — composes the DAG renderer (hierarchical default,
-// force topology selectable) with a side pane for full node detail and a
-// collapsible field-expander for raw head.json / completed / intentEvals.
+// force topology selectable) with a hover/click tooltip-pane for node
+// detail and a collapsible field-expander for raw head.json / completed /
+// intentEvals.
 //
 // §Dumb-components: this shell composes; DagViewer/DagTopology are pure
 // props-in/events-out. No fetch/state-derivation lives in their script
-// setup. Click on any node bubbles up to open NodeSidePanel here.
+// setup. Click on any node bubbles up to anchor the tooltip pane here.
 //
 // r2-hero: ?print=1 URL toggle drives a poster-grade aesthetic mode with
-// chrome hidden and the side panel always-on for a single pinned node
-// (?pin=<node-id>).
+// chrome hidden and a single pinned node (?pin=<node-id>).
 
 import { computed, nextTick, ref, watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
 import FieldExpander from "./components/FieldExpander.vue";
-import NodeSidePanel from "./components/NodeSidePanel.vue";
-import type { InspectedNode } from "./components/NodeSidePanel.vue";
 import DagViewer from "./components/DagViewer.vue";
 import DagTopology from "./components/DagTopology.vue";
 import NodeTooltipPane from "./components/NodeTooltipPane.vue";
+import { useRoadmapState } from "./services/roadmapReader";
+
+// Local type — was previously exported from the now-removed NodeSidePanel.
+interface InspectedNode {
+  id: string;
+  desc: string;
+  produces?: string[];
+  validators?: { rule: string; passed: boolean; evidence?: string }[];
+}
 import { onMounted, onUnmounted } from "vue";
 import type { AnchorRect } from "./composables/useTooltipPosition";
 import { useDagPayload } from "./services/dagReader";
@@ -88,15 +95,9 @@ watch(viewMode, (next) => {
   else force.stop();
 });
 
-// node selection → side panel
-const selectedNodeId: Ref<string> = ref<string>("");
-const selectedNode: ComputedRef<InspectedNode | null> = computed(() => {
-  const p = payload.value;
-  if (p === null || !selectedNodeId.value) return null;
-  const n = p.head.nodes[selectedNodeId.value];
-  if (!n) return null;
-  return n as unknown as InspectedNode;
-});
+// All roadmaps available on the system (host repo · or fleet members
+// when host has fleet.json). Live-updated via /api/events 'roadmap' stream.
+const allRoadmaps = useRoadmapState();
 
 // Tooltip-pane state
 const tooltipNodeId: Ref<string> = ref<string>("");
@@ -115,10 +116,6 @@ const tooltipNodeData = computed<(Record<string, unknown> & { id: string }) | nu
 });
 
 function onNodeSelected(nodeId: string, anchorRect?: DOMRect): void {
-  // Both modes: clicking a node updates BOTH selection AND tooltip target.
-  // Print mode previously early-returned after setting only selectedNodeId,
-  // leaving the tooltip frozen on the URL-pin · fix: drop the early return.
-  selectedNodeId.value = nodeId;
   tooltipNodeId.value = nodeId;
   tooltipExpanded.value = false;
   if (anchorRect) {
@@ -215,14 +212,6 @@ function dismissTooltip(): void {
   tooltipExpanded.value = false;
 }
 
-function pinTooltipToSide(): void {
-  // Hoist tooltip's node into the persistent side panel BEFORE dismissing,
-  // since dismissTooltip clears tooltipNodeId — read it first into a local.
-  const id = tooltipNodeId.value;
-  if (id) selectedNodeId.value = id;
-  dismissTooltip();
-}
-
 function onGlobalClick(ev: MouseEvent): void {
   if (!tooltipNodeId.value) return;
   const t = ev.target as HTMLElement | null;
@@ -253,7 +242,6 @@ onMounted(() => {
     stars.value = buildStars();
   }
   if (printMode.value && printPin.value) {
-    selectedNodeId.value = printPin.value;
     tooltipNodeId.value = printPin.value;
     computePinAnchor();
   }
@@ -278,7 +266,7 @@ onUnmounted(() => {
 });
 
 watch(
-  () => [printMode.value, selectedNodeId.value, layout.value?.nodes.length] as const,
+  () => [printMode.value, tooltipNodeId.value, layout.value?.nodes.length] as const,
   () => { setTimeout(updateConnectorAnchors, 200); },
 );
 
@@ -295,13 +283,6 @@ watch(
   },
 );
 
-// Selection cleared · clear pinned-side endpoint too
-watch(
-  () => selectedNodeId.value,
-  (next) => {
-    if (next === "") pinnedScreenPos.value = null;
-  },
-);
 onUnmounted(() => {
   window.removeEventListener("resize", updateConnectorAnchors);
   window.removeEventListener("dag-tooltip-rect-change", updateConnectorAnchors);
@@ -454,11 +435,39 @@ function buildStars(): Star[] {
       </div>
     </header>
 
+    <!-- Roadmaps available on the system. Lists host repo + every fleet
+         member when fleet.json is present. Each row shows the active DAG
+         id, status, level, and current frontier nodes. Read-only for now. -->
+    <aside v-if="!printMode && allRoadmaps.length > 0" class="roadmap-list">
+      <div class="roadmap-list__head">
+        <span class="roadmap-list__label">roadmaps on system</span>
+        <span class="roadmap-list__count">{{ allRoadmaps.length }}</span>
+      </div>
+      <ul class="roadmap-list__rows">
+        <li
+          v-for="r in allRoadmaps"
+          :key="r.path"
+          class="roadmap-row"
+          :class="[`roadmap-row--${r.status}`, { 'roadmap-row--current': r.dagId === dagId }]"
+        >
+          <span class="roadmap-row__repo">{{ r.repo }}</span>
+          <span class="roadmap-row__sep">·</span>
+          <span class="roadmap-row__dag">{{ r.dagId ?? '(no dag)' }}</span>
+          <span v-if="r.level !== undefined" class="roadmap-row__level">L{{ r.level }}</span>
+          <span v-if="r.completionPct !== undefined" class="roadmap-row__pct">{{ r.completionPct }}%</span>
+          <span v-if="r.currentBatch && r.currentBatch.length > 0" class="roadmap-row__batch">
+            → {{ r.currentBatch.slice(0, 3).join(' · ') }}{{ r.currentBatch.length > 3 ? ` (+${r.currentBatch.length - 3})` : '' }}
+          </span>
+          <span v-if="r.error" class="roadmap-row__err">⚠ {{ r.error }}</span>
+        </li>
+      </ul>
+    </aside>
+
     <section class="dag-pane">
       <DagViewer
         v-if="viewMode === 'hierarchical'"
         :layout="layout"
-        :selected-node-id="tooltipNodeId || selectedNodeId"
+        :selected-node-id="tooltipNodeId"
         :print-mode="printMode"
         :milestones="milestoneIds"
         export-name="roadmap-dag"
@@ -474,7 +483,6 @@ function buildStars(): Star[] {
         :class="{ 'dag-tooltip--print': printMode }"
         @close="dismissTooltip"
         @expand="tooltipExpanded = !tooltipExpanded"
-        @pin-to-side="pinTooltipToSide"
       />
       <DagTopology
         v-if="viewMode === 'topology' && !printMode"
@@ -563,14 +571,6 @@ function buildStars(): Star[] {
       />
     </svg>
 
-    <NodeSidePanel
-      v-if="selectedNode !== null && !printMode"
-      :node="selectedNode"
-      :print-mode="printMode"
-      class="side-panel-floating"
-      :class="{ 'node-panel--print': printMode }"
-      @close="selectedNodeId = ''"
-    />
   </main>
 </template>
 
@@ -621,26 +621,66 @@ function buildStars(): Star[] {
   border-color: var(--accent-red, #d33);
   color: var(--text-primary, #eee);
 }
+
+/* Roadmap list — system-wide DAG inventory rendered in a compact bar
+   below the header. Each row is one host or fleet member. */
+.roadmap-list {
+  border: 1px solid var(--chrome-25, #333);
+  background: var(--chrome-05, #0a0a0a);
+  padding: 6px 12px;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.roadmap-list__head {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  color: var(--text-meta, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 4px;
+}
+.roadmap-list__label { font-weight: 600; }
+.roadmap-list__count {
+  background: var(--chrome-15, #1a1a1a);
+  border: 1px solid var(--chrome-25, #333);
+  padding: 0 6px;
+  border-radius: 2px;
+  color: var(--text-secondary, #ccc);
+}
+.roadmap-list__rows { list-style: none; margin: 0; padding: 0; }
+.roadmap-row {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  padding: 2px 0;
+  color: var(--text-secondary, #ccc);
+}
+.roadmap-row--current { color: var(--text-primary, #eee); }
+.roadmap-row--current .roadmap-row__dag {
+  color: var(--foil, #D7A432);
+  font-weight: 600;
+}
+.roadmap-row--no-dag { color: var(--text-meta, #888); }
+.roadmap-row--error .roadmap-row__err { color: var(--accent-red, #d33); }
+.roadmap-row__repo { color: var(--text-meta, #888); }
+.roadmap-row__sep { color: var(--chrome-25, #333); }
+.roadmap-row__level,
+.roadmap-row__pct {
+  background: var(--chrome-15, #1a1a1a);
+  border: 1px solid var(--chrome-25, #333);
+  padding: 0 4px;
+  border-radius: 2px;
+  font-size: 10px;
+}
+.roadmap-row__batch { color: var(--text-meta, #888); font-style: italic; }
+
 .dag-pane {
   flex: 1 1 auto;
   min-height: 70vh;
   border: 1px solid var(--chrome-25, #333);
   background: var(--chrome-00, #000);
   position: relative;
-}
-/* Default-mode side panel — fixed-positioned floating card so it doesn't
-   collapse into the flex column when pinned. Print mode overrides via
-   .node-panel--print in dag-theme.css. */
-.side-panel-floating {
-  position: fixed;
-  right: 16px;
-  top: 64px;
-  width: 380px;
-  max-height: calc(100vh - 96px);
-  z-index: 50;
-  border: 1px solid var(--chrome-25, #333);
-  background: var(--chrome-05, #0a0a0a);
-  overflow-y: auto;
 }
 .details-head {
   display: flex;

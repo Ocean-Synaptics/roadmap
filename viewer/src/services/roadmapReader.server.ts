@@ -30,8 +30,30 @@ interface OrientRepoEntry {
 }
 
 interface OrientData {
+  // Fleet-shape output (host has fleet.json)
   iteration?: number;
   repos?: OrientRepoEntry[];
+  // Single-repo-shape output (host has no fleet.json) — orient returns
+  // position / level / done / remaining at the top level. The DAG itself
+  // (id, nodes) isn't on the orient envelope; we read head.json directly
+  // for that since it's a tiny tracked file.
+  position?: string[];
+  level?: number;
+  done?: number;
+  remaining?: number;
+}
+
+interface HeadJson {
+  id?: string;
+  nodes?: Record<string, unknown>;
+}
+
+function readHeadJson(repoPath: string): HeadJson | null {
+  try {
+    return JSON.parse(readFileSync(join(repoPath, ".roadmap/head.json"), "utf-8")) as HeadJson;
+  } catch {
+    return null;
+  }
 }
 
 interface OrientResult {
@@ -119,12 +141,42 @@ export async function scanRoadmaps(): Promise<RepoRoadmap[]> {
 
   const oriented = Array.isArray(result.data.repos) ? result.data.repos : [];
 
+  // Fleet-shape: project each registered fleet entry from oriented[]
+  if (oriented.length > 0) {
+    return allRegistry.map((entry) => {
+      const match = oriented.find((r) => r.path === entry.path)
+        ?? oriented.find((r) => r.name === entry.name);
+      if (match === undefined) {
+        return { repo: entry.name, path: entry.path, status: "no-dag", currentBatch: [] };
+      }
+      return projectRepo(match);
+    });
+  }
+
+  // Single-repo shape: orient surfaces position/level/done/remaining at the
+  // top level. The DAG itself isn't on the envelope, so we read head.json
+  // directly (it's a tiny tracked file at the host root).
+  const done = result.data.done ?? 0;
+  const remaining = result.data.remaining ?? 0;
+  const position = result.data.position ?? [];
+  const completionPct = computeCompletionPct(done, remaining);
+
   return allRegistry.map((entry) => {
-    const match = oriented.find((r) => r.path === entry.path)
-      ?? oriented.find((r) => r.name === entry.name);
-    if (match === undefined) {
+    const head = readHeadJson(entry.path);
+    const dagId = head?.id;
+    const totalNodes = head?.nodes !== undefined ? Object.keys(head.nodes).length : 0;
+    if (dagId === undefined && totalNodes === 0) {
       return { repo: entry.name, path: entry.path, status: "no-dag", currentBatch: [] };
     }
-    return projectRepo(match);
+    return {
+      repo: entry.name,
+      path: entry.path,
+      status: position.length > 0 ? "active" : "no-dag",
+      dagId,
+      completionPct,
+      currentBatch: position,
+      level: result.data.level,
+      remaining,
+    };
   });
 }
