@@ -113,6 +113,40 @@ roadmap make docs/<your-project>.spec.json --note "initial DAG"
 roadmap orient --note "begin"
 ```
 
+## Skills
+
+The `skills/` directory ships five skills that teach roadmap to a Claude
+Code (or compatible) agent. They are the executable counterpart to this
+doc: prose the agent loads on demand, not glue you wire by hand.
+
+```
+  skill              what it does
+  ────────────────── ────────────────────────────────────────────────────────
+  roadmap-spec       Generate convergence-oriented roadmap specs
+  roadmap-orient     Self-orient at session start — position, fleet, next step
+  roadmap-auto       Autonomous roadmap execution with rich reporting
+  roadmap-term       Assess convergence, review session, write successor, close
+  core-loop          Iterate-upstream-propagate-downstream loop on RED outcomes
+```
+
+For Claude Code, install by copying (or symlinking, if you want to track
+upstream):
+
+```sh
+cp -r skills/* ~/.claude/skills/
+# or, to follow upstream:
+for s in skills/*/; do
+  ln -s "$(pwd)/$s" "$HOME/.claude/skills/$(basename "$s")"
+done
+```
+
+For other agent stacks (Cursor, Aider, Continue, etc.), there is no
+universal skills surface — copy the body of each `SKILL.md` into the
+agent's instruction surface (Cursor rules file, Aider config, system
+prompt, etc.). The `SKILL.md` files are intentionally readable and
+copy-pastable: frontmatter describes when to invoke, the body is the
+prompt the agent runs against.
+
 ## Why this is a doc, not a script
 
 Earlier versions shipped `roadmap init` as a script that mutated
