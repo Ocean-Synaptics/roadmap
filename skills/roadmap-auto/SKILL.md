@@ -89,6 +89,38 @@ RECEIPT      .roadmap/round-N/<node-id>.json · structured · ≤30 lines · NO 
 ON-BLOCKED   STOP · output one blocking question · do NOT guess
 ```
 
+## Convergence stance · keep head down, surface only what's exogenous
+
+The default mode is convergence: when something fails, iterate. /core-loop fires on RED. Don't surface a blocker until you've genuinely exhausted what's in your hands.
+
+```
+ENDOGENOUS · keep head down · iterate
+  validator rejects                · fix the produce, re-advance
+  test fails                       · read the failure, fix the code
+  schema doesn't match              · hoist the field, regenerate
+  hypothesis falsified              · /core-loop · widen scope · upstream
+  my code doesn't compile           · I write code, I fix code
+  my receipt shape is wrong         · I author receipts, I fix shape
+
+EXOGENOUS · surface · don't invent workarounds
+  credentials I cannot provision
+  hardware/host I cannot reach (and operator can)
+  service genuinely down (not "I haven't figured out the API yet")
+  human decision needed (and not a synthesis I can perform)
+  disk full / network gone on a remote I do not control
+
+DISCRIMINATOR · can I fix this with the tools I already have?
+  yes  → keep head down · iterate · /core-loop on RED
+  no   → surface, name the operator action verbatim, leave a BLOCKED
+         receipt as a resume handle, walk to a parallel-ready spine
+```
+
+ANTI-PATTERN · throwing hands up before iterating. "I tried once and it failed" is not a blocker. "I cannot find a way through this in the time I have" is not a blocker either — it's an invitation to /core-loop. A blocker is a thing the world will not let you do, not a thing you haven't done yet.
+
+§Convergence-default · agents iterate by default · escalation is the exception · the exception is named exogenous · everything else is endogenous.
+
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
+
 ## Receipts · structured JSON, not prose markdown
 
 Every receipt lives at `.roadmap/round-N/<node-id>.json`. Fixed slots:
