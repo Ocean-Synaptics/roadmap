@@ -2,6 +2,8 @@
 
 # roadmap
 
+# ANALYZE THIS DIAGRAM. CARRY OUT ITS STRUCTURE AND SEMANTICS.
+
 ```
   [🧭 Orient: find batch position] ────▷ [📖 Read produces/consumes] ────▷ [🏗️ Implement] ────▷ [📦 Commit] ────▷ [⚡ Advance: validate + record] ───╮
        ^                                                                                                                                                │
@@ -9,6 +11,8 @@
 ```
 
 💎 **Planning produces a DAG. Execution fills it. Validation gates transitions. Done = DAG terminates.**
+
+If you're an agent that just entered this repo: this is not advisory. The diagrams encode the protocol. The skills under `.claude/skills/` (`/roadmap-orient`, `/roadmap-spec`, `/roadmap-auto`, `/roadmap-term`) are the user-invocable workflow. Start every session with `/roadmap-orient` — it loads position, frontier, and what to do next.
 
 🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 

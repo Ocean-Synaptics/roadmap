@@ -7,6 +7,8 @@
 
 DAG-governed development protocol. Define a typed graph of work — nodes produce artifacts, edges encode dependencies. The system validates structure, tracks position from filesystem state, and enforces completion via runtime gates.
 
+**Why this exists** → [docs/BRIEF.md](docs/BRIEF.md) (the executive 1-pager: problem, thesis, what you get).
+
 ## Install
 
 ```bash

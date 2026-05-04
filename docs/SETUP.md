@@ -115,7 +115,7 @@ roadmap orient --note "begin"
 
 ## Skills
 
-The `skills/` directory ships five skills that teach roadmap to a Claude
+The `.claude/skills/` directory ships five skills that teach roadmap to a Claude
 Code (or compatible) agent. They are the executable counterpart to this
 doc: prose the agent loads on demand, not glue you wire by hand.
 
@@ -132,9 +132,9 @@ For Claude Code, install by copying (or symlinking, if you want to track
 upstream):
 
 ```sh
-cp -r skills/* ~/.claude/skills/
+cp -r .claude/skills/* ~/.claude/skills/
 # or, to follow upstream:
-for s in skills/*/; do
+for s in .claude/skills/*/; do
   ln -s "$(pwd)/$s" "$HOME/.claude/skills/$(basename "$s")"
 done
 ```
