@@ -28,7 +28,7 @@ For a guided setup that adapts to your environment (package manager, monorepo co
 # 1. author a spec
 cat > my-spec.json <<'EOF'
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "engine": { "name": "spec-kit", "version": "1.0.0", "config_hash": null },
   "dag_id": "hello",
   "dag_desc": "first DAG",
@@ -37,10 +37,12 @@ cat > my-spec.json <<'EOF'
     { "path": "my-spec.json", "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "role": "spec" }
   ],
   "tasks": [
-    { "id": "init", "desc": "start", "produces": [], "consumes": [], "deps": [], "validate": [] },
-    { "id": "build", "desc": "produce hello.txt", "produces": ["hello.txt"], "consumes": [], "deps": ["init"],
+    { "id": "init", "desc": "write start receipt", "produces": [".roadmap/init.json"], "consumes": [],
+      "validate": [{ "type": "artifact-exists", "target": ".roadmap/init.json" }] },
+    { "id": "build", "desc": "produce hello.txt", "produces": ["hello.txt"], "consumes": [".roadmap/init.json"],
       "validate": [{ "type": "artifact-exists", "target": "hello.txt" }] },
-    { "id": "term", "desc": "done", "produces": [], "consumes": ["hello.txt"], "deps": ["build"], "validate": [] }
+    { "id": "term", "desc": "done", "produces": [], "consumes": ["hello.txt"],
+      "validate": [{ "type": "artifact-exists", "target": "hello.txt" }] }
   ]
 }
 EOF
@@ -63,14 +65,17 @@ More worked examples in [examples/](examples/) (hello + parallel-build).
 
 ## Concepts
 
-Each node declares:
+Each node is a seven-field `NodeSpec` (`schema_version: 2`):
 
-| Field | Meaning |
-|-------|---------|
-| `produces` | files this node creates |
-| `consumes` | files this node reads — must be produced by a predecessor |
-| `deps` | predecessor node IDs |
-| `validate` | rules that must pass for completion (shell commands, artifact checks, schema validation) |
+| Field | Required | Meaning |
+|-------|----------|---------|
+| `id` | yes | unique node identifier within the DAG |
+| `desc` | yes | human-readable purpose |
+| `produces` | yes | files this node creates |
+| `consumes` | yes | files this node reads — must be produced by a predecessor (this is also the edge: ordering is expressed entirely via `consumes` ↔ `produces`, no separate `deps` field) |
+| `validate` | yes | rules that must pass for completion (shell commands, artifact checks, schema validation) |
+| `mode` | optional | `execute` (default) or `plan` |
+| `sidecar` | optional | additional metadata carried alongside the node |
 
 Position is computed from filesystem state — which artifacts actually exist determines where you are. The graph is validated at TypeScript compile time, at import time via `define`, and at runtime via `orient` / `advance`.
 
@@ -102,9 +107,9 @@ import { define, verify, orient } from '@ocean-synaptics/roadmap';
 const g = define({
   id: 'auth-system', init: 'start', term: 'deployed',
   nodes: {
-    start:    { id: 'start',    produces: ['schema.sql'],   consumes: [],            deps: [],        validate: [], idempotent: true },
-    api:      { id: 'api',      produces: ['src/api.ts'],   consumes: ['schema.sql'], deps: ['start'], validate: [{ type: 'shell', command: 'npx tsc --noEmit' }], idempotent: true },
-    deployed: { id: 'deployed', produces: ['deploy.json'],  consumes: ['src/api.ts'], deps: ['api'],   validate: [{ type: 'artifact-exists', target: 'deploy.json' }], idempotent: false },
+    start:    { id: 'start',    desc: 'create schema',   produces: ['schema.sql'],  consumes: [],             validate: [{ type: 'artifact-exists', target: 'schema.sql' }] },
+    api:      { id: 'api',      desc: 'build api layer', produces: ['src/api.ts'],  consumes: ['schema.sql'], validate: [{ type: 'shell', command: 'npx tsc --noEmit' }] },
+    deployed: { id: 'deployed', desc: 'deploy api',      produces: ['deploy.json'], consumes: ['src/api.ts'], validate: [{ type: 'artifact-exists', target: 'deploy.json' }] },
   }
 });
 
@@ -123,7 +128,7 @@ verify(g);  // all consumes satisfied by predecessor produces?
 
 | Layer | Catches | When |
 |-------|---------|------|
-| `tsc --noEmit` | Invalid dep refs, missing nodes | Compile time |
+| `tsc --noEmit` | Invalid consumes refs, missing nodes | Compile time |
 | `define(g)` | Cycles, missing init/term | Import time |
 | `verify(g)` | Consumed artifact not produced upstream | On demand |
 | `orient(g, completion)` | Batch position from filesystem | Session start |
