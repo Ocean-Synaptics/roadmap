@@ -1,5 +1,5 @@
 // @module validate-dag
-// @exports validateAcyclic, validateInitTermExists, validateReachability, validatePhaseOrdering, validateNodeConsistency, recursivelyValidate, ValidationError, PhaseType
+// @exports validateAcyclic, validateInitTermExists, validateReachability, validatePhaseOrdering, validateNodeConsistency, validateConsumesNonEmpty, validateConsumesHaveProducer, recursivelyValidate, ValidationError, PhaseType
 // @entry roadmap
 
 import type { Graph, NodeSpec, ValidationRule } from './protocol/types.ts';
@@ -357,6 +357,56 @@ export function validateNodeConsistency(g: Graph<any>): ValidationResult {
 }
 
 /**
+ * v2 authoring rule · every ordering edge is consumes-of-an-upstream-produces.
+ * Reject non-init nodes with empty consumes — the gate-without-data-flow check.
+ */
+export function validateConsumesNonEmpty(g: Graph<any>): ValidationResult {
+  const errors: string[] = [];
+  for (const node of Object.values(g.nodes) as any[]) {
+    if (node.id === g.init) continue;
+    const consumes = Array.isArray(node.consumes) ? node.consumes : [];
+    if (consumes.length === 0) {
+      errors.push(
+        `node ${node.id} has empty consumes — every gate must be consumes-of-an-upstream-produces; ` +
+        `add a ratification receipt or wire a real artifact. See docs/MIGRATION.md.`
+      );
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * v2 authoring rule · every consumes path must appear in some other node's produces.
+ * Reachability check — no consumer-without-producer islands.
+ */
+export function validateConsumesHaveProducer(g: Graph<any>): ValidationResult {
+  const errors: string[] = [];
+  const producerIndex = new Map<string, string>();
+  for (const node of Object.values(g.nodes) as any[]) {
+    const produces = Array.isArray(node.produces) ? node.produces : [];
+    for (const path of produces) {
+      if (typeof path === 'string' && !producerIndex.has(path)) {
+        producerIndex.set(path, node.id);
+      }
+    }
+  }
+  for (const node of Object.values(g.nodes) as any[]) {
+    const consumes = Array.isArray(node.consumes) ? node.consumes : [];
+    for (const entry of consumes) {
+      const path = typeof entry === 'string' ? entry : entry?.path;
+      if (!path || typeof path !== 'string') continue;
+      if (!producerIndex.has(path)) {
+        errors.push(
+          `node ${node.id} consumes ${path} but no node produces it. ` +
+          `Either add a producing node, or correct the path.`
+        );
+      }
+    }
+  }
+  return { valid: errors.length === 0, errors };
+}
+
+/**
  * Recursively validate a DAG at all levels:
  * 1. Acyclicity
  * 2. Init/term existence
@@ -376,6 +426,8 @@ export function recursivelyValidate(g: Graph<any>): ValidationResult {
     validateReachability(g),
     validatePhaseOrdering(g),
     validateNodeConsistency(g),
+    validateConsumesNonEmpty(g),
+    validateConsumesHaveProducer(g),
   ];
 
   for (const check of checks) {

@@ -9,12 +9,14 @@ import { define, verify, check } from '../protocol.ts';
 import {
   validateTerminalIntentGate,
   validateInitIntentGate,
+  validateConsumesNonEmpty,
+  validateConsumesHaveProducer,
 } from './validate-dag.ts';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface MakeError {
-  gate: 'define' | 'verify' | 'check' | 'terminal-intent' | 'init-intent';
+  gate: 'define' | 'verify' | 'check' | 'terminal-intent' | 'init-intent' | 'consumes-non-empty' | 'consumes-has-producer';
   node?: string;
   message: string;
   fix: string;
@@ -124,6 +126,42 @@ export function collectMakeErrors(
       fix: 'Fix init intent gate errors',
       severity: 'warning',
     } as any);
+  }
+
+  // 6. Empty-consumes on non-init nodes (v2 rule · gate-without-data-flow)
+  try {
+    const r = validateConsumesNonEmpty(dag);
+    for (const msg of r.errors) {
+      errors.push({
+        gate: 'consumes-non-empty',
+        message: msg,
+        fix: 'Add at least one consumes entry — wire upstream produces or a ratification receipt. See docs/MIGRATION.md.',
+      });
+    }
+  } catch (e) {
+    errors.push({
+      gate: 'consumes-non-empty',
+      message: e instanceof Error ? e.message : String(e),
+      fix: 'Fix consumes-non-empty validation errors',
+    });
+  }
+
+  // 7. Every consumes path must have a producer (v2 rule · reachability)
+  try {
+    const r = validateConsumesHaveProducer(dag);
+    for (const msg of r.errors) {
+      errors.push({
+        gate: 'consumes-has-producer',
+        message: msg,
+        fix: 'Either add a producing node for the path, or correct the consumes path.',
+      });
+    }
+  } catch (e) {
+    errors.push({
+      gate: 'consumes-has-producer',
+      message: e instanceof Error ? e.message : String(e),
+      fix: 'Fix consumes-has-producer validation errors',
+    });
   }
 
   return errors;
