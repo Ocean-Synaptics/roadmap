@@ -112,19 +112,17 @@ roadmap advance <node-id> --note "<what>" # run validators, record completion
        │
        ├────▷ [📄 head.json]           active DAG + _origin provenance
        │
-       ├────▷ [✅ completed.json]      completion receipts (append-heavy, atomic write)
+       ├────▷ [✅ completed.json]      completion receipts (append-heavy · gitignored)
        │
-       ├────▷ [📜 trail.jsonl]         event log + mutations (append-only, SLO scoring)
+       ├────▷ [📜 trail.jsonl]         event log + mutations (append-only · gitignored)
        │
-       ├────▷ [🔒 enforcement.json]    gitsafe rules (static, never written by CLI)
-       │
-       ├────▷ [📁 heads/]
+       ├────▷ [📁 specs/]              hand-authored SpecIR sources
        │          │
-       │          ╰────▷ [{dagId}.json]   archived DAGs with _lineage field
+       │          ╰────▷ [{dag-id}.spec.json]
        │
-       ╰────▷ [📁 .handoff/]
-                   │
-                   ╰────▷ [{nodeId}.json] per-node handoff data → feeds briefs
+       ╰────▷ [📁 heads/]              compiled DAGs (gitignored except curated examples)
+                  │
+                  ╰────▷ [{dagId}.json]
 ```
 
 ```
@@ -139,8 +137,9 @@ roadmap advance <node-id> --note "<what>" # run validators, record completion
 ```
   type               shape
   ────────────────── ──────────────────────────────────────────────────────────
-  CoreNodeSpec       { id, desc, produces, consumes, deps }
-  NodeSpec<T,S>      CoreNodeSpec & NodeMeta (validate, mode, idempotent, ...)
+  NodeSpec           { id, desc, produces, consumes, validate, mode?, sidecar? }
+                     ordering derives EXCLUSIVELY from consumes ↔ produces
+                     (no separate deps field; v0.4.0 cut)
   Graph<T>           { id, desc, init, term, nodes }
   Orientation        { position, level, batchRemaining, batchComplete, produces, consumes }
   Context            { repoRoot, completion, chain, handoffs, scoring }
@@ -159,13 +158,11 @@ No DAG yet? Write a spec → `roadmap make spec.json --note "..."`.
 {
   "id": "setup-db",
   "desc": "Create PostgreSQL schema and seed table",
-  "priority": 1,
-  "depends": ["init"],
   "produces": ["db/schema.sql", "db/seed.sql"],
   "consumes": ["config/db.json"],
   "mode": "execute",
   "validate": [
-    { "type": "artifact-exists" },
+    { "type": "artifact-exists", "target": "db/schema.sql" },
     { "type": "shell", "command": "psql -f db/schema.sql && echo ok" }
   ]
 }
@@ -175,10 +172,14 @@ No DAG yet? Write a spec → `roadmap make spec.json --note "..."`.
   field       semantics
   ─────────── ─────────────────────────────────────────────────────────────
   produces    file paths this node creates — what advance checks exist
-  consumes    file paths this node reads — must be produced by a predecessor
-  depends     predecessor node IDs
+  consumes    file paths this node reads — must be produced by a predecessor.
+              ALSO encodes the edge: ordering is derived purely from
+              consumes ↔ produces. there is no separate `depends` field.
   mode        execute | plan
+  sidecar     optional metadata carried alongside the node (not engine-read)
   well-defined test: new agent, zero questions, concrete produces, falsifiable validators
+  init gates: a node with no upstream artifact can produce a ratification
+              receipt (e.g. `.roadmap/init.json`) for downstream nodes to consume.
 ```
 
 ### Validators
@@ -288,36 +289,37 @@ No DAG yet? Write a spec → `roadmap make spec.json --note "..."`.
 
 When executing a roadmap autonomously, surface progress richly. The user should see the DAG come alive.
 
-**On orient** — show the DAG shape, current batch, what's done:
+Cluster nodes by concern (e.g. `setup-*`, `validate-*`, `integrate-*`), not by depth-batch. Streaming dispatch is the execution model — `consumes ↔ produces` is the only ordering truth, and a node is dispatchable the moment its consumes resolve.
+
+**On orient** — show the DAG shape, current frontier, what's done:
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  🔮 dag-name — B2 of 7 │ 5/14 done                     │
+│  🔮 dag-name — 5/14 done · frontier: 2 ready            │
 ├─────────────────────────────────────────────────────────┤
-│  B0  init ✅                                            │
-│  B1  setup-db ✅ │ setup-auth ✅                        │
-│  B2  [🧪 api-routes] │ [🧪 middleware] ←── you are here │
-│  B3  integration │ B4 tests │ B5 term                   │
+│  setup    init ✅ │ setup-db ✅ │ setup-auth ✅          │
+│  build    [🧪 api-routes] │ [🧪 middleware] ←── ready   │
+│  verify   integration │ tests │ term                    │
 └─────────────────────────────────────────────────────────┘
 ```
 
 **On dispatch** — banner showing what agents are working on:
 ```
 ┌─────────────────────────────────────────────────────────┐
-│  B2 DISPATCHED — 2 parallel agents                     │
+│  DISPATCHED — 2 parallel agents                         │
 │                                                         │
-│  🔧 api-routes    → src/api/routes.ts, src/api/types.ts│
-│  🔧 middleware    → src/middleware/auth.ts               │
+│  🔧 api-routes    → src/api/routes.ts, src/api/types.ts │
+│  🔧 middleware    → src/middleware/auth.ts              │
 │                                                         │
 │  Progress: 5/14 done                                    │
 └─────────────────────────────────────────────────────────┘
 ```
 
-**On batch complete** — show advancement, what's next:
+**On node complete** — show advancement, what just opened:
 ```
 🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩
 
-  B2 ✅ api-routes (3/3 checks) │ middleware (2/2 checks)
-  Next: B3 integration → src/integration/
+  ✅ api-routes (3/3 checks) │ middleware (2/2 checks)
+  Newly ready: integration → src/integration/
 
 🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩🟩
 ```
@@ -336,12 +338,13 @@ Use color bars (🟥🟧🟨🟩🟦🟪) as dividers. Use box drawing for struc
 ## Entry Points
 
 ```
-  import                  what
-  ─────────────────────── ────────────────────────────────────────────────────
-  roadmap                 full API — DAG ops + predicates + errors + types
-  roadmap/protocol        core — define, verify, orient, merge, reconcile, parallelOrder
-  roadmap/agent           sealed agent API — getBrief, advance
-  roadmap/validation      validateNode, validateGraph, validateBatch
+  import                            what
+  ───────────────────────────────── ────────────────────────────────────────
+  @ocean-synaptics/roadmap          the public surface — define, verify,
+                                    orient, advanceBatch, parallelOrder,
+                                    CompletionStore, types
+                                    (single entry; deeper internal modules
+                                    are not part of the public API)
 ```
 
 🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
@@ -362,7 +365,6 @@ Use color bars (🟥🟧🟨🟩🟦🟪) as dividers. Use box drawing for struc
   chain/lineage      src/lib/chain.ts                       archiveHead, getRootIntent, parseReport
   api enforcement    src/lib/api-enforcement.ts             validateApiCoverage() → { ok, violations[] }
   DAG mutation       src/lib/dag-mutator.ts                 insert/remove/modify → trail.jsonl
-  gitsafe            src/lib/gitsafe-loader.ts              file access control (denylist, size)
   validators         src/lib/protocol/validation.ts         artifact-exists, shell, schema, expanded
   agent dispatch     src/lib/agent-dispatch/                brief gate, handoff, dispatch coordinator
   convergence        src/lib/convergence/                   gap trajectory, convergence assessment
@@ -384,47 +386,35 @@ Use color bars (🟥🟧🟨🟩🟦🟪) as dividers. Use box drawing for struc
 
 ## Installation
 
-```bash
-git clone https://github.com/Ocean-Synaptics/roadmap ~/.local/share/roadmap
-cd ~/.local/share/roadmap && pnpm install && pnpm link --global
-```
-
-If this repo has no `.roadmap/head.json`: write a spec and run `roadmap make`.
+See [README.md](README.md#install) for installation. From inside this repo: `pnpm install && pnpm run build && pnpm link --global`. If a target repo has no `.roadmap/head.json`: write a spec under `.roadmap/specs/` and run `roadmap make .roadmap/specs/<dag-id>.spec.json --note "<intent>"`.
 
 🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
 ## North Star
 
 ```
-  "Compiling Agent State" — ML Prague 2026 (accepted)
-  ~/docs/Downs-CompilingAgentState-MLPrague2026.pdf
+  "Compiling Agent State" — ML Prague 2026 (poster)
 
-  the paper describes the graph as compiled execution state.
   the thesis: the process is ephemeral, the graph is permanent.
+  the graph is compiled execution state — a typed DAG that
+  outlives any single session, validates structurally and at
+  runtime, and lets a fresh agent re-enter exactly where the
+  previous one left off.
 
-  what the paper covers:
-    graph as execution state, static analysis, parallel batches,
-    recovery via orient(), convergence chains, proven completion,
-    append-only trail. 198 iterations, 1794 completions, 3425 events.
-
-  what the paper doesn't cover (built since submission):
+  shipped in v0.2.0:
+    typed seven-field NodeSpec · ordering from consumes ↔ produces
+    define / verify / orient / advance graph algebra
+    streaming dispatch · parallel batches from data-flow only
     fleet scheduling (globalFrontier across repos)
-    skill contagion (/roadmap-spec, /roadmap-auto, /roadmap-term)
-    observation-first spec design
-    enriched term pattern (root intent + chain context)
-    roadmap init (bootstrap any repo)
-    successor spec as structural requirement at term
+    .claude/skills/{orient,spec,auto,term} for visiting agents
+    receipt-based completion · append-only trail.jsonl
+    JSON-only CLI · zero human-format stdout
 
-  open source target: ML Prague conference (2026)
-  the tool + skills + templates ship as one package
-  roadmap init is the on-ramp for adopters
-
-  integration north star:
+  not yet (post-conference roadmap):
     orient as native Claude Code tool (not Bash shell-out)
-    brief appears in agent context automatically at session start
-    suggestedSkill triggers skill invocation directly
-    term pattern loads /roadmap-term without explicit invoke
+    brief in agent context automatically at session start
     MCP server for cross-session DAG awareness
+    npm publish (currently install-from-source)
 ```
 
 🟥🟥🟥🟥🟥🟥🟥🟥🟧🟧🟧🟧🟧🟧🟧🟧🟨🟨🟨🟨🟨🟨🟨🟨🟩🟩🟩🟩🟩🟩🟩🟩🟦🟦🟦🟦🟦🟦🟦🟦🟪🟪🟪🟪🟪🟪🟪🟪

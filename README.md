@@ -5,9 +5,9 @@
 
 > **Status:** Released for ML Prague 2026 (May 2026). The repository is public; **issues are open**; **external PRs are deferred until ~2026-05-15** while the maintainer is at the conference. See [docs/ROLLOUT.md](docs/ROLLOUT.md) for the contribution timeline.
 
-DAG-governed development protocol. Define a typed graph of work — nodes produce artifacts, edges encode dependencies. The system validates structure, tracks position from filesystem state, and enforces completion via runtime gates.
+Long agent runs leave a wake of half-finished commits, stale branches, and transcripts no one re-reads. `roadmap` declares the work itself as a typed DAG: each node names what it `produces`, what it `consumes`, and how to `validate`. Ordering falls out of the data flow; position is computed from filesystem state; completion is falsifiable via shell-command validators against real artifacts.
 
-**Why this exists** → [docs/BRIEF.md](docs/BRIEF.md) (the executive 1-pager: problem, thesis, what you get).
+The graph survives sessions. A new agent — or the same one tomorrow — runs `roadmap orient` and inherits exactly the position the previous run left. Output is JSON; every advance is a receipt; the trail is append-only. The thesis: **the process is ephemeral, the graph is permanent.**
 
 ## Install
 
@@ -26,44 +26,20 @@ For a guided setup that adapts to your environment (package manager, monorepo co
 
 ## Quick start
 
+In a fresh repo, run a worked example:
+
 ```bash
-# 1. author a spec
-cat > my-spec.json <<'EOF'
-{
-  "schema_version": 2,
-  "engine": { "name": "spec-kit", "version": "1.0.0", "config_hash": null },
-  "dag_id": "hello",
-  "dag_desc": "first DAG",
-  "metadata": { "generated": "2026-05-01T00:00:00Z", "compile_hash": "init" },
-  "inputs": [
-    { "path": "my-spec.json", "sha256": "0000000000000000000000000000000000000000000000000000000000000000", "role": "spec" }
-  ],
-  "tasks": [
-    { "id": "init", "desc": "write start receipt", "produces": [".roadmap/init.json"], "consumes": [],
-      "validate": [{ "type": "artifact-exists", "target": ".roadmap/init.json" }] },
-    { "id": "build", "desc": "produce hello.txt", "produces": ["hello.txt"], "consumes": [".roadmap/init.json"],
-      "validate": [{ "type": "artifact-exists", "target": "hello.txt" }] },
-    { "id": "term", "desc": "done", "produces": [], "consumes": ["hello.txt"],
-      "validate": [{ "type": "artifact-exists", "target": "hello.txt" }] }
-  ]
-}
-EOF
-
-# 2. compile spec to DAG (--skip-input-verification because we used a placeholder sha256)
-roadmap make my-spec.json --note "first DAG" --skip-input-verification
-
-# 3. find current position
-roadmap orient --note "begin"
-# → position: ["build"]
-
-# 4. produce the artifact and advance
-echo "hello" > hello.txt
-roadmap advance build --note "wrote hello"
-
-# 5. continue until terminal
+git init -q
+roadmap make examples/hello.spec.json --note try --skip-input-verification
+roadmap orient --note try                # → position: [init]
+echo '{}' > .roadmap/init.json
+roadmap advance init --note "ratify"     # validators run, advance recorded
+roadmap orient --note try                # → position: [build]
 ```
 
-More worked examples in [examples/](examples/) (hello + parallel-build).
+The DAG advances from `init` (writes a ratification receipt) through `build` (consumes the receipt, produces `hello.txt`) to `term`. Two specs ship in [examples/](examples/) — `hello` (linear, 3 nodes) and `parallel-build` (diamond, demonstrates parallel batches).
+
+Read `roadmap api make` for the full SpecIR schema.
 
 ## Concepts
 
@@ -109,13 +85,13 @@ import { define, verify, orient } from '@ocean-synaptics/roadmap';
 const g = define({
   id: 'auth-system', init: 'start', term: 'deployed',
   nodes: {
-    start:    { id: 'start',    desc: 'create schema',   produces: ['schema.sql'],  consumes: [],             validate: [{ type: 'artifact-exists', target: 'schema.sql' }] },
+    start:    { id: 'start',    desc: 'create schema',   produces: ['schema.sql'],  consumes: [],             validate: [] },
     api:      { id: 'api',      desc: 'build api layer', produces: ['src/api.ts'],  consumes: ['schema.sql'], validate: [{ type: 'shell', command: 'npx tsc --noEmit' }] },
-    deployed: { id: 'deployed', desc: 'deploy api',      produces: ['deploy.json'], consumes: ['src/api.ts'], validate: [{ type: 'artifact-exists', target: 'deploy.json' }] },
+    deployed: { id: 'deployed', desc: 'deploy api',      produces: ['deploy.json'], consumes: ['src/api.ts'], validate: [{ type: 'shell', command: 'curl --fail $DEPLOY_URL/health' }] },
   }
 });
 
-verify(g);  // all consumes satisfied by predecessor produces?
+verify(g);  // every consumed artifact produced by a predecessor?
 ```
 
 | Function | Purpose |
