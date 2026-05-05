@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Thanks for filing a bug. The maintainer is at ML Prague through ~2026-05-15;
-        triage may be slower than usual. See [docs/ROLLOUT.md](https://github.com/Ocean-Synaptics/roadmap/blob/main/docs/ROLLOUT.md).
+        triage may be slower than usual. See [docs/ROLLOUT.md](https://github.com/griffin-downs/roadmap/blob/main/docs/ROLLOUT.md).
 
   - type: input
     id: roadmap-version

@@ -26,12 +26,12 @@
   "description": "DAG-governed development protocol — declare typed graphs of work, validate structure, track position via filesystem state",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Ocean-Synaptics/roadmap.git"
+    "url": "git+https://github.com/griffin-downs/roadmap.git"
   },
   "bugs": {
-    "url": "https://github.com/Ocean-Synaptics/roadmap/issues"
+    "url": "https://github.com/griffin-downs/roadmap/issues"
   },
-  "homepage": "https://github.com/Ocean-Synaptics/roadmap#readme",
+  "homepage": "https://github.com/griffin-downs/roadmap#readme",
   "keywords": [
     "dag",
     "workflow",
