@@ -17,8 +17,9 @@
     <svg
       ref="svgRef"
       :viewBox="`0 0 ${layout.width} ${layout.height}`"
-      :width="layout.width"
-      :height="layout.height"
+      width="100%"
+      height="100%"
+      preserveAspectRatio="xMidYMid meet"
       class="dag-svg"
       :class="{ 'dag-svg--print': printMode }"
       role="img"
@@ -465,8 +466,12 @@
           aria-label="fit to canvas"
           @click="fitToCanvas()"
         >
+          <!-- four arrows pointing inward — "fit to bounds" -->
           <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M3 3 H8 M3 3 V8 M21 3 H16 M21 3 V8 M3 21 H8 M3 21 V16 M21 21 H16 M21 21 V16"/>
+            <path d="M3 3 L9 9 M3 3 H7 M3 3 V7"/>
+            <path d="M21 3 L15 9 M21 3 H17 M21 3 V7"/>
+            <path d="M3 21 L9 15 M3 21 H7 M3 21 V17"/>
+            <path d="M21 21 L15 15 M21 21 H17 M21 21 V17"/>
           </svg>
         </button>
         <button
@@ -568,7 +573,13 @@ function centerSelected(): void {
 // Auto-fit the full DAG bbox to the visible canvas at mount, so users on
 // small windows don't have to zoom out manually. Mutually exclusive with
 // the URL-pin path (centerSelected) — caller decides which to invoke.
-function fitToCanvas(margin: number = 24, subset?: LaidOutNode[]): void {
+// maxScale clamps zoom-in for fit/center operations. fit-to-canvas uses
+// FIT_MAX_SCALE (1.0 — never zoom *past* native, only in to fit). center-on-batch
+// passes a smaller maxScale so single-node frontiers don't zoom past readability.
+const FIT_MAX_SCALE = 1.0;
+const CENTER_MAX_SCALE = 1.8;
+
+function fitToCanvas(margin: number = 24, subset?: LaidOutNode[], maxScale: number = FIT_MAX_SCALE): void {
   if (!svgRef.value || !zoomBehavior) return;
   const svg = svgRef.value as SVGSVGElement;
   // Use the parent container's box as the true visible canvas — the svg's
@@ -599,10 +610,14 @@ function fitToCanvas(margin: number = 24, subset?: LaidOutNode[]): void {
   // user-units-per-screen-px is the meet ratio against nominal dims.
   const userPerPx = Math.max(nominalW / rect.width, nominalH / rect.height);
   const marginUser = margin * userPerPx;
-  // Scale that fits the TRUE bbox (with margin) into the visible canvas.
+  // Scale that fits the TRUE bbox (with margin) into the viewBox.
+  // SVG is now width/height=100% with preserveAspectRatio meet, so the
+  // viewBox IS the visible region (with letterboxing on the off-axis).
+  // Clamp to maxScale to prevent over-zoom on tiny subsets (centerOnBatch).
   const k = Math.min(
     (nominalW - marginUser * 2) / bboxW,
     (nominalH - marginUser * 2) / bboxH,
+    maxScale,
   );
   // Translate so the bbox center lands on the nominal viewBox center.
   const cxBbox = (minX + maxX) / 2;
@@ -624,7 +639,7 @@ function centerOnBatch(margin: number = 64): void {
     fitToCanvas();
     return;
   }
-  fitToCanvas(margin, source);
+  fitToCanvas(margin, source, CENTER_MAX_SCALE);
 }
 
 onMounted(() => {
