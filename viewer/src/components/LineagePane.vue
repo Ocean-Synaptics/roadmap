@@ -1,15 +1,11 @@
 <!--
   LineagePane — horizontal strip of prior rounds for the selected repo.
 
-  r4 / g-lineage-pane scope: the server's d-lineage-walk gives us
-  LineageEntry[] (id, path, mtime, nodeCount, doneCount, status) but not
-  the full HeadJson per archived round. Rather than fan out N extra fetches
-  to render real MiniDagThumbnails for every entry, we ship a hybrid:
-    · CardLite for archived rounds — uses LineageEntry data alone
-    · MiniDagThumbnail for the CURRENT round when its HeadJson is in hand
-      (the parent passes it as `currentHead`)
-  This keeps r4 to one round-trip per repo selection while still proving
-  the import + integration of g-mini-thumbnail.
+  Lineage strip: CardLite per archived round, sourced from
+  LineageEntry[] (id, path, mtime, nodeCount, doneCount, status).
+  The current round is rendered separately by the parent (App.vue) as
+  the emphasized MiniDagThumbnail driven by payload.head — we filter it
+  out here via currentDagId to avoid duplicate cards for the same dagId.
 
   Click → emits `select` with the round's dagId; App.vue feeds that back
   into useDagPayload via the dag query param.
@@ -17,21 +13,14 @@
 
 <template>
   <div class="lineage-pane">
-    <div v-if="lineage.length <= 1" class="lineage-empty">no prior rounds</div>
+    <div v-if="ordered.length === 0" class="lineage-empty">no prior rounds</div>
     <ol v-else class="lineage-strip">
       <li
         v-for="entry in ordered"
         :key="entry.path"
         class="lineage-cell"
-        :class="{ 'lineage-cell--current': entry.id === currentDagId }"
       >
-        <MiniDagThumbnail
-          v-if="entry.id === currentDagId && currentHead"
-          :head="currentHead"
-          @click="onClick(entry.id)"
-        />
         <button
-          v-else
           type="button"
           class="lineage-card-lite"
           :class="[`lineage-card-lite--${entry.status}`]"
@@ -54,22 +43,24 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
-import MiniDagThumbnail from "./MiniDagThumbnail.vue";
 import type { LineageEntry } from "../services/roadmapReader";
-import type { HeadJson } from "../services/dagReader";
 
 const props = defineProps<{
   lineage: LineageEntry[];
   currentDagId?: string;
-  currentHead?: HeadJson | null;
 }>();
 
 const emit = defineEmits<{ (e: "select", dagId: string): void }>();
 
 // Server returns most-recent first; gallery wants oldest left → current
 // right (current is emphasized at the right edge). Reverse a shallow copy.
+// Filter out the current round — it's rendered separately as the emphasized
+// MiniDagThumbnail by the parent (App.vue) using payload.head. Including it
+// here would render a duplicate lite-card for the same dagId.
 const ordered = computed(() =>
-  props.lineage.filter((e): e is LineageEntry & { id: string } => e.id !== null)
+  props.lineage
+    .filter((e): e is LineageEntry & { id: string } => e.id !== null)
+    .filter((e) => e.id !== props.currentDagId)
     .slice()
     .reverse(),
 );

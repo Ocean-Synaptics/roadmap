@@ -553,20 +553,43 @@ function centerSelected(): void {
 function fitToCanvas(margin: number = 24): void {
   if (!svgRef.value || !zoomBehavior) return;
   const svg = svgRef.value as SVGSVGElement;
-  const rect = svg.getBoundingClientRect();
-  const layoutW = props.layout.width;
-  const layoutH = props.layout.height;
-  if (rect.width <= 0 || rect.height <= 0 || layoutW <= 0 || layoutH <= 0) return;
-  // viewBox maps user-coords 1:1 onto the SVG element (preserveAspectRatio
-  // meet). Compute fit scale in user-space with a screen-px margin converted
-  // back to user units.
-  const userPerPx = Math.max(layoutW / rect.width, layoutH / rect.height);
+  // Use the parent container's box as the true visible canvas — the svg's
+  // own getBoundingClientRect can be the layout's nominal width/height when
+  // CSS doesn't constrain it, defeating fit.
+  const container = (svg.parentElement as HTMLElement | null) ?? svg;
+  const rect = container.getBoundingClientRect();
+  const nominalW = props.layout.width;
+  const nominalH = props.layout.height;
+  if (rect.width <= 0 || rect.height <= 0 || nominalW <= 0 || nominalH <= 0) return;
+  // Compute the layout's TRUE bbox from rendered node positions — the
+  // nominal layout.width/height can under- or over-state actual extent.
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of props.layout.nodes) {
+    const h = rectHeight(n);
+    if (n.x < minX) minX = n.x;
+    if (n.y < minY) minY = n.y;
+    if (n.x + n.width > maxX) maxX = n.x + n.width;
+    if (n.y + h > maxY) maxY = n.y + h;
+  }
+  if (!isFinite(minX) || !isFinite(minY)) {
+    minX = 0; minY = 0; maxX = nominalW; maxY = nominalH;
+  }
+  const bboxW = Math.max(maxX - minX, 1);
+  const bboxH = Math.max(maxY - minY, 1);
+  // viewBox is "0 0 nominalW nominalH" with preserveAspectRatio meet, so
+  // user-units-per-screen-px is the meet ratio against nominal dims.
+  const userPerPx = Math.max(nominalW / rect.width, nominalH / rect.height);
   const marginUser = margin * userPerPx;
-  const availW = Math.max(layoutW - marginUser * 2, 1);
-  const availH = Math.max(layoutH - marginUser * 2, 1);
-  const k = Math.min(availW / layoutW, availH / layoutH);
-  const tx = (layoutW - layoutW * k) / 2;
-  const ty = (layoutH - layoutH * k) / 2;
+  // Scale that fits the TRUE bbox (with margin) into the visible canvas.
+  const k = Math.min(
+    (nominalW - marginUser * 2) / bboxW,
+    (nominalH - marginUser * 2) / bboxH,
+  );
+  // Translate so the bbox center lands on the nominal viewBox center.
+  const cxBbox = (minX + maxX) / 2;
+  const cyBbox = (minY + maxY) / 2;
+  const tx = nominalW / 2 - cxBbox * k;
+  const ty = nominalH / 2 - cyBbox * k;
   d3.select(svg).call(zoomBehavior.transform, zoomIdentity.translate(tx, ty).scale(k));
 }
 
@@ -577,8 +600,10 @@ onMounted(() => {
     .scaleExtent([0.2, 4])
     // §click-passthrough · let mousedown on a .node element bypass d3-zoom so
     // pan-drag does not capture the pointer and swallow the subsequent click.
-    // Wheel + mousedown on background still pan/zoom normally.
+    // r4-fix · disable wheel-zoom entirely so the page scrolls naturally;
+    // zoom is driven only by the +/− buttons. Pan via background drag still works.
     .filter((event: Event) => {
+      if (event.type === "wheel") return false;
       const t = event.target as Element | null;
       if (t?.closest?.(".node")) return false;
       // Default d3-zoom filter: ignore secondary buttons + ctrl-key wheel.

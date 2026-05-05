@@ -553,7 +553,6 @@ function buildStars(): Star[] {
         class="dag-pane__lineage"
         :lineage="selectedRepoLineage"
         :current-dag-id="payload?.dagId"
-        :current-head="payload?.head ?? null"
         @select="onLineageSelect"
       />
       <DagViewer
