@@ -130,6 +130,76 @@ watch(allRoadmaps, (rows) => {
   }
 }, { immediate: true });
 
+// g-repo-rail · group allRoadmaps by repo path (one row per repo) and
+// derive a sortable status badge. Most repos have one current head; if
+// scan finds multiple, the head row carries lineage[] for the whole
+// timeline (most-recent first per d-lineage-walk).
+type RepoRailStatus = "active" | "fresh" | "complete" | "no-dag";
+
+interface RepoRailRow {
+  repo: string;
+  path: string;
+  dagId: string | null;
+  status: RepoRailStatus;
+  done: number;
+  total: number;
+  mtime: number;
+  lineage: import("./services/roadmapReader").LineageEntry[];
+}
+
+function classifyRepoRail(r: RepoRoadmap, head: RepoRailRow["lineage"][number] | undefined): RepoRailStatus {
+  if (r.status === "no-dag" || r.status === "error") return "no-dag";
+  if (r.completionPct === 100) return "complete";
+  if (head !== undefined && head.doneCount === 0) return "fresh";
+  return "active";
+}
+
+const repoRailRows: ComputedRef<RepoRailRow[]> = computed<RepoRailRow[]>(() => {
+  const rows: RepoRailRow[] = allRoadmaps.value.map((r) => {
+    const lineage = r.lineage ?? [];
+    const head = lineage[0];
+    const total = head?.nodeCount ?? 0;
+    const done = head?.doneCount ?? 0;
+    const mtime = head?.mtime ?? 0;
+    return {
+      repo: r.repo,
+      path: r.path,
+      dagId: r.dagId ?? head?.id ?? null,
+      status: classifyRepoRail(r, head),
+      done,
+      total,
+      mtime,
+      lineage,
+    };
+  });
+  // active (mtime DESC) → fresh (mtime DESC) → complete + no-dag (muted)
+  const rank: Record<RepoRailStatus, number> = { active: 0, fresh: 1, complete: 2, "no-dag": 3 };
+  rows.sort((a, b) => {
+    const dr = rank[a.status] - rank[b.status];
+    if (dr !== 0) return dr;
+    return b.mtime - a.mtime;
+  });
+  return rows;
+});
+
+// Lineage hook for next node (g-lineage-pane) · selected repo's lineage[].
+const selectedRepoLineage: ComputedRef<RepoRailRow["lineage"]> = computed(() => {
+  const row = repoRailRows.value.find((r) => r.path === selectedRepo.value);
+  return row?.lineage ?? [];
+});
+
+function formatRailMtime(ms: number): string {
+  if (!ms) return "";
+  const diff = Date.now() - ms;
+  const m = Math.round(diff / 60_000);
+  if (m < 1) return "now";
+  if (m < 60) return `${m}m`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.round(h / 24);
+  return `${d}d`;
+}
+
 // Tooltip-pane state
 const tooltipNodeId: Ref<string> = ref<string>("");
 const tooltipAnchor: Ref<AnchorRect | null> = ref<AnchorRect | null>(null);
@@ -432,38 +502,39 @@ function buildStars(): Star[] {
       <h1>roadmap viewer · <span class="dag-id">{{ dagId }}</span></h1>
     </header>
 
-    <!-- Roadmaps available on the system. Lists host repo + every fleet
-         member when fleet.json is present. Each row shows the active DAG
-         id, status, level, and current frontier nodes. Read-only for now. -->
-    <aside v-if="!printMode && (allRoadmaps.length > 0 || roadmapsLoading)" class="roadmap-list">
-      <div class="roadmap-list__head">
-        <span class="roadmap-list__label">roadmaps on system</span>
-        <span v-if="roadmapsLoading && allRoadmaps.length === 0" class="roadmap-list__loading">loading roadmaps…</span>
-        <span v-else class="roadmap-list__count">{{ allRoadmaps.length }}</span>
+    <!-- g-repo-rail · LEFT-rail repo picker. One row PER REPO (not per
+         head); selecting a row sets selectedRepo, which drives the canvas
+         + (next) g-lineage-pane via selectedRepoLineage. -->
+    <div class="viewer-shell__body">
+    <aside v-if="!printMode" class="repo-rail">
+      <div class="repo-rail__head">
+        <span class="repo-rail__label">repos</span>
+        <span v-if="roadmapsLoading && repoRailRows.length === 0" class="repo-rail__loading">loading repos…</span>
+        <span v-else class="repo-rail__count">{{ repoRailRows.length }}</span>
       </div>
-      <ul v-if="allRoadmaps.length > 0" class="roadmap-list__rows">
+      <ul v-if="repoRailRows.length > 0" class="repo-rail__rows">
         <li
-          v-for="r in allRoadmaps"
-          :key="r.path"
-          class="roadmap-row"
+          v-for="row in repoRailRows"
+          :key="row.path"
+          class="repo-row"
           :class="[
-            `roadmap-row--${r.status}`,
+            `repo-row--${row.status}`,
             {
-              'roadmap-row--current': r.path === selectedRepo,
-              'roadmap-row--inactive': r.status !== 'active',
+              'repo-row--current': row.path === selectedRepo,
+              'repo-row--muted': row.status === 'complete' || row.status === 'no-dag',
             },
           ]"
-          @click="selectedRepo = r.path"
+          @click="selectedRepo = row.path"
         >
-          <span class="roadmap-row__repo">{{ r.repo }}</span>
-          <span class="roadmap-row__sep">·</span>
-          <span class="roadmap-row__dag">{{ r.dagId ?? '(no dag)' }}</span>
-          <span v-if="r.level !== undefined" class="roadmap-row__level">L{{ r.level }}</span>
-          <span v-if="r.completionPct !== undefined" class="roadmap-row__pct">{{ r.completionPct }}%</span>
-          <span v-if="r.currentBatch && r.currentBatch.length > 0" class="roadmap-row__batch">
-            → {{ r.currentBatch.slice(0, 3).join(' · ') }}{{ r.currentBatch.length > 3 ? ` (+${r.currentBatch.length - 3})` : '' }}
-          </span>
-          <span v-if="r.error" class="roadmap-row__err">⚠ {{ r.error }}</span>
+          <div class="repo-row__top">
+            <span class="repo-row__repo">{{ row.repo }}</span>
+            <span class="repo-row__mtime">{{ formatRailMtime(row.mtime) }}</span>
+          </div>
+          <div class="repo-row__bot">
+            <span class="repo-row__badge" :class="`repo-row__badge--${row.status}`">{{ row.status }}</span>
+            <span v-if="row.total > 0" class="repo-row__progress">{{ row.done }}/{{ row.total }}</span>
+            <span v-else-if="row.dagId" class="repo-row__dag">{{ row.dagId }}</span>
+          </div>
         </li>
       </ul>
     </aside>
@@ -489,6 +560,7 @@ function buildStars(): Star[] {
         @expand="tooltipExpanded = !tooltipExpanded"
       />
     </section>
+    </div>
 
     <svg
       v-if="printMode && showTooltipInPrint && connectorPath"
@@ -538,9 +610,22 @@ function buildStars(): Star[] {
   position: relative;
 }
 .viewer-shell > .viewer-head,
+.viewer-shell > .viewer-shell__body,
 .viewer-shell > .dag-pane {
   position: relative;
   z-index: 1;
+}
+/* g-repo-rail · horizontal split below header: rail (~280px) + canvas. */
+.viewer-shell__body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  min-height: 0;
+}
+.viewer-shell--print .viewer-shell__body {
+  /* print mode skips the rail; let canvas flood the body. */
+  gap: 0;
 }
 .viewer-head {
   display: flex;
@@ -557,80 +642,117 @@ function buildStars(): Star[] {
 }
 .viewer-head .dag-id { color: var(--text-meta, #888); font-weight: 400; }
 
-/* Roadmap list — system-wide DAG inventory rendered in a compact bar
-   below the header. Each row is one host or fleet member. */
-.roadmap-list {
+/* g-repo-rail · LEFT-rail repo picker. One row per repo with status
+   badge + done/total + mtime hint. Replaces the r3 top-bar roadmap-list. */
+.repo-rail {
+  flex: 0 0 280px;
+  display: flex;
+  flex-direction: column;
   border: 1px solid var(--chrome-25, #333);
   background: var(--chrome-05, #0a0a0a);
-  padding: 6px 12px;
   font-size: 11px;
-  line-height: 1.5;
+  line-height: 1.4;
+  overflow: hidden;
 }
-.roadmap-list__head {
+.repo-rail__head {
   display: flex;
   gap: 6px;
   align-items: baseline;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--chrome-25, #333);
   color: var(--text-meta, #888);
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: 4px;
+  flex: 0 0 auto;
 }
-.roadmap-list__label { font-weight: 600; }
-.roadmap-list__loading {
+.repo-rail__label { font-weight: 600; }
+.repo-rail__loading {
   color: var(--text-meta, #888);
   font-style: italic;
   text-transform: none;
   letter-spacing: 0;
 }
-.roadmap-list__count {
+.repo-rail__count {
   background: var(--chrome-15, #1a1a1a);
   border: 1px solid var(--chrome-25, #333);
   padding: 0 6px;
   border-radius: 2px;
   color: var(--text-secondary, #ccc);
 }
-.roadmap-list__rows { list-style: none; margin: 0; padding: 0; }
-.roadmap-row {
+.repo-rail__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+.repo-row {
   display: flex;
-  gap: 6px;
-  align-items: baseline;
-  padding: 2px 6px;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 10px;
   color: var(--text-secondary, #ccc);
   cursor: pointer;
   border-left: 2px solid transparent;
+  border-bottom: 1px solid var(--chrome-15, #1a1a1a);
 }
-.roadmap-row:hover { background: var(--chrome-15, #1a1a1a); }
-.roadmap-row--current {
+.repo-row:hover { background: var(--chrome-15, #1a1a1a); }
+.repo-row--current {
   color: var(--text-primary, #eee);
   border-left-color: var(--foil, #D7A432);
   background: var(--chrome-15, #1a1a1a);
 }
-.roadmap-row--inactive { opacity: 0.55; }
-.roadmap-row--inactive.roadmap-row--current { opacity: 1; }
-.roadmap-row--current .roadmap-row__dag {
-  color: var(--foil, #D7A432);
-  font-weight: 600;
+.repo-row--muted { opacity: 0.55; }
+.repo-row--muted.repo-row--current { opacity: 1; }
+.repo-row__top {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 6px;
 }
-.roadmap-row--no-dag { color: var(--text-meta, #888); }
-.roadmap-row--error .roadmap-row__err { color: var(--accent-red, #d33); }
-.roadmap-row__repo { color: var(--text-meta, #888); }
-.roadmap-row__sep { color: var(--chrome-25, #333); }
-.roadmap-row__level,
-.roadmap-row__pct {
-  background: var(--chrome-15, #1a1a1a);
-  border: 1px solid var(--chrome-25, #333);
-  padding: 0 4px;
+.repo-row__repo {
+  font-weight: 600;
+  color: var(--text-primary, #eee);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.repo-row__mtime {
+  color: var(--text-meta, #888);
+  font-size: 10px;
+  flex: 0 0 auto;
+}
+.repo-row__bot {
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+}
+.repo-row__badge {
+  padding: 0 5px;
   border-radius: 2px;
   font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border: 1px solid var(--chrome-25, #333);
+  background: var(--chrome-15, #1a1a1a);
 }
-.roadmap-row__batch { color: var(--text-meta, #888); font-style: italic; }
+.repo-row__badge--active   { color: var(--foil, #D7A432); border-color: var(--foil, #D7A432); }
+.repo-row__badge--fresh    { color: #6cb6ff; border-color: #2a4a6a; }
+.repo-row__badge--complete { color: #7ec47e; border-color: #2f5a2f; }
+.repo-row__badge--no-dag   { color: var(--text-meta, #888); }
+.repo-row__progress {
+  color: var(--text-secondary, #ccc);
+  font-variant-numeric: tabular-nums;
+}
+.repo-row__dag { color: var(--text-meta, #888); font-style: italic; }
 
 .dag-pane {
   flex: 1 1 auto;
-  min-height: 70vh;
+  min-height: 0;
   border: 1px solid var(--chrome-25, #333);
   background: var(--chrome-00, #000);
   position: relative;
+  overflow: hidden;
 }
 .viewer-shell--print .tooltip-connector-overlay {
   position: fixed;
