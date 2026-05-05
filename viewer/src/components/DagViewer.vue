@@ -582,7 +582,9 @@ onMounted(() => {
       setTimeout(() => centerSelected(), 200);
     } else {
       // No URL pin · auto-fit the DAG bbox to the canvas (mutually exclusive
-      // with the pin path above).
+      // with the pin path above). Mark pin done unconditionally so the
+      // selectedNodeId watch below does NOT teleport the camera on first click.
+      initialPinDone = true;
       fitToCanvas();
     }
   });
