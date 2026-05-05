@@ -535,8 +535,10 @@ function buildStars(): Star[] {
   font-family: var(--font-mono, ui-monospace, monospace);
   color: var(--text-primary, #eee);
   background: var(--chrome-00, #000);
-  min-height: 100vh;
+  height: 100%;
+  overflow: hidden;
   padding: 16px;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
   gap: 12px;
