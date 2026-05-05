@@ -28,6 +28,6 @@ export async function run(
   const doc = findSetupDoc();
   const data = doc
     ? { setup_doc_path: doc, setup_doc: readFileSync(doc, 'utf-8') }
-    : { setup_doc_path: null, setup_doc: null, hint: 'See https://github.com/griffin-downs/roadmap/blob/main/docs/SETUP.md' };
+    : { setup_doc_path: null, setup_doc: null, hint: 'See https://github.com/Ocean-Synaptics/roadmap/blob/main/docs/SETUP.md' };
   emit({ ok: true, cmd: outputOpts.cmd, data }, outputOpts);
 }

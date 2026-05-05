@@ -37,7 +37,7 @@ Until v1.0, expect occasional breaking changes between minor versions. Pin to a 
 
 ## How to read the calendar
 
-- Right now — file issues, fork freely, install from `git+https://github.com/griffin-downs/roadmap.git`
+- Right now — file issues, fork freely, install from `git+https://github.com/Ocean-Synaptics/roadmap.git`
 - ~mid-May 2026 — open a PR, start a discussion, install from npm
 - After v1.0 — semver applies
 

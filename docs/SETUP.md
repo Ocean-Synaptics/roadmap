@@ -17,7 +17,7 @@ Open your target repo in Claude Code and paste this prompt:
 Set up roadmap in this repo:
 1. ensure .roadmap/ directory exists at the repo root
 2. add or update CLAUDE.md to include the roadmap fragment from
-   https://github.com/griffin-downs/roadmap/blob/main/templates/claude-md-fragment.md
+   https://github.com/Ocean-Synaptics/roadmap/blob/main/templates/claude-md-fragment.md
 3. write a starter spec at docs/<my-project>.spec.json describing the
    next 3-5 nodes of work (use `roadmap api make` for the schema)
 4. run `roadmap make docs/<my-project>.spec.json --note "initial DAG"`
@@ -37,7 +37,7 @@ LLM with shell + file access scoped to your repo:
 Install roadmap into this repository.
 
 Context: roadmap is a CLI that governs work as a DAG. Repo is at
-https://github.com/griffin-downs/roadmap. The CLI binary is `roadmap`.
+https://github.com/Ocean-Synaptics/roadmap. The CLI binary is `roadmap`.
 
 Steps:
 1. Verify `roadmap --help` runs. If not, install per the Manual setup
@@ -62,7 +62,7 @@ itself.
 Install the CLI (one-time, global):
 
 ```sh
-git clone https://github.com/griffin-downs/roadmap ~/.local/share/roadmap
+git clone https://github.com/Ocean-Synaptics/roadmap ~/.local/share/roadmap
 cd ~/.local/share/roadmap
 pnpm install
 pnpm run build

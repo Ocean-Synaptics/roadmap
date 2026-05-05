@@ -1,6 +1,6 @@
 # roadmap
 
-[![test](https://github.com/griffin-downs/roadmap/actions/workflows/test.yml/badge.svg)](https://github.com/griffin-downs/roadmap/actions/workflows/test.yml)
+[![test](https://github.com/Ocean-Synaptics/roadmap/actions/workflows/test.yml/badge.svg)](https://github.com/Ocean-Synaptics/roadmap/actions/workflows/test.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 > **Status:** Released for ML Prague 2026 (May 2026). The repository is public; **issues are open**; **external PRs are deferred until ~2026-05-15** while the maintainer is at the conference. See [docs/ROLLOUT.md](docs/ROLLOUT.md) for the contribution timeline.
@@ -18,7 +18,7 @@ pnpm add @ocean-synaptics/roadmap
 Or clone and link for development:
 
 ```bash
-git clone https://github.com/griffin-downs/roadmap
+git clone https://github.com/Ocean-Synaptics/roadmap
 cd roadmap && pnpm install && pnpm run build && pnpm link --global
 ```
 
