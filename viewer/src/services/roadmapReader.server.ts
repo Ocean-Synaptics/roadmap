@@ -145,6 +145,47 @@ export function discoverRoadmaps(scanRoot: string): DiscoveredRoadmap[] {
   return found;
 }
 
+// Cruft filter — empty/test-scaffold head.json files (zero nodes or null id)
+// and tmp-* directories (e.g. .tmp-e2e-regen-*) flood the picker by 73% on
+// real machines. Filter at projection time, not traversal time, so r3's
+// existing skip-list (node_modules, .git, etc.) stays separate.
+const TMP_DIR_PATTERN = /^\.?tmp-/;
+
+function isEmptyHead(head: HeadJson | null): boolean {
+  if (head === null) return true;
+  const nodeCount = head.nodes !== undefined ? Object.keys(head.nodes).length : 0;
+  if (nodeCount === 0) return true;
+  if (head.id === null || head.id === undefined) return true;
+  return false;
+}
+
+function isTmpDir(repoPath: string): boolean {
+  return TMP_DIR_PATTERN.test(basename(repoPath));
+}
+
+function shouldIncludeEmpty(url: string | undefined): boolean {
+  if (process.env.SHOW_EMPTY === "1") return true;
+  if (url === undefined) return false;
+  const qIdx = url.indexOf("?");
+  if (qIdx === -1) return false;
+  const params = new URLSearchParams(url.slice(qIdx + 1));
+  return params.get("includeEmpty") === "1";
+}
+
+function filterCruft(
+  discovered: DiscoveredRoadmap[],
+  hostPath: string,
+  includeEmpty: boolean,
+): DiscoveredRoadmap[] {
+  if (includeEmpty) return discovered;
+  return discovered.filter((d) => {
+    if (d.path === hostPath) return true; // host always shown
+    if (isTmpDir(d.path)) return false;
+    if (isEmptyHead(d.head)) return false;
+    return true;
+  });
+}
+
 function projectDiscovered(d: DiscoveredRoadmap): RepoRoadmap {
   const dagId = d.head?.id;
   const totalNodes = d.head?.nodes !== undefined ? Object.keys(d.head.nodes).length : 0;
@@ -232,15 +273,17 @@ function sortRoadmapsByActivityAndMtime(
   });
 }
 
-export async function scanRoadmaps(): Promise<RepoRoadmap[]> {
+export async function scanRoadmaps(opts?: { url?: string }): Promise<RepoRoadmap[]> {
   const host = hostRepoRoot();
   const registry = readFleetRepos(host);
+  const includeEmpty = shouldIncludeEmpty(opts?.url);
 
   // No fleet.json → filesystem-walk discovery rooted at ROADMAP_FS_SCAN_ROOT
   // (default: dirname(host)). Host repo always included regardless.
   if (registry.length === 0) {
     const scanRoot = process.env.ROADMAP_FS_SCAN_ROOT ?? dirname(host);
-    const discovered = discoverRoadmaps(scanRoot);
+    const rawDiscovered = discoverRoadmaps(scanRoot);
+    const discovered = filterCruft(rawDiscovered, host, includeEmpty);
     const hostAlreadyFound = discovered.some((d) => d.path === host);
     if (!hostAlreadyFound) {
       const headPath = join(host, ".roadmap/head.json");
