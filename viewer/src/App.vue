@@ -1,8 +1,7 @@
 <script setup lang="ts">
 // Roadmap viewer shell — composes the DAG renderer (hierarchical default,
-// force topology selectable) with a hover/click tooltip-pane for node
-// detail and a collapsible field-expander for raw head.json / completed /
-// intentEvals.
+// force topology selectable) with a hover/click tooltip-pane for per-node
+// detail. The tooltip-pane is the only per-node detail surface.
 //
 // §Dumb-components: this shell composes; DagViewer/DagTopology are pure
 // props-in/events-out. No fetch/state-derivation lives in their script
@@ -13,7 +12,6 @@
 
 import { computed, nextTick, ref, watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
-import FieldExpander from "./components/FieldExpander.vue";
 import DagViewer from "./components/DagViewer.vue";
 import DagTopology from "./components/DagTopology.vue";
 import NodeTooltipPane from "./components/NodeTooltipPane.vue";
@@ -36,7 +34,11 @@ import {
   type ForceLayoutOptions,
 } from "./composables/useForceLayout";
 
-const payload = useDagPayload();
+// Selected repo path · drives /api/roadmap-dag?repo=<path> re-fetch.
+// Default empty → server falls back to host repo. Initialized from the
+// first roadmap-list entry once that loads (see watcher below).
+const selectedRepo: Ref<string> = ref<string>("");
+const payload = useDagPayload(undefined, selectedRepo);
 
 // Print mode — opt-in via ?print=1, optional ?pin=<node-id> pre-selects
 const url = new URL(window.location.href);
@@ -98,6 +100,14 @@ watch(viewMode, (next) => {
 // All roadmaps available on the system (host repo · or fleet members
 // when host has fleet.json). Live-updated via /api/events 'roadmap' stream.
 const allRoadmaps = useRoadmapState();
+
+// Default selectedRepo to host repo (first entry) once roadmaps load.
+// Only sets once, when still empty — user clicks override afterwards.
+watch(allRoadmaps, (rows) => {
+  if (selectedRepo.value === "" && rows.length > 0) {
+    selectedRepo.value = rows[0].path;
+  }
+}, { immediate: true });
 
 // Tooltip-pane state
 const tooltipNodeId: Ref<string> = ref<string>("");
@@ -290,26 +300,6 @@ onUnmounted(() => {
   window.removeEventListener("keydown", onGlobalKey);
 });
 
-// raw inspector (collapsed by default — DAG is the headline)
-const detailsOpen: Ref<boolean> = ref<boolean>(false);
-const tab: Ref<"head" | "completed" | "intent"> = ref("head");
-const search: Ref<string> = ref<string>("");
-const searchDebounced: Ref<string> = ref<string>("");
-let searchTimer: ReturnType<typeof setTimeout> | null = null;
-watch(search, (q) => {
-  if (searchTimer !== null) clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => { searchDebounced.value = q; }, 80);
-});
-
-const tabData: ComputedRef<unknown> = computed(() => {
-  const p = payload.value;
-  if (p === null) return null;
-  if (tab.value === "head") return p.head;
-  if (tab.value === "completed") return { ids: p.completed, entries: p.completedEntries };
-  return p.intentEvals;
-});
-const tabPath: ComputedRef<string> = computed(() => `$.${tab.value}`);
-
 const dagId: ComputedRef<string> = computed<string>(() =>
   payload.value === null ? "loading…" : payload.value.dagId,
 );
@@ -448,7 +438,14 @@ function buildStars(): Star[] {
           v-for="r in allRoadmaps"
           :key="r.path"
           class="roadmap-row"
-          :class="[`roadmap-row--${r.status}`, { 'roadmap-row--current': r.dagId === dagId }]"
+          :class="[
+            `roadmap-row--${r.status}`,
+            {
+              'roadmap-row--current': r.path === selectedRepo,
+              'roadmap-row--inactive': r.status !== 'active',
+            },
+          ]"
+          @click="selectedRepo = r.path"
         >
           <span class="roadmap-row__repo">{{ r.repo }}</span>
           <span class="roadmap-row__sep">·</span>
@@ -500,47 +497,6 @@ function buildStars(): Star[] {
       />
     </section>
 
-    <header v-if="!printMode" class="details-head">
-      <button type="button" class="head-toggle" @click="detailsOpen = !detailsOpen">
-        roadmap details {{ detailsOpen ? '▾' : '▸' }}
-      </button>
-    </header>
-    <section v-if="detailsOpen && !printMode" class="details">
-      <div class="tabs">
-        <button
-          type="button"
-          class="tab"
-          :class="{ 'tab--active': tab === 'head' }"
-          @click="tab = 'head'"
-        >head.json</button>
-        <button
-          type="button"
-          class="tab"
-          :class="{ 'tab--active': tab === 'completed' }"
-          @click="tab = 'completed'"
-        >completed</button>
-        <button
-          type="button"
-          class="tab"
-          :class="{ 'tab--active': tab === 'intent' }"
-          @click="tab = 'intent'"
-        >intentEvals</button>
-      </div>
-      <input
-        v-model="search"
-        type="search"
-        class="search"
-        placeholder="filter keys/values…"
-      />
-      <FieldExpander
-        v-if="tabData !== null"
-        :data="tabData"
-        :path="tabPath"
-        :search="searchDebounced"
-      />
-      <p v-else class="placeholder">loading head.json…</p>
-    </section>
-
     <svg
       v-if="printMode && showTooltipInPrint && connectorPath"
       class="tooltip-connector-overlay"
@@ -587,9 +543,7 @@ function buildStars(): Star[] {
   position: relative;
 }
 .viewer-shell > .viewer-head,
-.viewer-shell > .dag-pane,
-.viewer-shell > .details-head,
-.viewer-shell > .details {
+.viewer-shell > .dag-pane {
   position: relative;
   z-index: 1;
 }
@@ -653,10 +607,19 @@ function buildStars(): Star[] {
   display: flex;
   gap: 6px;
   align-items: baseline;
-  padding: 2px 0;
+  padding: 2px 6px;
   color: var(--text-secondary, #ccc);
+  cursor: pointer;
+  border-left: 2px solid transparent;
 }
-.roadmap-row--current { color: var(--text-primary, #eee); }
+.roadmap-row:hover { background: var(--chrome-15, #1a1a1a); }
+.roadmap-row--current {
+  color: var(--text-primary, #eee);
+  border-left-color: var(--foil, #D7A432);
+  background: var(--chrome-15, #1a1a1a);
+}
+.roadmap-row--inactive { opacity: 0.55; }
+.roadmap-row--inactive.roadmap-row--current { opacity: 1; }
 .roadmap-row--current .roadmap-row__dag {
   color: var(--foil, #D7A432);
   font-weight: 600;
@@ -682,47 +645,6 @@ function buildStars(): Star[] {
   background: var(--chrome-00, #000);
   position: relative;
 }
-.details-head {
-  display: flex;
-  justify-content: flex-start;
-}
-.head-toggle {
-  background: var(--chrome-05, #0a0a0a);
-  border: 1px solid var(--chrome-25, #333);
-  color: var(--text-secondary, #ccc);
-  padding: 4px 10px;
-  font: inherit;
-  cursor: pointer;
-}
-.details {
-  border: 1px solid var(--chrome-25, #333);
-  padding: 10px;
-  max-height: 40vh;
-  overflow: auto;
-  background: var(--chrome-05, #0a0a0a);
-}
-.tabs { display: flex; gap: 4px; margin-bottom: 6px; }
-.tab {
-  background: var(--chrome-05, #0a0a0a);
-  border: 1px solid var(--chrome-25, #333);
-  color: var(--text-secondary, #ccc);
-  font: inherit;
-  font-size: 11px;
-  padding: 3px 8px;
-  cursor: pointer;
-}
-.tab--active { border-color: var(--accent-red, #d33); color: var(--text-primary, #eee); }
-.search {
-  background: var(--chrome-10, #161616);
-  border: 1px solid var(--chrome-25, #333);
-  color: var(--text-primary, #eee);
-  font: inherit;
-  padding: 4px 6px;
-  width: 100%;
-  margin-bottom: 6px;
-}
-.search:focus { outline: 1px solid var(--accent-red, #d33); }
-.placeholder { color: var(--text-meta, #888); font-style: italic; }
 .viewer-shell--print .tooltip-connector-overlay {
   position: fixed;
   inset: 0;
