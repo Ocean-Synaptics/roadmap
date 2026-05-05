@@ -1,10 +1,10 @@
 <script setup lang="ts">
-// Roadmap viewer shell — composes the DAG renderer (hierarchical default,
-// force topology selectable) with a hover/click tooltip-pane for per-node
-// detail. The tooltip-pane is the only per-node detail surface.
+// Roadmap viewer shell — composes the hierarchical DAG renderer with a
+// hover/click tooltip-pane for per-node detail. The tooltip-pane is the
+// only per-node detail surface.
 //
-// §Dumb-components: this shell composes; DagViewer/DagTopology are pure
-// props-in/events-out. No fetch/state-derivation lives in their script
+// §Dumb-components: this shell composes; DagViewer is a pure props-in/
+// events-out component. No fetch/state-derivation lives in its script
 // setup. Click on any node bubbles up to anchor the tooltip pane here.
 //
 // r2-hero: ?print=1 URL toggle drives a poster-grade aesthetic mode with
@@ -13,7 +13,6 @@
 import { computed, nextTick, ref, watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
 import DagViewer from "./components/DagViewer.vue";
-import DagTopology from "./components/DagTopology.vue";
 import NodeTooltipPane from "./components/NodeTooltipPane.vue";
 import { useRoadmapState } from "./services/roadmapReader";
 
@@ -28,11 +27,6 @@ import { onMounted, onUnmounted } from "vue";
 import type { AnchorRect } from "./composables/useTooltipPosition";
 import { useDagPayload } from "./services/dagReader";
 import { DEFAULT_LAYOUT_OPTIONS, useDagLayout } from "./composables/useDagLayout";
-import {
-  DEFAULT_FORCE_OPTIONS,
-  useForceLayout,
-  type ForceLayoutOptions,
-} from "./composables/useForceLayout";
 
 // Selected repo path · drives /api/roadmap-dag?repo=<path> re-fetch.
 // Default empty → server falls back to host repo. Initialized from the
@@ -54,11 +48,6 @@ const showTooltipInPrint: Ref<boolean> = ref<boolean>(
   url.searchParams.get("tooltip") !== "0",
 );
 
-// view mode: hierarchical is the parity-with-dashboard default
-const viewMode: Ref<"hierarchical" | "topology"> = ref<"hierarchical" | "topology">(
-  "hierarchical",
-);
-
 // hierarchical layout · print mode flips to LR (landscape canvas) + bumps
 // node dimensions and gaps for poster breathing room. Default TB unchanged.
 const layoutOptions = computed(() => {
@@ -77,25 +66,6 @@ const layoutOptions = computed(() => {
   return { ...DEFAULT_LAYOUT_OPTIONS };
 });
 const layout = useDagLayout(payload, layoutOptions);
-
-// topology layout (force-directed alt view)
-const completedSet: ComputedRef<Set<string>> = computed<Set<string>>(() => {
-  const p = payload.value;
-  return new Set<string>(p === null ? [] : p.completed);
-});
-const groupBy: Ref<"depth" | "cluster"> = ref<"depth" | "cluster">("depth");
-const forceOptions: Ref<ForceLayoutOptions> = ref<ForceLayoutOptions>({
-  ...DEFAULT_FORCE_OPTIONS,
-  groupBy: groupBy.value,
-});
-watch(groupBy, (next) => {
-  forceOptions.value = { ...forceOptions.value, groupBy: next };
-});
-const force = useForceLayout(payload, completedSet, forceOptions);
-watch(viewMode, (next) => {
-  if (next === "topology") force.start();
-  else force.stop();
-});
 
 // All roadmaps available on the system (host repo · or fleet members
 // when host has fleet.json). Live-updated via /api/events 'roadmap' stream.
@@ -409,20 +379,6 @@ function buildStars(): Star[] {
     </div>
     <header v-if="showTitle" class="viewer-head dag-foil-halo">
       <h1>roadmap viewer · <span class="dag-id">{{ dagId }}</span></h1>
-      <div v-if="!printMode" class="view-toggle">
-        <button
-          type="button"
-          class="toggle-btn"
-          :class="{ 'toggle-btn--active': viewMode === 'hierarchical' }"
-          @click="viewMode = 'hierarchical'"
-        >hierarchical</button>
-        <button
-          type="button"
-          class="toggle-btn"
-          :class="{ 'toggle-btn--active': viewMode === 'topology' }"
-          @click="viewMode = 'topology'"
-        >topology</button>
-      </div>
     </header>
 
     <!-- Roadmaps available on the system. Lists host repo + every fleet
@@ -462,7 +418,6 @@ function buildStars(): Star[] {
 
     <section class="dag-pane">
       <DagViewer
-        v-if="viewMode === 'hierarchical'"
         :layout="layout"
         :selected-node-id="tooltipNodeId"
         :print-mode="printMode"
@@ -480,20 +435,6 @@ function buildStars(): Star[] {
         :class="{ 'dag-tooltip--print': printMode }"
         @close="dismissTooltip"
         @expand="tooltipExpanded = !tooltipExpanded"
-      />
-      <DagTopology
-        v-if="viewMode === 'topology' && !printMode"
-        :nodes="force.nodes.value"
-        :links="force.links.value"
-        :width="1200"
-        :height="700"
-        :group-by="groupBy"
-        :zoom="1"
-        :pan="{ x: 0, y: 0 }"
-        export-name="roadmap-dag"
-        @select="onNodeSelected"
-        @update:group-by="groupBy = $event"
-        @reheat="force.reheat()"
       />
     </section>
 
@@ -563,20 +504,6 @@ function buildStars(): Star[] {
   text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.55);
 }
 .viewer-head .dag-id { color: var(--text-meta, #888); font-weight: 400; }
-.view-toggle { display: flex; gap: 4px; }
-.toggle-btn {
-  background: var(--chrome-05, #0a0a0a);
-  border: 1px solid var(--chrome-25, #333);
-  color: var(--text-secondary, #ccc);
-  font: inherit;
-  font-size: 11px;
-  padding: 4px 10px;
-  cursor: pointer;
-}
-.toggle-btn--active {
-  border-color: var(--accent-red, #d33);
-  color: var(--text-primary, #eee);
-}
 
 /* Roadmap list — system-wide DAG inventory rendered in a compact bar
    below the header. Each row is one host or fleet member. */
