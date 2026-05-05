@@ -181,11 +181,13 @@ const repoRailRows: ComputedRef<RepoRailRow[]> = computed<RepoRailRow[]>(() => {
       lineage,
     };
   });
-  // active (mtime DESC) → fresh (mtime DESC) → complete + no-dag (muted)
-  const rank: Record<RepoRailStatus, number> = { active: 0, fresh: 1, complete: 2, "no-dag": 3 };
+  // Two buckets: active first (mtime DESC), then everything else (mtime DESC).
+  // User wants the active batch visually prominent at top — fresh/complete/no-dag
+  // collapse into a single recency-sorted tail beneath.
   rows.sort((a, b) => {
-    const dr = rank[a.status] - rank[b.status];
-    if (dr !== 0) return dr;
+    const aActive = a.status === "active" ? 0 : 1;
+    const bActive = b.status === "active" ? 0 : 1;
+    if (aActive !== bActive) return aActive - bActive;
     return b.mtime - a.mtime;
   });
   return rows;

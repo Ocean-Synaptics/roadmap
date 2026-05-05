@@ -444,24 +444,42 @@
       </g>
     </svg>
     <div v-if="!printMode" class="dag-viewer__zoom" role="group" aria-label="zoom controls">
-      <button
-        type="button"
-        class="dag-viewer__zoom-btn"
-        aria-label="zoom in"
-        @click="zoomIn"
-      >+</button>
-      <button
-        type="button"
-        class="dag-viewer__zoom-btn"
-        aria-label="zoom out"
-        @click="zoomOut"
-      >&minus;</button>
-      <button
-        type="button"
-        class="dag-viewer__zoom-btn"
-        aria-label="fit to canvas"
-        @click="fitToCanvas()"
-      >&#9645;</button>
+      <div class="dag-viewer__zoom-cluster">
+        <button
+          type="button"
+          class="dag-viewer__zoom-btn"
+          aria-label="zoom in"
+          @click="zoomIn"
+        >+</button>
+        <button
+          type="button"
+          class="dag-viewer__zoom-btn"
+          aria-label="zoom out"
+          @click="zoomOut"
+        >&minus;</button>
+      </div>
+      <div class="dag-viewer__zoom-cluster">
+        <button
+          type="button"
+          class="dag-viewer__zoom-btn"
+          aria-label="fit to canvas"
+          @click="fitToCanvas()"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M3 3 H8 M3 3 V8 M21 3 H16 M21 3 V8 M3 21 H8 M3 21 V16 M21 21 H16 M21 21 V16"/>
+          </svg>
+        </button>
+        <button
+          type="button"
+          class="dag-viewer__zoom-btn"
+          aria-label="center on active batch"
+          @click="centerOnBatch()"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" fill="currentColor">
+            <path d="M12 3 L20 21 L12 17 L4 21 Z"/>
+          </svg>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -550,7 +568,7 @@ function centerSelected(): void {
 // Auto-fit the full DAG bbox to the visible canvas at mount, so users on
 // small windows don't have to zoom out manually. Mutually exclusive with
 // the URL-pin path (centerSelected) — caller decides which to invoke.
-function fitToCanvas(margin: number = 24): void {
+function fitToCanvas(margin: number = 24, subset?: LaidOutNode[]): void {
   if (!svgRef.value || !zoomBehavior) return;
   const svg = svgRef.value as SVGSVGElement;
   // Use the parent container's box as the true visible canvas — the svg's
@@ -563,8 +581,9 @@ function fitToCanvas(margin: number = 24): void {
   if (rect.width <= 0 || rect.height <= 0 || nominalW <= 0 || nominalH <= 0) return;
   // Compute the layout's TRUE bbox from rendered node positions — the
   // nominal layout.width/height can under- or over-state actual extent.
+  const source = subset && subset.length > 0 ? subset : props.layout.nodes;
   let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-  for (const n of props.layout.nodes) {
+  for (const n of source) {
     const h = rectHeight(n);
     if (n.x < minX) minX = n.x;
     if (n.y < minY) minY = n.y;
@@ -591,6 +610,21 @@ function fitToCanvas(margin: number = 24): void {
   const tx = nominalW / 2 - cxBbox * k;
   const ty = nominalH / 2 - cyBbox * k;
   d3.select(svg).call(zoomBehavior.transform, zoomIdentity.translate(tx, ty).scale(k));
+}
+
+// Center camera on the current frontier (orient `position[]` equivalent).
+// Frontier is encoded on the layout nodes via isFrontier; fall back to
+// status-based ready/in-progress if no isFrontier flags are present.
+function centerOnBatch(margin: number = 64): void {
+  const flagged = props.layout.nodes.filter((n) => n.isFrontier);
+  const source = flagged.length > 0
+    ? flagged
+    : props.layout.nodes.filter((n) => n.status === "ready" || n.status === "in-progress");
+  if (source.length === 0) {
+    fitToCanvas();
+    return;
+  }
+  fitToCanvas(margin, source);
 }
 
 onMounted(() => {
@@ -892,8 +926,13 @@ function emitClick(nodeId: string, ev: MouseEvent): void {
   right: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 14px;
   z-index: 2;
+}
+.dag-viewer__zoom-cluster {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 .dag-viewer__zoom-btn {
   width: 28px;

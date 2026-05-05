@@ -5,7 +5,36 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>roadmap viewer</title>
     <style>
-      html, body { height: 100%; margin: 0; overflow: hidden; }
+      /* ML Prague poster-derived palette · canonical source · WCAG AA verified.
+       * dag-theme.css mirrors these for the SVG/foil layer. Names are preserved
+       * (--chrome-*, --foil, --text-*, --accent-*) so existing components resolve
+       * without rename churn. */
+      :root {
+        --chrome-bg:      #1A1530;
+        --chrome-panel:   #241A3D;
+        --chrome-code:    #0E0A1F;
+        --chrome-00:      #1A1530;
+        --chrome-05:      #241A3D;
+        --chrome-10:      #2C2247;
+        --chrome-15:      #322852;
+        --chrome-25:      #4A3D6E;
+        --chrome-30:      #6B5C8C;
+        --rule:           #4A3D6E;
+        --rule-strong:    #6B5C8C;
+        --text-primary:   #EFE2C2;
+        --text-secondary: #B8AB8E;
+        --text-meta:      #9C8E6B;
+        --accent-gold:    #E0A050;
+        --accent-orange:  #E58850;
+        --accent-red:     #C04040;
+        --accent:         #E0A050;
+        --status-active:  #E58850;
+        --status-done:    #B8AB8E;
+        --status-fresh:   #9C8E6B;
+        --status-blocked: #C04040;
+        --status-nominal: #B8AB8E;
+      }
+      html, body { height: 100%; margin: 0; overflow: hidden; background: var(--chrome-bg); color: var(--text-primary); }
       #app { height: 100%; display: flex; flex-direction: column; }
     </style>
   </head>
