@@ -14,7 +14,7 @@ import { computed, nextTick, ref, watch } from "vue";
 import type { ComputedRef, Ref } from "vue";
 import DagViewer from "./components/DagViewer.vue";
 import NodeTooltipPane from "./components/NodeTooltipPane.vue";
-import { useRoadmapState } from "./services/roadmapReader";
+import type { RepoRoadmap } from "./services/roadmapReader";
 
 // Local type — was previously exported from the now-removed NodeSidePanel.
 interface InspectedNode {
@@ -69,7 +69,58 @@ const layout = useDagLayout(payload, layoutOptions);
 
 // All roadmaps available on the system (host repo · or fleet members
 // when host has fleet.json). Live-updated via /api/events 'roadmap' stream.
-const allRoadmaps = useRoadmapState();
+//
+// p-defer-discovery (r4): /api/roadmap walks ~/src and is the first-paint
+// bottleneck. The canvas only needs /api/roadmap-dag to render — so this
+// fetch is deferred to requestIdleCallback (or setTimeout(_, 0) fallback)
+// after onMounted, letting the DAG paint immediately. While pending we
+// surface an isLoading flag so the aside can show a "loading roadmaps…"
+// state instead of being silently absent.
+const allRoadmaps: Ref<RepoRoadmap[]> = ref<RepoRoadmap[]>([]);
+const roadmapsLoading: Ref<boolean> = ref<boolean>(true);
+let roadmapsEventSource: EventSource | null = null;
+let roadmapsTimer: ReturnType<typeof setInterval> | null = null;
+const ROADMAPS_POLL_MS = 30_000;
+
+async function fetchRoadmaps(): Promise<void> {
+  try {
+    const response = await fetch("/api/roadmap");
+    if (!response.ok) return;
+    allRoadmaps.value = (await response.json()) as RepoRoadmap[];
+  } catch {
+    // network error · retain last known state
+  } finally {
+    roadmapsLoading.value = false;
+  }
+}
+
+function openRoadmapsEventStream(): void {
+  try {
+    const source = new EventSource("/api/events");
+    source.addEventListener("roadmap", () => void fetchRoadmaps());
+    roadmapsEventSource = source;
+  } catch {
+    // EventSource unavailable · poll fallback covers us
+  }
+}
+
+onMounted(() => {
+  const kick = (): void => {
+    void fetchRoadmaps();
+    openRoadmapsEventStream();
+    roadmapsTimer = setInterval(() => void fetchRoadmaps(), ROADMAPS_POLL_MS);
+  };
+  if (typeof requestIdleCallback === "function") {
+    requestIdleCallback(() => kick());
+  } else {
+    setTimeout(() => kick(), 0);
+  }
+});
+
+onUnmounted(() => {
+  if (roadmapsTimer !== null) clearInterval(roadmapsTimer);
+  if (roadmapsEventSource !== null) roadmapsEventSource.close();
+});
 
 // Default selectedRepo to host repo (first entry) once roadmaps load.
 // Only sets once, when still empty — user clicks override afterwards.
@@ -384,12 +435,13 @@ function buildStars(): Star[] {
     <!-- Roadmaps available on the system. Lists host repo + every fleet
          member when fleet.json is present. Each row shows the active DAG
          id, status, level, and current frontier nodes. Read-only for now. -->
-    <aside v-if="!printMode && allRoadmaps.length > 0" class="roadmap-list">
+    <aside v-if="!printMode && (allRoadmaps.length > 0 || roadmapsLoading)" class="roadmap-list">
       <div class="roadmap-list__head">
         <span class="roadmap-list__label">roadmaps on system</span>
-        <span class="roadmap-list__count">{{ allRoadmaps.length }}</span>
+        <span v-if="roadmapsLoading && allRoadmaps.length === 0" class="roadmap-list__loading">loading roadmaps…</span>
+        <span v-else class="roadmap-list__count">{{ allRoadmaps.length }}</span>
       </div>
-      <ul class="roadmap-list__rows">
+      <ul v-if="allRoadmaps.length > 0" class="roadmap-list__rows">
         <li
           v-for="r in allRoadmaps"
           :key="r.path"
@@ -524,6 +576,12 @@ function buildStars(): Star[] {
   margin-bottom: 4px;
 }
 .roadmap-list__label { font-weight: 600; }
+.roadmap-list__loading {
+  color: var(--text-meta, #888);
+  font-style: italic;
+  text-transform: none;
+  letter-spacing: 0;
+}
 .roadmap-list__count {
   background: var(--chrome-15, #1a1a1a);
   border: 1px solid var(--chrome-25, #333);
