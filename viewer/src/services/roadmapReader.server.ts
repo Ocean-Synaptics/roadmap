@@ -195,13 +195,18 @@ function projectDiscovered(d: DiscoveredRoadmap): RepoRoadmap {
   if (totalNodes === 0) {
     return { repo: d.name, path: d.path, status: "no-dag", dagId, currentBatch: [], lineage };
   }
-  const done = Math.min(d.doneCount, totalNodes);
+  // doneCount must intersect completed.json IDs with the CURRENT head's node ids —
+  // d.doneCount is the raw completed.json length, which spans every historical round
+  // and saturates totalNodes (e.g. fleet has hundreds of receipts across r28-r69).
+  const headNodeIds = d.head?.nodes !== undefined ? Object.keys(d.head.nodes) : [];
+  const completedIds = readCompletedIds(d.path);
+  const done = computeLineageDone(headNodeIds, completedIds);
   const remaining = Math.max(0, totalNodes - done);
   const isActive = remaining > 0;
   return {
     repo: d.name,
     path: d.path,
-    status: isActive ? "active" : "no-dag",
+    status: isActive ? "active" : "complete",
     dagId,
     completionPct: computeCompletionPct(done, remaining),
     currentBatch: [],
