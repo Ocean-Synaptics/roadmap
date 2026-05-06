@@ -15,7 +15,6 @@
     "--rule-strong": "oklch(0.319 0.048 258.7)",
     "--text-primary": "oklch(0.836 0.065 258.6)",
     "--text-secondary": "oklch(0.796 0.065 258.6)",
-    "--text-meta": "oklch(0.416 0.089 258.3)",
     "--accent-gold": "oklch(0.628 0.183 16.3)",
     "--accent-orange": "oklch(0.86 0.067 84)",
     "--accent-red": "oklch(0.582 0.177 26.3)",

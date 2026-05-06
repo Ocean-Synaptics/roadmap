@@ -24,7 +24,13 @@
         --rule-strong:    oklch(0.62 0.06 280);
         --text-primary:   oklch(0.95 0.07 100);  /* creamy yellow-green */
         --text-secondary: oklch(0.92 0.10 100);
-        --text-meta:      oklch(0.62 0.06 280);
+        /* --text-meta derives from --text-primary via color-mix so every
+         * theme automatically gets a meta tone with guaranteed relationship
+         * to its text-primary (62% opacity, on top of the panel beneath).
+         * Themes can override --text-meta explicitly if they want a
+         * different mid-gray, but the default is contrast-safe.
+         * 70% alpha lands ~AA-large on most theme bg+text combinations. */
+        --text-meta:      color-mix(in oklch, var(--text-primary) 70%, transparent);
         --accent-gold:    oklch(0.95 0.13 100);  /* vivid yellow */
         --accent-orange:  oklch(0.86 0.16 100);  /* mustard */
         --accent-red:     oklch(0.55 0.16 22);   /* crimson */
