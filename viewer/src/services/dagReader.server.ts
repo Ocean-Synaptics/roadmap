@@ -99,6 +99,22 @@ function readJson<T>(path: string): T {
   return JSON.parse(readFileSync(path, "utf-8")) as T;
 }
 
+function deriveDepsFromArtifacts(nodes: Record<string, RoadmapNode>): void {
+  const producers = new Map<string, string>();
+  for (const node of Object.values(nodes)) {
+    for (const artifact of node.produces ?? []) producers.set(artifact, node.id);
+  }
+  for (const node of Object.values(nodes)) {
+    if (Array.isArray(node.deps)) continue;
+    const seen = new Set<string>();
+    for (const artifact of node.consumes ?? []) {
+      const producer = producers.get(artifact);
+      if (producer && producer !== node.id) seen.add(producer);
+    }
+    node.deps = Array.from(seen);
+  }
+}
+
 function collectCompletedForDag(entries: CompletedEntry[], dagId: string): { ids: string[]; map: Record<string, CompletedEntry> } {
   const map: Record<string, CompletedEntry> = {};
   for (const entry of entries) {
@@ -165,6 +181,12 @@ export async function readDagPayload(req?: { url?: string }): Promise<DagPayload
   try { completedRaw = readJson<CompletedEntry[]>(completedPath); } catch { /* missing ok */ }
   const { ids, map } = collectCompletedForDag(completedRaw, head.id);
   const intentEvals = readIntentEvals(repoRoot);
+
+  // Engine v0.4.0+ dropped the explicit `deps` field; ordering derives from
+  // consumes ↔ produces. The viewer's layout still consumes deps[], so
+  // synthesize it here for any node missing it. Older DAGs that already
+  // carry deps pass through untouched.
+  deriveDepsFromArtifacts(head.nodes);
 
   for (const node of Object.values(head.nodes)) {
     const receipt = findReceiptPath(repoRoot, node.id);
