@@ -805,3 +805,18 @@ html:has(.viewer-shell--print)::-webkit-scrollbar { display: none; }
 .viewer-shell[data-idle="true"] .dag-foil-halo::before {
   animation-play-state: paused !important;
 }
+
+/* ── Calm mode · stronger than idle · pearl hidden, halo disabled ──
+   data-calm="true" is a user-pinned preference (toolbar toggle,
+   persisted in localStorage). Idle pauses; calm removes. */
+.viewer-shell[data-calm="true"]::before {
+  display: none;
+}
+.viewer-shell[data-calm="true"] .glass-surface:hover::after {
+  content: none;
+}
+.viewer-shell[data-calm="true"] .dag-svg .node--in-progress .node-rainbow-rect,
+.viewer-shell[data-calm="true"] .dag-svg .edge--active,
+.viewer-shell[data-calm="true"] .dag-foil-halo::before {
+  animation: none !important;
+}
