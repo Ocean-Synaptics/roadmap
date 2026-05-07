@@ -29,6 +29,9 @@ import type { AnchorRect } from "./composables/useTooltipPosition";
 import { useDagPayload } from "./services/dagReader";
 import { DEFAULT_LAYOUT_OPTIONS, useDagLayout } from "./composables/useDagLayout";
 import { applyTheme, defaultTheme, findTheme, themes, type Theme } from "./themes";
+import { useIdle } from "./composables/useIdle";
+
+const idle = useIdle();
 
 // Selected repo path · drives /api/roadmap-dag?repo=<path> re-fetch.
 // Default empty → server falls back to host repo. Initialized from the
@@ -578,7 +581,7 @@ function buildStars(): Star[] {
 </script>
 
 <template>
-  <main class="viewer-shell" :class="{ 'viewer-shell--print': printMode }" :data-calm="calm ? 'true' : 'false'">
+  <main class="viewer-shell" :class="{ 'viewer-shell--print': printMode }" :data-calm="calm ? 'true' : 'false'" :data-idle="idle ? 'true' : 'false'">
     <div v-if="printMode" class="starfield" aria-hidden="true">
       <svg viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice">
         <defs>
