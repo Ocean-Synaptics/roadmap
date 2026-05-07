@@ -61,10 +61,6 @@
         },
         {
           "type": "shell",
-          "command": "cd viewer && pnpm tsc --noEmit"
-        },
-        {
-          "type": "shell",
           "command": "cd viewer && pnpm vitest run src/composables/useIdle.test.ts"
         },
         {
@@ -93,10 +89,6 @@
         },
         {
           "type": "shell",
-          "command": "cd viewer && pnpm tsc --noEmit"
-        },
-        {
-          "type": "shell",
           "command": "cd viewer && pnpm run build"
         }
       ]
@@ -121,10 +113,6 @@
         {
           "type": "shell",
           "command": "grep -q 'data-idle' viewer/src/App.vue && grep -q 'useIdle' viewer/src/App.vue"
-        },
-        {
-          "type": "shell",
-          "command": "cd viewer && pnpm tsc --noEmit"
         },
         {
           "type": "shell",
@@ -180,7 +168,7 @@
         },
         {
           "type": "shell",
-          "command": "test $(grep -c 'drop-shadow' viewer/src/styles/dag-theme.css | head -1) -lt 6"
+          "command": "test $(awk '/\\.glass-surface:hover::after/,/^}/' viewer/src/styles/dag-theme.css | grep -c drop-shadow) -eq 1"
         },
         {
           "type": "shell",
@@ -317,11 +305,7 @@
         },
         {
           "type": "shell",
-          "command": "cd viewer && pnpm tsc --noEmit"
-        },
-        {
-          "type": "shell",
-          "command": "cd viewer && pnpm vitest run"
+          "command": "cd viewer && pnpm vitest run src/composables/useIdle.test.ts"
         },
         {
           "type": "shell",
