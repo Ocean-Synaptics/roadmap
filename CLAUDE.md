@@ -12,7 +12,7 @@
 
 💎 **Planning produces a DAG. Execution fills it. Validation gates transitions. Done = DAG terminates.**
 
-If you're an agent that just entered this repo: this is not advisory. The diagrams encode the protocol. The skills under `.claude/skills/` (`/roadmap-orient`, `/roadmap-spec`, `/roadmap-auto`, `/roadmap-term`) are the user-invocable workflow. Start every session with `/roadmap-orient` — it loads position, frontier, and what to do next.
+If you're an agent that just entered this repo: this is not advisory. The diagrams encode the protocol. The skills under `.claude/skills/` (`/roadmap-orient`, `/roadmap-spec`, `/roadmap-bootprompt`, `/roadmap-auto`) are the user-invocable workflow. Start every session with `/roadmap-orient` — it loads position, frontier, boot prompt, and what to do next.
 
 🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
@@ -122,13 +122,65 @@ roadmap advance <node-id> --note "<what>" # run validators, record completion
        │
        ╰────▷ [📁 heads/]              compiled DAGs (gitignored except curated examples)
                   │
-                  ╰────▷ [{dagId}.json]
+                  ├────▷ [{dagId}.json]
+                  ╰────▷ [{dagId}.boot.md]    cognitive cartridge · written by /roadmap-bootprompt
 ```
 
 ```
   loadContext() reads all of these once at session start
   agents never read .roadmap/ directly — orient consolidates into one JSON response
 ```
+
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
+
+## §Rounds
+
+A round is a falsifier plus the contiguous chain of DAGs aiming at it.
+Rounds open when the falsifier is declared, close when the falsifier is
+satisfied OR when HONEST-RED ships named carriers to the next round.
+
+```
+node     intra-DAG · validator failure · fix-and-retry within a single node
+DAG      inter-DAG within round · successor proposed, same round
+round    cross-round · carriers named, falsifier survives boundary
+```
+
+Round encoding (optional but recommended):
+
+```
+dag-id prefix       r<N>-<concern>     e.g. r7-extract-pipeline
+dag_desc / Round    "Round 7 · falsifier: <one line> · carriers from r6: X, Y, Z"
+sidecar.round       round number (forward-compat for future engine support)
+```
+
+Round number is human-assigned at spec time. Agents do not auto-increment.
+Inside a round, you iterate (DAGs chain · /roadmap-auto handles successors).
+Across rounds, you carrier-transfer (HONEST-RED · named residuals · falsifier
+survives boundary).
+
+🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
+
+## §Verdict ladder · 6 states with named outcomes
+
+```
+verdict        outcome       next move
+─────────────  ───────────   ─────────────────────────────────────────
+GREEN          WIN           validators + sniff clean · advance
+AMBER          PARTIAL       validators pass · concern surfaced · advance + surface
+RED            LOSS          validators fail · iterate · DO NOT advance
+GBD-r<N+1>     PARTIAL       residuals named · carriers cross round
+HONEST-RED     HONEST LOSS   terminal upstream · carriers named · round closes
+BLOCKED        EXOGENOUS     world refused · BLOCKED receipt as resume handle
+```
+
+Post-GREEN sniff (3 questions · ≤30s · /roadmap-auto): category-match,
+carrier-collapse, stance-violation. Failures downgrade GREEN → AMBER or RED.
+The sniff is what makes GREEN trustworthy; without it, GREEN coasts.
+
+Trajectory patterns auto-fire diffusion (3 LOSS consecutive → upstream ·
+5 WIN + falsifier static → category audit · HONEST LOSS → /core-loop).
+
+Full doctrine: /roadmap-auto.
 
 🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 

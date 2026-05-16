@@ -7,19 +7,25 @@ Companion skills for the `roadmap` CLI. Each subdirectory contains a single `SKI
 ```
   skill              purpose
   ────────────────── ────────────────────────────────────────────────────────────────
+  roadmap-orient     Self-orient at session start — position, fleet state, boot prompt,
+                     next move. Entry point and re-entry point.
   roadmap-spec       Generate a convergence-oriented spec.json from intent + scope ·
-                     includes round-carriers discipline for residuals at HONEST-RED
-  roadmap-orient     Self-orient at session start — position, fleet state, next move
-  roadmap-auto       Autonomous execution of a DAG · includes the convergence stance
-                     (endogenous-vs-exogenous) and the iterate-loop procedure on RED
-  roadmap-term       Terminal-node assessment — convergence, review, successor with
-                     named carriers
+                     ships default code stance · ends with pointer to /roadmap-bootprompt
+  roadmap-bootprompt Author .roadmap/heads/<dag-id>.boot.md — cognitive cartridge
+                     carrying Stance + Watch from the drafting session
+  roadmap-auto       Autonomous execution · convergence stance · iterate-loop on RED ·
+                     verdict ladder (GREEN/AMBER/RED/GBD/HONEST-RED/BLOCKED) ·
+                     post-GREEN sniff · outcome vocabulary · trajectory patterns ·
+                     terminal review inline (assess · threads · present · successor)
 ```
 
-The iterate-loop discipline (diffuse → asymptote test → scope-widen-once → upstream →
-re-validate → HONEST-RED with named carriers) lives split across the three skills it
-spans: runtime in roadmap-auto, carrier authoring in roadmap-spec, round-close
-enforcement in roadmap-term.
+The chain: `orient → auto → (terminal inline) → spec → bootprompt → orient`.
+
+Round-carrier discipline lives in roadmap-auto (where the loop runs and HONEST-RED
+fires). Spec consumes carriers via `inputs[]` of the successor and narrates them in
+`dag_desc / Round`. Skill-as-floor: every dispatch brief carries a default code stance
+(subtract before adding · extend don't bolt · thin > fat · ~400 LOC) regardless of
+whether the host project has a tuned CLAUDE.md.
 
 ## Install
 
