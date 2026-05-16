@@ -18,6 +18,25 @@ roadmap orient --note "session start"
 
 This is the source of truth. Auto-detects fleet.json for cross-repo state. Never infer position from git log or file inspection — orient returns it.
 
+## Then read the boot prompt · cognitive handoff from the drafting session
+
+```bash
+cat .roadmap/heads/<dag-id>.boot.md   # if present
+```
+
+The boot prompt is the cognitive cartridge. It carries Stance (drift-prevention,
+dead ends, register, user concerns), Watch (things to flag), and Trajectory
+(prior session's outcome streak). Written by `/roadmap-bootprompt` at the end
+of the drafting session — surfaces it on first orient of the next session.
+
+**On first orient of a session, render the boot prompt inline alongside the
+DAG topology.** A fresh agent reading orient output cold should see both:
+where they are (DAG state) AND how the prior session wanted to think (boot).
+
+If no boot.md exists for the current head, note it — and consider invoking
+`/roadmap-bootprompt` to author one if the session has cognitive context
+worth preserving.
+
 ## Read the output
 
 ```
@@ -80,16 +99,18 @@ For fleet orient, show per-repo status with their active DAGs:
 
 ```
   position has nodes?    → /roadmap-auto (autonomous execution)
-  chainReady: true?      → /roadmap-term (assess before chaining)
+  chainReady: true?      → /roadmap-auto handles terminal inline
+                           (assess · threads · present · successor)
   no DAG?                → /roadmap-spec (design one)
+                           → /roadmap-bootprompt (capture stance)
   fleet has blockers?    → surface which repos are blocking which
-  end of session?        → /roadmap-term (persist + handoff)
+  no boot.md for head?   → consider /roadmap-bootprompt if context worth preserving
 ```
 
 ## The chain
 
 ```
-  orient → auto → spec → term → orient
+  orient → auto → (terminal inline) → spec → bootprompt → orient
   every skill points to the next
   orient is always the entry point and the re-entry point
 ```
