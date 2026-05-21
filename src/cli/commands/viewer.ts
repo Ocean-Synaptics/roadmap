@@ -41,16 +41,22 @@ interface ViewerFlags {
   preview: boolean;
   port?: number;
   hostRepo: string;
+  scanRoot?: string;
+  hostOnly: boolean;
 }
 
 function parseFlags(args: string[], repoRoot: string): ViewerFlags {
-  const flags: ViewerFlags = { help: false, preview: false, hostRepo: process.cwd() };
+  const flags: ViewerFlags = {
+    help: false, preview: false, hostRepo: process.cwd(), hostOnly: false,
+  };
   for (let i = 1; i < args.length; i++) {
     const a = args[i];
     if (a === '--help' || a === '-h') flags.help = true;
     else if (a === '--preview') flags.preview = true;
     else if (a === '--port') flags.port = Number(args[++i]);
     else if (a === '--host-repo') flags.hostRepo = args[++i];
+    else if (a === '--scan-root') flags.scanRoot = args[++i];
+    else if (a === '--host-only') flags.hostOnly = true;
   }
   // host repo defaults to caller's $PWD (already from process.cwd above);
   // viewer source itself lives at <roadmap-engine repo>/viewer/.
@@ -62,15 +68,18 @@ function printHelp(opts: OutputOpts): void {
   emit({ ok: true, cmd: 'viewer', data: {
     command: 'viewer',
     description: 'Start the roadmap viewer dev server pointed at the current host repo .roadmap/.',
-    usage: 'roadmap viewer [--preview] [--port <n>] [--host-repo <path>]',
+    usage: 'roadmap viewer [--preview] [--port <n>] [--host-repo <path>] [--scan-root <path>] [--host-only]',
     flags: {
       '--preview': 'Serve pre-built dist/ via vite preview instead of dev mode',
       '--port <n>': 'Override default port',
       '--host-repo <path>': 'Override host repo (defaults to $PWD)',
+      '--scan-root <path>': 'Override scan root for roadmap discovery (default: $ROADMAP_DEV_ROOT or ~/src)',
+      '--host-only': 'Disable machine-wide discovery; show only the host repo (and its fleet.json, if any)',
     },
     examples: [
-      'roadmap viewer',
-      'roadmap viewer --port 5174',
+      'roadmap viewer                              # default: discover all roadmaps under ~/src',
+      'roadmap viewer --scan-root ~/projects',
+      'roadmap viewer --host-only                  # legacy single-repo / fleet.json mode',
       'roadmap viewer --preview --host-repo /path/to/your/repo',
     ],
   } }, opts);
@@ -105,6 +114,19 @@ export async function run(args: string[], repoRoot: string, _note: string, opts:
     HOST_REPO: flags.hostRepo,
   };
   if (flags.port) env.PORT = String(flags.port);
+
+  // Default behavior: discover every roadmap on the machine under ~/src (or
+  // $ROADMAP_DEV_ROOT). --host-only opts out and restores legacy single-repo
+  // / fleet.json semantics. --scan-root overrides the default path.
+  if (!flags.hostOnly) {
+    const home = process.env.HOME ?? '';
+    const scanRoot = flags.scanRoot
+      ?? process.env.ROADMAP_FS_SCAN_ROOT
+      ?? process.env.ROADMAP_DEV_ROOT
+      ?? (home ? join(home, 'src') : process.cwd());
+    env.ROADMAP_FS_SCAN_ROOT = scanRoot;
+    env.ROADMAP_VIEWER_SCAN_ALL = '1';
+  }
 
   const child = spawn('pnpm', ['--dir', viewerDir, mode], { stdio: 'inherit', env });
   child.on('exit', (code) => process.exit(code ?? 0));

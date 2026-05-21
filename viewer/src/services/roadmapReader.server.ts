@@ -368,11 +368,12 @@ function sortRoadmapsByActivityAndMtime(
 
 export async function scanRoadmaps(opts?: { url?: string }): Promise<RepoRoadmap[]> {
   const host = hostRepoRoot();
-  const registry = readFleetRepos(host);
+  const forceScan = process.env.ROADMAP_VIEWER_SCAN_ALL === "1";
+  const registry = forceScan ? [] : readFleetRepos(host);
   const includeEmpty = shouldIncludeEmpty(opts?.url);
 
-  // No fleet.json → filesystem-walk discovery rooted at ROADMAP_FS_SCAN_ROOT
-  // (default: dirname(host)). Host repo always included regardless.
+  // No fleet.json (or scan-all forced) → filesystem-walk discovery rooted at
+  // ROADMAP_FS_SCAN_ROOT (default: dirname(host)). Host repo always included.
   if (registry.length === 0) {
     const scanRoot = process.env.ROADMAP_FS_SCAN_ROOT ?? dirname(host);
     const rawDiscovered = discoverRoadmaps(scanRoot);
