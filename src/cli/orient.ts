@@ -62,11 +62,18 @@ async function runFleetOrient(repoRoot: string, outputOpts: OutputOpts): Promise
       continue;
     }
 
-    // Build list of DAG files to load: all active heads/*.json DAGs
+    // head.json authority: when it exists, it is the SINGLE source of truth
+    // for the active DAG. Do not fan out over stale heads/*.json — that
+    // produces a phantom flood of init nodes from completed-but-unstamped DAGs.
     const headsDirectory = join(rc.resolvedPath, '.roadmap', 'heads');
+    const headPath = join(rc.resolvedPath, '.roadmap', 'head.json');
     const dagFiles: { dagPath: string; dagId: string }[] = [];
 
-    if (rc.activeDAGs.length > 0 && existsSync(headsDirectory)) {
+    if (existsSync(headPath)) {
+      const head = JSON.parse(readFileSync(headPath, 'utf-8')) as { id?: string };
+      dagFiles.push({ dagPath: headPath, dagId: head.id ?? rc.entry.name });
+    } else if (rc.activeDAGs.length > 0 && existsSync(headsDirectory)) {
+      // No head.json: preserve legacy behavior — scan active heads/*.json.
       for (const summary of rc.activeDAGs) {
         const candidatePath = join(headsDirectory, `${summary.dagId}.json`);
         if (existsSync(candidatePath)) {
@@ -75,19 +82,13 @@ async function runFleetOrient(repoRoot: string, outputOpts: OutputOpts): Promise
       }
     }
 
-    // Fallback: if no heads/ DAGs found, use head.json
     if (dagFiles.length === 0) {
-      const headPath = join(rc.resolvedPath, '.roadmap', 'head.json');
-      if (!existsSync(headPath)) {
-        repos.push({
-          name: rc.entry.name, path: rc.resolvedPath,
-          dagId: null, status: 'no-dag', level: null,
-          activeDAGs,
-        });
-        continue;
-      }
-      const head = JSON.parse(readFileSync(headPath, 'utf-8')) as { id?: string };
-      dagFiles.push({ dagPath: headPath, dagId: head.id ?? rc.entry.name });
+      repos.push({
+        name: rc.entry.name, path: rc.resolvedPath,
+        dagId: null, status: 'no-dag', level: null,
+        activeDAGs,
+      });
+      continue;
     }
 
     // Load each active DAG and compute its frontier
