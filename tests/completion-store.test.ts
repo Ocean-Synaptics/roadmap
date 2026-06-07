@@ -10,8 +10,6 @@ import {
   hasPassingReceipt,
   loadCompletionsWithEvidence,
   saveCompletionWithEvidence,
-  saveCompletion,
-  loadCompletions,
   type CompletionRecordWithEvidence,
   type EvidenceRecord,
 } from '../src/runtime/completion.ts';
@@ -223,13 +221,6 @@ describe('persistence', () => {
     expect(record.nodeId).toBe('node-1');
     expect(record.validationChecks).toEqual(checks);
     expect(record.dagId).toBe('test-dag');
-  });
-
-  it('saveCompletion + loadCompletions roundtrip', () => {
-    saveCompletion(tmpDir, 'simple-1', 'owner');
-    const loaded = loadCompletions(tmpDir);
-    expect(loaded.has('simple-1')).toBe(true);
-    expect(loaded.get('simple-1')!.owner).toBe('owner');
   });
 
   it('multiple saves accumulate records (append-only, no clobber)', () => {
