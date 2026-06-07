@@ -4,8 +4,8 @@
 
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { loadCompletionsWithEvidence } from '../../runtime/completion.ts';
-import type { CompletionRecordWithEvidence, EvidenceRecord } from '../../runtime/completion.ts';
+import { CompletionStore } from '../../runtime/completion.ts';
+import type { EvidenceRecord } from '../../runtime/completion.ts';
 import type { Graph } from '../../protocol.ts';
 
 export interface NodeCommitStatus {
@@ -44,14 +44,16 @@ export interface ComputedReport {
  * audit trail (check counts). No gate logic, no pass/fail.
  */
 export function computeReport(dag: Graph<string>, repoRoot: string): ComputedReport {
-  const completions = loadCompletionsWithEvidence(repoRoot);
+  // loadCompletionsWithEvidence is now composite-keyed (dagId, nodeId), so a
+  // bare .get(nodeId) misses. Narrow to this dag, then index by bare nodeId.
+  const completions = CompletionStore.loadOrEmpty(repoRoot).filterByDagId(dag.id);
 
   const commitStatus: NodeCommitStatus[] = [];
   const testEvidence: TestEvidence[] = [];
   const auditTrail: AuditTrail[] = [];
 
   for (const node of Object.values(dag.nodes)) {
-    const record = completions.get(node.id) as CompletionRecordWithEvidence | undefined;
+    const record = completions.record(node.id);
 
     // Commit status
     const missing = node.produces.filter(p => !existsSync(join(repoRoot, p)));

@@ -218,9 +218,8 @@ describe('persistence', () => {
     const checks: EvidenceRecord[] = [{ rule: 'shell:test', passed: true, evidence: 'ok' }];
     saveCompletionWithEvidence(tmpDir, 'node-1', checks, 'owner-1', 'cp-1', undefined, 'test-dag');
 
-    const loaded = loadCompletionsWithEvidence(tmpDir);
-    expect(loaded.size).toBe(1);
-    const record = loaded.get('node-1')!;
+    // Map is composite-keyed (dagId, nodeId); consumers narrow via filterByDagId.
+    const record = CompletionStore.loadOrEmpty(tmpDir).filterByDagId('test-dag').record('node-1')!;
     expect(record.nodeId).toBe('node-1');
     expect(record.validationChecks).toEqual(checks);
     expect(record.dagId).toBe('test-dag');
@@ -233,24 +232,28 @@ describe('persistence', () => {
     expect(loaded.get('simple-1')!.owner).toBe('owner');
   });
 
-  it('multiple saves accumulate records', () => {
+  it('multiple saves accumulate records (append-only, no clobber)', () => {
     saveCompletionWithEvidence(tmpDir, 'a', [{ rule: 'r', passed: true, evidence: 'ok' }]);
     saveCompletionWithEvidence(tmpDir, 'b', [{ rule: 'r', passed: true, evidence: 'ok' }]);
     const loaded = loadCompletionsWithEvidence(tmpDir);
     expect(loaded.size).toBe(2);
-    expect(loaded.has('a')).toBe(true);
-    expect(loaded.has('b')).toBe(true);
+    const store = CompletionStore.loadOrEmpty(tmpDir);
+    expect(store.hasRecord('a')).toBe(true);
+    expect(store.hasRecord('b')).toBe(true);
   });
 
-  it('atomic write produces valid JSON', () => {
+  it('append writes one valid JSON object per line', () => {
     saveCompletionWithEvidence(tmpDir, 'x', [{ rule: 'r', passed: true, evidence: 'ok' }]);
-    const raw = readFileSync(join(tmpDir, '.roadmap', 'completed.json'), 'utf-8');
-    expect(() => JSON.parse(raw)).not.toThrow();
+    const raw = readFileSync(join(tmpDir, '.roadmap', 'completed.jsonl'), 'utf-8');
+    const lines = raw.split('\n').filter(l => l.trim() !== '');
+    expect(lines.length).toBe(1);
+    expect(() => JSON.parse(lines[0])).not.toThrow();
   });
 
-  it('no .tmp file left after write', () => {
+  it('append does not whole-array re-serialize (no completed.json written)', () => {
     saveCompletionWithEvidence(tmpDir, 'y', [{ rule: 'r', passed: true, evidence: 'ok' }]);
-    expect(existsSync(join(tmpDir, '.roadmap', 'completed.json.tmp'))).toBe(false);
+    expect(existsSync(join(tmpDir, '.roadmap', 'completed.json'))).toBe(false);
+    expect(existsSync(join(tmpDir, '.roadmap', 'completed.jsonl.tmp'))).toBe(false);
   });
 
   it('loadCompletionsWithEvidence returns empty for missing file', () => {
