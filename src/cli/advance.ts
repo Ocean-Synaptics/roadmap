@@ -442,6 +442,8 @@ async function advanceNode(
     repo: basename(repoRoot),
     position: newPos.position,
     level: newPos.level,
+    node: nodeId,
+    ok: allPassed,
     detail: { completed: nodeId, checks: checks.length, passed: allPassed },
   }, repoRoot);
 }

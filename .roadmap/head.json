@@ -1,315 +1,292 @@
 {
-  "id": "roadmap-r5-viewer-idle",
-  "desc": "Viewer · r5 · cheap idle. The viewer's stained-glass identity (pearlescent shimmer, hover halo, in-progress SVG glow) currently runs full-tilt regardless of whether anyone is looking. Two full-viewport pearl layers rotate forever at 60s and 90s with mix-blend-mode: screen and inset:-50% (4× viewport overdraw), the hover halo stacks two drop-shadow() filters on a rotating conic-gradient, and SVG in-progress nodes layer animated stroke-march + glow-modulate even when the canvas isn't being watched. On a moderate GPU the user reports the viewer is taxing.\n\nSCENARIO · given the viewer open in a browser tab, when the user switches to a different tab, blurs the window, or sits idle for 12s, then animations halt and compositor frame production drops to ~0. When the user comes back (mousemove · keydown · regain focus · tab visible) the aesthetic resumes within one frame. A toolbar 'calm' toggle persists a permanent low-motion state for users who want the look at minimum cost — pearl hidden, halo disabled, SVG glow off.\n\nSTANCE · the viewer's identity is the stained-glass aesthetic, not the per-frame cost. We keep the aesthetic on the marketing screenshot and the active state, and we let it sleep when the user isn't looking. The win comes from STOPPING THE THINGS THAT FORCE PAINTS — once nothing animates, backdrop-filter cost amortizes to zero for a static frame, so we don't need to remove backdrop-filter to win. We DO drop one of the two pearl layers (50% pearl cost for ~15% visual richness) and collapse the halo's two drop-shadows to one (50% halo cost for ~negligible visual loss) — those are unconditional unless the user notices.\n\nRISKS · backdrop-filter is a passive cost on every paint and cannot be cheaply paused; the strategy depends on stopping animations so the canvas stops being repainted. If something else drives repaints (incoming WebSocket data, route changes, fonts loading late) the gating won't help; this round does not address those. The Page Visibility API throttles JS timers but does NOT pause CSS animations or compositor work — we must explicitly set animation-play-state: paused via a [data-idle] attribute. prefers-reduced-motion already handles a subset; data-idle should subsume those rules, not duplicate them. The 12s inactivity threshold is a guess; surface it as a constant in useIdle so it can be tuned post-ship.\n\nCLUSTERS · b-* (baseline measurement before any change, captures the empirical 'before' so success is falsifiable) · i-* (idle infrastructure: composable + binding) · u-* (user-facing calm toggle) · r-* (unconditional render cost reduction · pearl + halo) · g-* (gating CSS that consumes the data-idle/data-calm attrs) · v-* (verification · puppeteer state machine + perf delta).\n\nORDERING · all substantive nodes consume init.json. CSS edits (r-pearl-simplify · r-halo-simplify · g-idle-pause-rules · g-calm-hide-rules) all touch viewer/src/styles/dag-theme.css and serialize via receipt chain. App.vue edits (u-calm-toggle · i-idle-binding) similarly serialize via receipt. v-idle-probe is the integration gate; v-perf-delta is the convergence assertion (compare to b-baseline-capture).\n\nVALIDATOR DOCTRINE · v-idle-probe asserts the state machine works (puppeteer + getComputedStyle on animation-play-state). v-perf-delta is the load-bearing falsifier: take screenshots at T=0 and T=2s with document.hidden=true, hash both, assert byte-equal — if they differ, something is still animating and the bet failed. Calm-mode receives the same screenshot-stability test plus a separate visibility check (pearl elements must be display:none).",
+  "id": "roadmap-r6-ledger-integrity",
+  "desc": "Make the engine account for its own state — append-only ledger, head-authoritative orient\n\n## Intent\nThe engine that compiles agent state cannot account for its own. During fleet r238 (2026-06-07) the completion ledger froze at r235 across three committed rounds, and fleet orient floods its batch with 154 phantom 'init' nodes. The diagnosis was verified AND falsified by a two-agent fan-out before any code was touched. This round makes the ledger remember and makes orient trust head.json.\n\n## Scenario\ngiven a repo whose head.json names the current DAG and whose heads/ holds dozens of stale round DAGs,\nwhen an agent completes nodes under parallel /roadmap-auto and then runs orient,\nthen every completion is durably recorded (no clobber, no cross-round collision) and orient returns head.json's DAG with a non-null dagId and its true frontier — not a flood of phantoms.\n\n## Round\nRound 6 · falsifier: a fixture with a head.json + 50 stale heads and 20 concurrent completions survives collision, flood, and clobber (v-self-host all-green). Carriers from the fleet r238 issue: BUG-B (ledger freeze), BUG-A (orient flood), symptom-3 (trail enrichment, non-bug). No prior engine round opened this falsifier; this round opens and closes it.\n\n## Authority map\n| domain | directories | allowed | forbidden |\n|--------|-------------|---------|-----------|\n| ledger | src/runtime/completion.ts · src/lib/ledger-migrate.ts | jsonl store, fold, migration helper | orient/advance edits, external-repo writes |\n| orient | src/cli/orient.ts · src/runtime/fleet.ts · src/lib/heads-sweep.ts | head authority, dagId assert, heads sweep | ledger record shape, advance gate |\n| cli | src/cli/advance.ts · bin/roadmap.ts | trail fields, fail-loud, command dispatch | completion internals, orient traversal |\n| verify | test/ledger-self-host.mjs | fixture harness, assertions | production src/ edits |\n| housekeeping | src/runtime/completion.ts (removal) · CLAUDE.md · .gitignore | delete dead paths, doctrine sync | behavior changes, new features |\n\n## Stance pointers\nProject CLAUDE.md · Layered Architecture (src/runtime is the IO boundary) · .roadmap/ File Topology (completed.json → becomes completed.jsonl) · §Verdict-ladder. User-global §CODE rules 5 (delete completely) + 8 (subtract before adding). The append-only discipline mirrors trail.jsonl and round receipts already in the repo.\n\n## Subtraction budget\n| counted | excluded | target |\n|---------|----------|--------|\n| src/runtime/completion.ts | *.test.ts · fixtures | the whole-array re-serialize path + the legacy non-evidence saveCompletion/loadCompletions duplication removed (≥ 25 LOC net) |\nThis round is NOT greenfield-exempt: it replaces a corruption-prone surface, so the old surface must leave. x-drop-array-path is the removal node; t-review asserts the dead symbols are gone.\n\n## Test profile\n| level | path glob | machine | max dur |\n|-------|-----------|---------|---------|\n| unit | src/**/*.test.ts | any | 30s |\n| integration | test/ledger-self-host.mjs | any | 2min |\nValidators run via pnpm vitest run <file> (unit) and node test/ledger-self-host.mjs (integration). pnpm run check = tsc --noEmit; pnpm run build = tsc+esbuild; pnpm test = full vitest suite. (Note: the repo's check:dag:define script references a nonexistent 'validate' command and is pre-broken — terminal does not depend on it.)\n\n## Substrate state at round boundary\nEngine repo (NOT the fleet model/canon domain — that inventory is N/A here). Verified by direct read + live orient + heads count on 2026-06-07:\n- src/runtime/completion.ts — CONSUMES then SUPERSEDES: saveCompletionWithEvidence (l.158) whole-array atomicWriteJson keyed by bare nodeId; loadCompletionsWithEvidence (l.135); legacy saveCompletion/loadCompletions (l.224-276) now redundant. Record shape {nodeId,completedAt,dagId,validationChecks,validatorResults,gitSha,treeSha,branch} PRESERVED.\n- src/cli/orient.ts — runFleetOrient (l.26-221): dagFiles from rc.activeDAGs (l.69-76), head.json fallback only when empty (l.79), dagId null when dagFiles.length!==1 (l.133). CONSUMES; this round modifies authority.\n- src/runtime/fleet.ts — scanActiveDAGs (l.38) active-unless-_lineage.completedAt. CONSUMES; heads-sweep stamps completedAt.\n- src/cli/advance.ts — advanceNode gate (l.71-79) flat 'not in current batch'; saveCompletionWithEvidence call (l.299); trail append (l.438) lacks top-level node/ok. CONSUMES; modified.\n- bin/roadmap.ts — command switch (l.144-163). CONSUMES; two cases added (migrate-ledger, sweep-heads).\n- NET-NEW: src/lib/ledger-migrate.ts, src/lib/heads-sweep.ts, test/ledger-self-host.mjs — justified: no extant substrate performs jsonl migration, head-completeness sweep, or self-host falsification.\n- Predecessor: roadmap-r5-viewer-idle complete (12/12, chainReady). r6 is its successor. Prior heads under .roadmap/heads/ (6 files); no carriers from r5 (orthogonal concern).\n\n## SCOPE FENCE\nEngine code in /home/griffin/src/.dev/roadmap ONLY. Ships an idempotent migration helper + heads-sweep command but does NOT run them against /home/griffin/src/fleet or any external repo, and does NOT git rm fleet's completed.json or rewrite external history. The fleet-side data migration is the operator's to run later with the tools this round delivers.\n\n## Evidence pinned from the verify×falsify fan-out\nBUG-B mechanism is CLOBBER + COLLISION, not the issue's 'dagId-null append guard' (FALSIFIED — saveCompletionWithEvidence writes regardless of dagId). 71 post-freeze advances passed validators and reached the save yet produced ZERO net new completions; 28 collided on bare nodeId across rounds. BUG-A: repos[0] dagId:null, batch of 158 with 'init'×154. Symptom-3: trail keys ABSENT not null — enrichment, not repair.",
   "init": "init",
-  "term": "term",
+  "term": "t-review",
   "nodes": {
     "init": {
       "id": "init",
-      "desc": "Ratify the idle-cheap bet · pearl drop · halo simplify · calm-toggle · pause-on-idle\n\nProduce the ratification receipt that downstream nodes consume. Pin the policy: (a) one pearl layer, not two; (b) halo gets one drop-shadow, not two; (c) data-idle attribute drives animation-play-state via CSS; (d) data-calm attribute drives display:none on pearl + animation removal on halo; (e) idle is OR of (document.hidden, !document.hasFocus(), inactivity ≥ 12s); (f) calm persists in localStorage under key 'viewer.calm'. Without this receipt, downstream nodes have no anchor.",
+      "desc": "Ratify the ledger-integrity bet · append-only jsonl · head authority · prune · trail · fail-loud\n\nProduce the ratification receipt downstream nodes consume. Pin the policy: (a) completions persist append-only to .roadmap/completed.jsonl, one \\n-terminated JSON object per line, record shape unchanged; (b) readers fold by (dagId, nodeId) keeping the LAST line; (c) loadCompletionsWithEvidence reads completed.jsonl when present, falls back to legacy completed.json array otherwise; (d) the migration helper is idempotent and NEVER deletes completed.json (git rm is the operator's act, out of scope); (e) fleet orient treats head.json.id as the single authoritative active DAG when head.json exists; (f) heads sweep stamps _lineage.completedAt only when every node of a head has a passing receipt; (g) advance trail row gains top-level node + ok; (h) advance fails loud (BATCH_DRIFT) when a node is in head.json.nodes but unplaceable; (i) SCOPE FENCE — engine repo only. Without this receipt downstream nodes have no anchor.",
       "produces": [
-        ".roadmap/round-r5/init.json"
+        ".roadmap/round-r6/init.json"
       ],
       "consumes": [],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": ".roadmap/round-r5/init.json"
+          "target": ".roadmap/round-r6/init.json"
         }
       ]
     },
-    "b-baseline-capture": {
-      "id": "b-baseline-capture",
-      "desc": "Measure baseline GPU cost of the viewer at idle — capture compositor frame rate and screenshot stability over a 5s window\n\nGiven the viewer running on the dev server (post-r4 main · pre-idle-changes), run a puppeteer probe that loads the viewer, waits for the canvas to settle, sets document.hidden via emulation, holds for 5s, and captures: (1) two screenshots 2s apart, (2) compositor metrics via Chrome DevTools Protocol (Performance.metrics), (3) the sha256 of each screenshot. Persist all of these to .roadmap/round-r5/b-baseline-capture.json. The receipt is the empirical 'before' that v-perf-delta compares against; without it the bet is unfalsifiable. Receipt fields: { screenshots: [{ts, sha256, bytes}], cdpMetrics: {...}, viewerCommit }.",
+    "m-jsonl-store": {
+      "id": "m-jsonl-store",
+      "desc": "Replace the whole-array completed.json rewrite with an append-only completed.jsonl store folded by (dagId, nodeId)\n\nIn src/runtime/completion.ts: (1) saveCompletionWithEvidence writes the record via fs.appendFileSync('.roadmap/completed.jsonl', JSON.stringify(record)+'\\n') — NO read-modify-write of a whole array. (2) loadCompletionsWithEvidence reads completed.jsonl when it exists: split on \\n, filter empty, JSON.parse per line, fold into a Map keyed by `${dagId ?? ''}::${nodeId}` keeping the LAST occurrence — the fix for cross-round node-id collision. When completed.jsonl is absent, fall back to the legacy completed.json array. (3) CompletionStore.hasPassing(nodeId)/filterByDagId(dagId) still resolve correctly: filterByDagId narrows to records whose dagId === arg OR undefined, within which nodeId is unique. Record shape UNCHANGED. Pair src/runtime/completion.test.ts proving the falsifiers in sidecar.test_cases (unit · refactor claim → unit tests).",
       "produces": [
-        "viewer/test/baseline-capture.mjs",
-        ".roadmap/round-r5/b-baseline-capture.json"
+        "src/runtime/completion.ts",
+        "src/runtime/completion.test.ts",
+        ".roadmap/round-r6/m-jsonl-store.json"
       ],
       "consumes": [
-        ".roadmap/round-r5/init.json"
+        ".roadmap/round-r6/init.json"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": ".roadmap/round-r5/b-baseline-capture.json"
+          "target": ".roadmap/round-r6/m-jsonl-store.json"
         },
         {
           "type": "shell",
-          "command": "test $(jq '.screenshots | length' .roadmap/round-r5/b-baseline-capture.json) -ge 2"
+          "command": "grep -q 'appendFileSync' src/runtime/completion.ts && grep -q 'completed.jsonl' src/runtime/completion.ts"
         },
         {
           "type": "shell",
-          "command": "test $(jq -r '.screenshots[0].sha256' .roadmap/round-r5/b-baseline-capture.json) != $(jq -r '.screenshots[1].sha256' .roadmap/round-r5/b-baseline-capture.json)"
+          "command": "cd /home/griffin/src/.dev/roadmap && pnpm vitest run src/runtime/completion.test.ts"
+        },
+        {
+          "type": "shell",
+          "command": "cd /home/griffin/src/.dev/roadmap && pnpm run check"
         }
       ]
     },
-    "i-idle-composable": {
-      "id": "i-idle-composable",
-      "desc": "Build a useIdle composable that signals when the user has stopped looking\n\nNew file viewer/src/composables/useIdle.ts exporting useIdle(): Ref<boolean>. Idle = OR of three signals: document.hidden via visibilitychange listener, !document.hasFocus() via focus/blur listeners, and inactivity timer (no pointermove/keydown for IDLE_THRESHOLD_MS, default 12000). Listeners attach via onMounted/onScopeDispose so the composable is safe to call inside any setup(). Includes a vitest unit test that fakes timers, simulates each signal independently, and asserts the ref flips correctly. The composable does NOT touch the DOM beyond reading document state — binding happens in i-idle-binding.",
+    "x-drop-array-path": {
+      "id": "x-drop-array-path",
+      "desc": "Remove the dead whole-array rewrite surface and the redundant legacy completion path\n\nSUBTRACTION node. Once m-jsonl-store lands the append-only path, the whole-array re-serialize (atomicWriteJson of Array.from(completions.values()) in the save path) and the legacy non-evidence saveCompletion/loadCompletions pair (src/runtime/completion.ts l.224-276) are dead weight — callers use the evidence variants. Delete them completely (user-global rule 5: no 'removed' comments, no _-prefixed stubs). Update any remaining caller to the evidence path. This is the §Round-must-remove discipline: the corruption-prone surface must leave, not merely be bypassed. Receipt records the removed symbol names + line ranges for forensic reconstruction.",
       "produces": [
-        "viewer/src/composables/useIdle.ts",
-        "viewer/src/composables/useIdle.test.ts",
-        ".roadmap/round-r5/i-idle-composable.json"
+        ".roadmap/round-r6/x-drop-array-path.json"
       ],
       "consumes": [
-        ".roadmap/round-r5/init.json"
+        "src/runtime/completion.ts",
+        ".roadmap/round-r6/m-jsonl-store.json"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": "viewer/src/composables/useIdle.ts"
+          "target": ".roadmap/round-r6/x-drop-array-path.json"
         },
         {
           "type": "shell",
-          "command": "cd viewer && pnpm vitest run src/composables/useIdle.test.ts"
+          "command": "test $(grep -c 'Array.from(completions.values())' src/runtime/completion.ts) -eq 0"
         },
         {
           "type": "shell",
-          "command": "grep -q 'visibilitychange' viewer/src/composables/useIdle.ts && grep -q 'pointermove' viewer/src/composables/useIdle.ts && grep -q 'IDLE_THRESHOLD_MS' viewer/src/composables/useIdle.ts"
+          "command": "cd /home/griffin/src/.dev/roadmap && pnpm run check && pnpm run build"
         }
       ]
     },
-    "u-calm-toggle": {
-      "id": "u-calm-toggle",
-      "desc": "Expose a calm-mode toggle in the toolbar that strips animations on demand\n\nIn viewer/src/App.vue, add a localStorage-backed ref `calm` (key 'viewer.calm', boolean), a toolbar button next to the existing focus/theme/dag-info buttons that toggles it, and bind data-calm on the <main class='viewer-shell'> root. Button label 'calm', aria-pressed, title explaining it. Persist on change via a watcher. This node ONLY adds the calm half — it does NOT bind data-idle (that's i-idle-binding). Touches App.vue but produces a marker so the App.vue edit serializes against i-idle-binding.",
+    "m-migrate-ledger": {
+      "id": "m-migrate-ledger",
+      "desc": "Ship an idempotent migration helper + CLI converting completed.json → completed.jsonl without deleting the source\n\nNew file src/lib/ledger-migrate.ts exporting migrateCompletedJsonToJsonl(repoRoot): { migrated:boolean, count:number, reason?:string }. If .roadmap/completed.jsonl exists → {migrated:false, reason:'jsonl-exists'} (idempotent). Else if completed.json parses to an array → write each entry as a \\n-terminated line and return {migrated:true, count}. Else → {migrated:false, reason:'no-source'}. MUST NOT delete or git rm completed.json. Wire `case 'migrate-ledger'` into bin/roadmap.ts emitting the result JSON. Pair src/lib/ledger-migrate.test.ts: fresh migration, idempotent re-run, no-source, and completed.json still present post-migration.",
       "produces": [
-        ".roadmap/round-r5/u-calm-toggle.json"
+        "src/lib/ledger-migrate.ts",
+        "src/lib/ledger-migrate.test.ts",
+        ".roadmap/round-r6/m-migrate-ledger.json"
       ],
       "consumes": [
-        ".roadmap/round-r5/init.json"
+        ".roadmap/round-r6/x-drop-array-path.json"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": ".roadmap/round-r5/u-calm-toggle.json"
+          "target": ".roadmap/round-r6/m-migrate-ledger.json"
         },
         {
           "type": "shell",
-          "command": "grep -q 'data-calm' viewer/src/App.vue && grep -q 'viewer.calm' viewer/src/App.vue"
+          "command": "grep -q 'migrate-ledger' bin/roadmap.ts"
         },
         {
           "type": "shell",
-          "command": "cd viewer && pnpm run build"
+          "command": "cd /home/griffin/src/.dev/roadmap && pnpm vitest run src/lib/ledger-migrate.test.ts"
+        },
+        {
+          "type": "shell",
+          "command": "cd /home/griffin/src/.dev/roadmap && pnpm run build"
         }
       ]
     },
-    "i-idle-binding": {
-      "id": "i-idle-binding",
-      "desc": "Wire useIdle and calm-mode to data-attributes on the viewer shell\n\nIn viewer/src/App.vue, import useIdle from the new composable, instantiate it at setup level, and bind data-idle on the same <main class='viewer-shell'> root that u-calm-toggle wired data-calm to. After this node lands, the viewer-shell carries `data-idle='true|false'` and `data-calm='true|false'` reactively. No CSS rules are added here — those land in g-*. The point of separation is that g-* nodes can grep for the attrs to confirm they're plumbed before adding selectors that consume them.",
+    "o-head-authority": {
+      "id": "o-head-authority",
+      "desc": "Make fleet orient treat head.json as the authoritative active DAG, and assert dagId non-null when a head exists\n\nIn src/cli/orient.ts runFleetOrient: when a repo has .roadmap/head.json, build dagFiles from that single head (dagId = head.id) INSTEAD of expanding rc.activeDAGs into the batch. Stale heads must no longer flood repoBatch or null the dagId: if head.json exists, dagFiles=[{dagPath:head.json, dagId:head.id}] and repos[].dagId resolves non-null. Only when head.json is absent do we fall back to scanning heads/. Additionally, when head.json is present but the computed repos[].dagId is null, push a blocker ('null dagId with live head.json in <repo> — batch source has drifted'). Restores the head-as-source-of-truth invariant symptom-1 violated.",
       "produces": [
-        "viewer/src/App.vue",
-        ".roadmap/round-r5/i-idle-binding.json"
+        "src/cli/orient.ts",
+        ".roadmap/round-r6/o-head-authority.json"
       ],
       "consumes": [
-        "viewer/src/composables/useIdle.ts",
-        ".roadmap/round-r5/i-idle-composable.json",
-        ".roadmap/round-r5/u-calm-toggle.json"
+        ".roadmap/round-r6/init.json"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": ".roadmap/round-r5/i-idle-binding.json"
+          "target": ".roadmap/round-r6/o-head-authority.json"
         },
         {
           "type": "shell",
-          "command": "grep -q 'data-idle' viewer/src/App.vue && grep -q 'useIdle' viewer/src/App.vue"
+          "command": "grep -q 'head.json' src/cli/orient.ts"
         },
         {
           "type": "shell",
-          "command": "cd viewer && pnpm run build"
+          "command": "cd /home/griffin/src/.dev/roadmap && pnpm run check && pnpm run build"
         }
       ]
     },
-    "r-pearl-simplify": {
-      "id": "r-pearl-simplify",
-      "desc": "Drop the second pearl layer and cap the remaining pearl's overdraw\n\nIn viewer/src/styles/dag-theme.css, remove the .viewer-shell::after pearl rule (the counter-rotating second layer) and its associated keyframes/properties (pearl-rotate-rev, --pearl-angle-2). Change the surviving .viewer-shell::before from inset:-50% to inset:0 — the rotation no longer needs the off-screen origin trick because the gradient stops are theme-derived and look fine bounded to the viewport. This is unconditional: no idle/calm gating, just a permanent cost cut. Visual diff is acceptable per session conversation: ~50% pearl GPU for ~15% visual richness loss is the deliberate tradeoff. Receipt records the line ranges removed for forensic reconstruction.",
+    "o-prune-sweep": {
+      "id": "o-prune-sweep",
+      "desc": "Add a heads sweep that marks fully-complete heads done so scanActiveDAGs stops returning phantoms\n\nNew file src/lib/heads-sweep.ts exporting sweepCompletedHeads(repoRoot): { swept:string[], scanned:number }. For each .roadmap/heads/*.json without _lineage.completedAt, load the repo's completion store and test whether EVERY node id of that head has a passing receipt (filterByDagId(head.id).hasPassing for all nodes). If so, stamp _lineage.completedAt=now and add its dagId to swept. Idempotent: a head already carrying completedAt is skipped. Wire `case 'sweep-heads'` into bin/roadmap.ts emitting JSON. Pair src/runtime/fleet.test.ts proving scanActiveDAGs shrinks after a sweep on a fixture where one head is fully complete and one is not. This is the PRUNE half of the user's 'both' scope; o-head-authority is the AUTHORITY half.",
       "produces": [
-        ".roadmap/round-r5/r-pearl-simplify.json"
+        "src/lib/heads-sweep.ts",
+        "src/runtime/fleet.test.ts",
+        ".roadmap/round-r6/o-prune-sweep.json"
       ],
       "consumes": [
-        ".roadmap/round-r5/init.json"
+        ".roadmap/round-r6/o-head-authority.json",
+        ".roadmap/round-r6/m-migrate-ledger.json"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": ".roadmap/round-r5/r-pearl-simplify.json"
+          "target": ".roadmap/round-r6/o-prune-sweep.json"
         },
         {
           "type": "shell",
-          "command": "test $(grep -c 'viewer-shell::after' viewer/src/styles/dag-theme.css) -eq 0"
+          "command": "grep -q 'sweep-heads' bin/roadmap.ts && grep -q 'completedAt' src/lib/heads-sweep.ts"
         },
         {
           "type": "shell",
-          "command": "test $(grep -c 'pearl-rotate-rev' viewer/src/styles/dag-theme.css) -eq 0"
+          "command": "cd /home/griffin/src/.dev/roadmap && pnpm vitest run src/runtime/fleet.test.ts"
         },
         {
           "type": "shell",
-          "command": "grep -q 'inset: 0' viewer/src/styles/dag-theme.css || grep -q 'inset:0' viewer/src/styles/dag-theme.css"
-        },
-        {
-          "type": "shell",
-          "command": "cd viewer && pnpm run build"
+          "command": "cd /home/griffin/src/.dev/roadmap && pnpm run build"
         }
       ]
     },
-    "r-halo-simplify": {
-      "id": "r-halo-simplify",
-      "desc": "Collapse the hover halo's two drop-shadow filters to one\n\nIn viewer/src/styles/dag-theme.css, the .glass-surface:hover::after rule currently stacks `drop-shadow(0 0 10px var(--accent-gold)) drop-shadow(0 0 24px oklch(0.66 0.18 280 / 0.5))`. Drop the second drop-shadow (the wider purple bloom). Keep the first gold drop-shadow so the halo still reads as illuminated. Receipt records the before/after filter strings.",
+    "t-trail-fields": {
+      "id": "t-trail-fields",
+      "desc": "Emit top-level node + ok on the advance trail row (the operator's grep expectation)\n\nIn src/cli/advance.ts, the advance trail append (currently {ts,cmd,note,repo,position,level,detail:{completed,checks,passed}}) gains two top-level fields: node (the completed node id, = detail.completed) and ok (boolean, = detail.passed). Additive — existing fields stay. Satisfies symptom-3's grep expectation (jq '.node, .ok') without changing the trail's meaning. Pair a test asserting an advance writes a trail row whose top-level node and ok are populated (not absent).",
       "produces": [
-        ".roadmap/round-r5/r-halo-simplify.json"
+        ".roadmap/round-r6/t-trail-fields.json"
       ],
       "consumes": [
-        ".roadmap/round-r5/r-pearl-simplify.json"
+        ".roadmap/round-r6/init.json"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": ".roadmap/round-r5/r-halo-simplify.json"
+          "target": ".roadmap/round-r6/t-trail-fields.json"
         },
         {
           "type": "shell",
-          "command": "test $(awk '/\\.glass-surface:hover::after/,/^}/' viewer/src/styles/dag-theme.css | grep -c drop-shadow) -eq 1"
+          "command": "grep -q 'node:' src/cli/advance.ts && grep -q 'ok:' src/cli/advance.ts"
         },
         {
           "type": "shell",
-          "command": "cd viewer && pnpm run build"
+          "command": "cd /home/griffin/src/.dev/roadmap && pnpm run build"
         }
       ]
     },
-    "g-idle-pause-rules": {
-      "id": "g-idle-pause-rules",
-      "desc": "Pause pearl, halo, and SVG node animations whenever the viewer is idle\n\nIn viewer/src/styles/dag-theme.css, add a block scoped under .viewer-shell[data-idle='true'] that sets animation-play-state: paused on every animated rule: .viewer-shell::before (pearl rotate), .glass-surface:hover::after (halo rotate), .dag-svg .node--in-progress .node-rainbow-rect (stroke-march + glow-modulate), .dag-svg .edge--active (active-edge march), .dag-foil-halo::before (foil rotate). This complements the existing prefers-reduced-motion block (do not duplicate; if any rule is in both, leave it). After this node, switching tabs in the dev server should visibly halt the pearl rotation and the in-progress node glow.",
+    "h-advance-failloud": {
+      "id": "h-advance-failloud",
+      "desc": "Fail loud when an advanced node is in head.json but unplaceable — distinguish stale-batch from not-ready\n\nIn src/cli/advance.ts advanceNode, the current gate rejects with a flat 'Node X is not in current batch'. Refine: when nodeId IS a key of dag.nodes but is neither in pos.position nor pos.batchRemaining, return a DISTINCT loud error — code BATCH_DRIFT, message 'Node <id> exists in head.json but the batch model cannot place it — the batch source has drifted from head.json; re-run orient/make', with a fix hint. When nodeId is genuinely not in dag.nodes, keep the existing 'Node not found' path. Makes symptom-1's signature self-announcing. Pair a test for both branches.",
       "produces": [
-        ".roadmap/round-r5/g-idle-pause-rules.json"
+        "src/cli/advance.ts",
+        ".roadmap/round-r6/h-advance-failloud.json"
       ],
       "consumes": [
-        ".roadmap/round-r5/r-halo-simplify.json",
-        ".roadmap/round-r5/i-idle-binding.json"
+        ".roadmap/round-r6/t-trail-fields.json"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": ".roadmap/round-r5/g-idle-pause-rules.json"
+          "target": ".roadmap/round-r6/h-advance-failloud.json"
         },
         {
           "type": "shell",
-          "command": "grep -q \"viewer-shell\\[data-idle\" viewer/src/styles/dag-theme.css"
+          "command": "grep -q 'BATCH_DRIFT' src/cli/advance.ts"
         },
         {
           "type": "shell",
-          "command": "grep -q 'animation-play-state: paused' viewer/src/styles/dag-theme.css"
-        },
-        {
-          "type": "shell",
-          "command": "cd viewer && pnpm run build"
+          "command": "cd /home/griffin/src/.dev/roadmap && pnpm run check && pnpm run build"
         }
       ]
     },
-    "g-calm-hide-rules": {
-      "id": "g-calm-hide-rules",
-      "desc": "Hide pearl entirely and disable the halo when calm mode is active\n\nIn viewer/src/styles/dag-theme.css, add a block scoped under .viewer-shell[data-calm='true']: pearl ::before sets display:none, halo .glass-surface:hover::after sets content:none (kills the pseudo entirely), and in-progress node animations are removed (animation: none). Calm is a strict superset of idle — anything paused in idle is fully removed in calm. Idle is ephemeral (auto-on/off); calm is user-pinned.",
+    "d-doctrine-sync": {
+      "id": "d-doctrine-sync",
+      "desc": "Sync CLAUDE.md and .gitignore to the new ledger reality\n\nUpdate the project CLAUDE.md '.roadmap/ File Topology' block: completed.json → completed.jsonl (append-only · jsonl · gitignored), and the CLI block: add migrate-ledger and sweep-heads commands. Add .roadmap/completed.jsonl to .gitignore (sibling to the existing completed.json line). Doctrine is part of the substrate (§Audit-must-test sibling: the map must not drift from the territory). Receipt records the edited anchors.",
       "produces": [
-        "viewer/src/styles/dag-theme.css",
-        ".roadmap/round-r5/g-calm-hide-rules.json"
+        "CLAUDE.md",
+        ".gitignore",
+        ".roadmap/round-r6/d-doctrine-sync.json"
       ],
       "consumes": [
-        ".roadmap/round-r5/g-idle-pause-rules.json"
+        ".roadmap/round-r6/o-prune-sweep.json",
+        ".roadmap/round-r6/h-advance-failloud.json"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": ".roadmap/round-r5/g-calm-hide-rules.json"
+          "target": ".roadmap/round-r6/d-doctrine-sync.json"
         },
         {
           "type": "shell",
-          "command": "grep -q \"viewer-shell\\[data-calm\" viewer/src/styles/dag-theme.css"
-        },
-        {
-          "type": "shell",
-          "command": "grep -q 'display: none' viewer/src/styles/dag-theme.css"
-        },
-        {
-          "type": "shell",
-          "command": "cd viewer && pnpm run build"
+          "command": "grep -q 'completed.jsonl' .gitignore && grep -q 'completed.jsonl' CLAUDE.md"
         }
       ]
     },
-    "v-idle-probe": {
-      "id": "v-idle-probe",
-      "desc": "Verify the idle/calm state machine actually pauses animations (puppeteer integration)\n\nExtend viewer/test/idle-probe.mjs with three test phases that all run under puppeteer-core + /usr/bin/google-chrome-stable: (P1) ACTIVE — load viewer, screenshot at T=0 and T=1s, assert sha256 differ (animation must be running normally). (P2) IDLE — dispatch visibilitychange with document.hidden=true, screenshot at T=0 and T=2s, assert sha256 EQUAL (animations paused). (P3) CALM — click the calm toolbar button, screenshot at T=0 and T=2s, assert EQUAL AND assert getComputedStyle on .viewer-shell::before reports display:none. Persist results to .roadmap/round-r5/v-idle-probe.json. The script exits non-zero if any phase fails. This IS the load-bearing convergence gate — every claim of the round must survive these three assertions.",
+    "v-self-host": {
+      "id": "v-self-host",
+      "desc": "Self-host gate: a fixture proves collision, flood, and clobber are all defeated\n\nNew file test/ledger-self-host.mjs — a node script building throwaway temp fixtures and asserting three phases, writing pass flags to .roadmap/round-r6/v-self-host.json: (P1) COLLISION — append two completion records with the same nodeId under different dagId to a fixture completed.jsonl, load via the built engine's reader, assert BOTH survive (folded by (dagId,nodeId)). (P2) FLOOD — construct a fixture repo with a head.json (one DAG, known frontier) plus 50 stale heads/*.json lacking _lineage.completedAt, run the built roadmap orient with fleet authority, assert repos[].dagId === the head's id (non-null) and the batch === the head's frontier — NOT 51 phantoms. (P3) CLOBBER — spawn N=20 concurrent appends to a fixture completed.jsonl, assert all 20 lines land. Exits non-zero if any phase fails. This is the load-bearing falsifier (integration · behavioral claim → integration test).",
       "produces": [
-        "viewer/test/idle-probe.mjs",
-        ".roadmap/round-r5/v-idle-probe.json"
+        "test/ledger-self-host.mjs",
+        ".roadmap/round-r6/v-self-host.json"
       ],
       "consumes": [
-        ".roadmap/round-r5/g-calm-hide-rules.json",
-        ".roadmap/round-r5/i-idle-binding.json"
+        ".roadmap/round-r6/x-drop-array-path.json",
+        ".roadmap/round-r6/o-prune-sweep.json",
+        ".roadmap/round-r6/d-doctrine-sync.json"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": ".roadmap/round-r5/v-idle-probe.json"
+          "target": ".roadmap/round-r6/v-self-host.json"
         },
         {
           "type": "shell",
-          "command": "test $(jq -r '.phases[] | select(.id==\"active\") | .pass' .roadmap/round-r5/v-idle-probe.json) = true"
+          "command": "test $(jq -r '.phases[] | select(.id==\"collision\") | .pass' .roadmap/round-r6/v-self-host.json) = true"
         },
         {
           "type": "shell",
-          "command": "test $(jq -r '.phases[] | select(.id==\"idle\") | .pass' .roadmap/round-r5/v-idle-probe.json) = true"
+          "command": "test $(jq -r '.phases[] | select(.id==\"flood\") | .pass' .roadmap/round-r6/v-self-host.json) = true"
         },
         {
           "type": "shell",
-          "command": "test $(jq -r '.phases[] | select(.id==\"calm\") | .pass' .roadmap/round-r5/v-idle-probe.json) = true"
+          "command": "test $(jq -r '.phases[] | select(.id==\"clobber\") | .pass' .roadmap/round-r6/v-self-host.json) = true"
         }
       ]
     },
-    "v-perf-delta": {
-      "id": "v-perf-delta",
-      "desc": "Compare baseline vs idle screenshots and confirm GPU goes quiet\n\nRead .roadmap/round-r5/b-baseline-capture.json (pre-fix idle screenshots, which differed) and .roadmap/round-r5/v-idle-probe.json (post-fix idle screenshots, which must match). Assert: baseline screenshots differ (sanity — animations were running), post-fix idle screenshots are byte-equal (animations stopped). Also report compositor metrics delta if the CDP capture ran. Receipt is informational + the assertion is the gate.",
+    "t-review": {
+      "id": "t-review",
+      "desc": "Terminal falsifier: full suite green, type-check clean, DAG-define clean, dead surface confirmed gone, scope fence held\n\nFinal convergence gate consuming the self-host result. Assert: pnpm run check (tsc --noEmit), pnpm test (full vitest suite — no regressions elsewhere in the engine), and pnpm run build all pass; the whole-array rewrite and legacy saveCompletion are GONE from src/runtime/completion.ts (subtraction budget met); and no file outside /home/griffin/src/.dev/roadmap was modified (scope fence). Receipt records build presence, the removed-symbol confirmation, and a one-line summary of the three landings (ledger jsonl, orient authority+prune, trail+fail-loud).",
       "produces": [
-        ".roadmap/round-r5/v-perf-delta.json"
+        ".roadmap/round-r6/t-review.json"
       ],
       "consumes": [
-        ".roadmap/round-r5/b-baseline-capture.json",
-        ".roadmap/round-r5/v-idle-probe.json"
+        ".roadmap/round-r6/v-self-host.json"
       ],
       "validate": [
         {
           "type": "artifact-exists",
-          "target": ".roadmap/round-r5/v-perf-delta.json"
+          "target": ".roadmap/round-r6/t-review.json"
         },
         {
           "type": "shell",
-          "command": "test $(jq -r '.assertions.baseline_animated' .roadmap/round-r5/v-perf-delta.json) = true"
+          "command": "cd /home/griffin/src/.dev/roadmap && test $(grep -c 'function saveCompletion(' src/runtime/completion.ts) -eq 0 && test $(grep -c 'Array.from(completions.values())' src/runtime/completion.ts) -eq 0"
         },
         {
           "type": "shell",
-          "command": "test $(jq -r '.assertions.idle_quiet' .roadmap/round-r5/v-perf-delta.json) = true"
-        }
-      ]
-    },
-    "term": {
-      "id": "term",
-      "desc": "Confirm build clean, type-check clean, and manually smoke the toolbar in dev\n\nFinal convergence assertion. pnpm tsc --noEmit, pnpm vitest run, pnpm run build all clean. Manual smoke via dev-server screenshot: verify the calm toggle is visible in the toolbar, click it, screenshot shows pearl absent. Receipt records the build hashes + the smoke screenshots' sha256.",
-      "produces": [
-        ".roadmap/round-r5/term.json"
-      ],
-      "consumes": [
-        ".roadmap/round-r5/v-perf-delta.json"
-      ],
-      "validate": [
-        {
-          "type": "artifact-exists",
-          "target": ".roadmap/round-r5/term.json"
+          "command": "cd /home/griffin/src/.dev/roadmap && pnpm run check && pnpm run build"
         },
         {
           "type": "shell",
-          "command": "cd viewer && pnpm vitest run src/composables/useIdle.test.ts"
-        },
-        {
-          "type": "shell",
-          "command": "cd viewer && pnpm run build"
+          "command": "cd /home/griffin/src/.dev/roadmap && pnpm test"
         }
       ]
     }
@@ -320,9 +297,9 @@
     "schemaVersion": 1,
     "engine": "spec-kit",
     "version": "1.0.0",
-    "compile_hash": "496e4a74114ae921cc67a9a74ea4b65f76421b0c8e4406221ad16aa2ee068c1d",
-    "spec_sha": "e58af1ac5baee362bbaa4f6516a6ee5fb0dd4258715c9cf94da7cae368bf2f49",
-    "importedAt": "2026-05-07T18:03:26.688Z",
-    "dagId": "roadmap-r5-viewer-idle"
+    "compile_hash": "074ca101985ab989f6b0a89d5758cdfc34a971beae7a465e49d33ad9fde1d937",
+    "spec_sha": "97ee291e5cc70242cd3e3771e81ef3a7463d06c428ce533cf91794ca2a9b3351",
+    "importedAt": "2026-06-07T14:17:48.945Z",
+    "dagId": "roadmap-r6-ledger-integrity"
   }
 }
