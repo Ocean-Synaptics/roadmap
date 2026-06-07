@@ -112,7 +112,10 @@ roadmap advance <node-id> --note "<what>" # run validators, record completion
        │
        ├────▷ [📄 head.json]           active DAG + _origin provenance
        │
-       ├────▷ [✅ completed.json]      completion receipts (append-heavy · gitignored)
+       ├────▷ [✅ completed.jsonl]     completion receipts · append-only, one JSON/line ·
+       │                              folded by (dagId, nodeId) last-wins · gitignored ·
+       │                              legacy completed.json read as fallback union ·
+       │                              `roadmap migrate-ledger` seeds jsonl from the array
        │
        ├────▷ [📜 trail.jsonl]         event log + mutations (append-only · gitignored)
        │
