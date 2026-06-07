@@ -69,11 +69,19 @@ async function advanceNode(
 
   const pos = await crossOrientWithState(dag, repoRoot);
   if (!pos.batchRemaining.includes(nodeId) && !pos.position.includes(nodeId)) {
+    // The node is present in dag.nodes (we passed the not-found guard above) yet
+    // orient could not situate it in any computed batch. That is not a "wrong node"
+    // — it is BATCH_DRIFT: the DAG and the completion ledger have desynced, so a node
+    // that should be on the frontier has fallen off it. Surface it loud, never silent.
     json({
-      error: `Node ${nodeId} is not in current batch`,
+      code: 'BATCH_DRIFT',
+      error: `BATCH_DRIFT: node ${nodeId} exists in head.json but is not on the current frontier`,
+      detail: 'The node is present in the DAG yet orient cannot place it in any batch — '
+        + 'most likely a completion-ledger desync between head.json and the receipts.',
       currentBatch: pos.position,
       remaining: pos.batchRemaining,
-      fix: 'Can only advance nodes in the current batch',
+      fix: 'Re-orient (roadmap orient --note "...") and inspect .roadmap/completed.jsonl '
+        + 'for receipts that desync this node from the frontier.',
     }, outputOpts);
     process.exit(1);
     return;
