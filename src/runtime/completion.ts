@@ -1,18 +1,11 @@
 // @module runtime/completion
 // @description Unified completion module — types, persistence, store, evidence
-// @exports ValidatorResult, RunnerInfo, CompletionRecord, EvidenceRecord, CompletionRecordWithEvidence, CompletionStore, CompletionStoreError, loadCompletions, saveCompletion, isNodeComplete, getCompletedNodeIds, validateEntry, migrateEntry, hasPassingReceipt, loadCompletionsWithEvidence, saveCompletionWithEvidence
+// @exports ValidatorResult, RunnerInfo, CompletionRecord, EvidenceRecord, CompletionRecordWithEvidence, CompletionStore, CompletionStoreError, isNodeComplete, getCompletedNodeIds, validateEntry, migrateEntry, hasPassingReceipt, loadCompletionsWithEvidence, saveCompletionWithEvidence
 // @entry roadmap/completion
 
-import { existsSync, readFileSync, writeFileSync, mkdirSync, renameSync, appendFileSync } from 'node:fs';
+import { existsSync, readFileSync, mkdirSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { execSync } from 'node:child_process';
-
-/** Atomic write: write to tmp, then rename. Prevents partial writes on crash or race. */
-function atomicWriteJson(filePath: string, data: unknown): void {
-  const tmp = filePath + '.tmp';
-  writeFileSync(tmp, JSON.stringify(data, null, 2) + '\n');
-  renameSync(tmp, filePath);
-}
 
 // ── Types (from completion-store.ts) ────────────────────────────────────────
 
@@ -256,61 +249,6 @@ export function saveCompletionWithEvidence(
 }
 
 // ── Tracker functions (from completion-tracker.ts) ──────────────────────────
-
-/** Load completed node records from .roadmap/completed.json */
-export function loadCompletions(repoRoot: string): Map<string, CompletionRecord> {
-  const completionPath = join(repoRoot, '.roadmap', 'completed.json');
-
-  if (!existsSync(completionPath)) {
-    return new Map();
-  }
-
-  try {
-    const data = JSON.parse(readFileSync(completionPath, 'utf-8'));
-    const records = new Map<string, CompletionRecord>();
-
-    if (Array.isArray(data)) {
-      for (const record of data) {
-        records.set(record.nodeId, record);
-      }
-    }
-
-    return records;
-  } catch {
-    return new Map();
-  }
-}
-
-/** Save a node completion record */
-export function saveCompletion(
-  repoRoot: string,
-  nodeId: string,
-  owner?: string,
-  checkpointId?: string,
-): void {
-  const completionPath = join(repoRoot, '.roadmap', 'completed.json');
-  const dirPath = join(repoRoot, '.roadmap');
-
-  // Ensure .roadmap directory exists
-  if (!existsSync(dirPath)) {
-    mkdirSync(dirPath, { recursive: true });
-  }
-
-  // Load existing completions
-  const completions = loadCompletions(repoRoot);
-
-  // Add/update the new completion
-  completions.set(nodeId, {
-    nodeId,
-    completedAt: new Date().toISOString(),
-    owner,
-    checkpointId,
-  });
-
-  // Write back to file (atomic: tmp + rename)
-  const recordArray = Array.from(completions.values());
-  atomicWriteJson(completionPath, recordArray);
-}
 
 /** Check if a node has been completed */
 export function isNodeComplete(completions: Map<string, CompletionRecord>, nodeId: string): boolean {
