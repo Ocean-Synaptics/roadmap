@@ -54,7 +54,7 @@ if (cmd === 'version') {
 }
 
 // --- Known commands gate ---
-const KNOWN_COMMANDS = new Set(['orient', 'advance', 'make', 'init', 'status', 'dag', 'api', 'help', 'viewer']);
+const KNOWN_COMMANDS = new Set(['orient', 'advance', 'make', 'init', 'status', 'dag', 'api', 'help', 'viewer', 'migrate-ledger']);
 if (!KNOWN_COMMANDS.has(cmd)) {
   const available = listCommands().map(c => c.command);
   emit({ ok: false, cmd: _outputOpts.cmd, error: {
@@ -81,7 +81,7 @@ if (args.slice(1).some(a => a === '--help' || a === '-h')) {
 }
 
 // --- Note requirement ---
-const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'dag', 'api', 'init', 'viewer']);
+const NOTE_EXEMPT = new Set(['help', '--help', '-h', 'dag', 'api', 'init', 'viewer', 'migrate-ledger']);
 const isOrientCheck = (cmd === 'orient') && args.includes('--check');
 if (isOrientCheck) NOTE_EXEMPT.add('orient');
 
@@ -149,6 +149,11 @@ async function main() {
       case 'dag':       return await cliDag.run(args, repoRoot, note, hasLocalDAG, _outputOpts);
       case 'init':      return await cliInit.run(args, repoRoot, note ?? '', _outputOpts);
       case 'viewer':    return await cliViewer.run(args, repoRoot, note ?? '', _outputOpts);
+      case 'migrate-ledger': {
+        const { migrateLedger } = await import('../src/lib/ledger-migrate.ts');
+        const result = migrateLedger(repoRoot);
+        return emit({ ok: true, cmd: _outputOpts.cmd, data: result }, _outputOpts);
+      }
       case 'api':       return cliApi.run(args, _outputOpts);
       case 'help':
       case '--help':
