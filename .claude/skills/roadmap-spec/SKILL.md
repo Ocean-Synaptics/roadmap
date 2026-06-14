@@ -17,19 +17,15 @@ misframes terminal classes.
 
 Required inventory · for each round's problem domain:
 
-1. Canonical artifacts        jq the four-or-five entries in model/canon/index.json
-                              that touch this domain · cite path + sha256 + status
-2. Cross-machine substrate    jq model/canon/forensic-sources.json for any
-                              .sources[] whose role intersects the domain · note
-                              .access (ssh host + paths) · .known_emitter_state
-                              (per-field empirical observations · KNOWN-BUG flags)
-3. Recent ephemeral substrate ls model/raw/<domain>/ · pick newest 1-3 epochs ·
-                              record actual VALUES not just field presence
-4. Deployed source state      if .access.remote_host present · ssh -O check the
-                              controlmaster socket · note LastWriteTime · grep for
-                              any in-flight integration markers
-5. Predecessor round receipts find prior-round receipts under this domain ·
-                              jq the carriers[] AND known limitations they named
+1. Extant artifacts          files · modules · configs the domain already owns ·
+                             cite path + a content hash + status
+2. External dependencies     substrate the domain reads but does not own — other
+                             repos · services · APIs · remote hosts · note how it
+                             is reached and any known-broken or in-flux state
+3. Recent generated state    logs · build outputs · run artifacts the domain
+                             emits · record actual VALUES, not just field presence
+4. Predecessor round receipts prior-round receipts under this domain · the
+                             carriers[] they named AND the limitations they admitted
 
 Emit the inventory as the spec's ## Substrate state at round boundary block.
 The DAG must declare for each new artifact it proposes: CONSUMES (extant) ·
@@ -37,10 +33,10 @@ SUPERSEDES (with named retirement) · NET-NEW (with justification why no extant
 substrate satisfies). NET-NEW without justification is forge-by-narrative at the
 DAG level.
 
-If inventory cannot be completed (operator authority required · ssh unreachable ·
-canonical artifact missing) · the spec must admit terminal class
-HONEST_RED_SUBSTRATE_INVENTORY_INCOMPLETE explicitly. The round cannot close
-GREEN if the inventory was skipped.
+If inventory cannot be completed (operator authority required · external
+substrate unreachable · expected artifact missing) · the spec must admit terminal
+class HONEST_RED_SUBSTRATE_INVENTORY_INCOMPLETE explicitly. The round cannot
+close GREEN if the inventory was skipped.
 
 🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪🟥🟧🟨🟩🟦🟪
 
@@ -110,6 +106,9 @@ then  <the human can ___>
 
 ## Round
 <round N · falsifier this round must satisfy · carriers from prior round>
+
+## Projected gain
+<the win this round REACHES FOR, as a number — expected rank-delta · coverage-points · fact-count. The terminal compares REALIZED vs PROJECTED: a green that lands below this is a SHALLOW green and triggers /roadmap-diffuse-shortfall, because agents stop too early on their own greens. No projection declared → shallow greens ship silently. Declare what you expect to gain, so the gap is detectable.>
 
 ## Authority map
 | domain | directories | allowed | forbidden |
