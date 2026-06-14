@@ -25,7 +25,7 @@ No waves. No batches. Ordering is consumes ↔ produces. When a predecessor clos
 
 ## Orchestrator vs worker
 
-Main conversation IS the orchestrator. Subagents can't spawn subagents — only main can. Worker = leaf. Routing, synthesis, frontier decisions stay in main.
+Main conversation IS the orchestrator. Routing, synthesis, and frontier decisions stay in main — not because subagents can't spawn (they can), but because roadmap-auto owns `head.json` and auto-commits, so keeping the git/advance loop in one serial orchestrator avoids racing the working tree.
 
 ```
 main         orient → summarize frontier internally → spawn workers (parallel where
@@ -111,7 +111,7 @@ Outcome mapping is mechanical. No agent judgment.
   "verdict":  "GREEN | AMBER | RED | GBD-r<N+1> | HONEST-RED | BLOCKED",
   "outcome":  "WIN | PARTIAL | LOSS | HONEST LOSS | EXOGENOUS",
   "artifacts": ["<paths>"],
-  "commits":  [{"repo": "fleet", "sha": "<hex>"}],
+  "commits":  [{"repo": "<repo>", "sha": "<hex>"}],
   "verify":   {"cmd": "...", "exit": 0, "summary": "<one line>"},
   "sniff":    {"category_match": true, "carrier_collapse": false, "stance_violation": false},
   "decisions": [{ "at": "...", "options": ["..."], "taken": "...", "why": "...", "carriers": ["..."]? }],
@@ -160,6 +160,8 @@ tractable in current scope?
 Carrier-without-tractability-check is the same anti-pattern as BLOCKED-without-diffusion. *"I'll note it as a carrier"* on work the agent could fix now is forge-by-narrative at the carrier level.
 
 Sniff results + tractability check record in `receipt.sniff` + `receipt.decisions[]`.
+
+> §Sniff-is-the-orchestrators-adversary — the sniff exists to catch the orchestrator's own proxy-drift, not the worker's. (Depth-story lives wherever a project keeps doctrine; e.g. fleet's model/doctrine/anchors.json · r164 empirical instance · 0→127 stratum-route-wiring catch.)
 
 ## §Felt-blocked-triggers-diffusion
 
@@ -220,6 +222,24 @@ If you write any of: *"pausing for checkpoint" · "natural sync point" · "conte
 Two READY nodes parallel-dispatch ONLY if `sidecar.domain` is disjoint from every in-flight dispatch. Overlapping → queue, dispatch next tick. Deterministic order on overlap: lexicographic by id.
 
 Parallelism is for concern-separation, encoded by the authority map. Two workers in the same domain = collision risk at no gain.
+
+### Model dispatch · per-node tier
+
+Spawn each node's worker on the model its work demands — not one model for the whole round:
+
+```
+FLOOR (mechanical):   plan-mode nodes     → best available model (strongest tier)
+                      execute-mode nodes  → sonnet
+UPGRADE (judgment):   RAISE an execute node to the best model when it is
+                      forge-critical · crossing-critical · authors the gates ·
+                      or touches the demo hero surface
+ALWAYS BEST:          any adversary / refutation / red-team worker — a weak
+                      falsifier is a rubber-stamp
+DEFAULT WHEN UNSURE:  best, never sonnet — wrongly-best costs tokens,
+                      wrongly-sonnet costs a missed forge
+```
+
+Write "best available model," never a hardcoded id — the policy must survive the next tier without an edit. Plan nodes that expand into subgraphs pass the policy down: a child plan node inherits best, a child execute node sonnet-unless-upgraded.
 
 ### BLOCKED handling · two-stage diffusion before human
 
@@ -299,6 +319,8 @@ Multiple workers in the same dispatch don't each re-run shared suites — the or
 ```
 
 §Iterate-don't-bail · the loop is the work · skipping is forge-by-narrative.
+
+**§Shortfall-triggers-the-loop · not only RED.** The loop above fires on any node whose REALIZED gain falls short of its PROJECTED gain. RED/AMBER is the obvious case — but a **shallow GREEN** (passed its falsifier yet under-delivered its projection) triggers it too. Agents stop too early on their own greens; a green below its projection is a shortfall wearing a win's color. Route every shortfall through `/roadmap-diffuse-shortfall` (the general diffusion trigger; supersedes the non-green-only `diffuse-on-not-green`). Detecting a shallow green requires the spec to have declared a projected gain — see roadmap-spec's projected-gain.
 
 ## Round carriers
 
