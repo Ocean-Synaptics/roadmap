@@ -128,6 +128,11 @@ doc: prose the agent loads on demand, not glue you wire by hand.
   roadmap-term       Assess convergence · successor with named carriers
 ```
 
+This `.claude/skills/` directory is the **canonical source** of the roadmap
+skills. Consuming repos should **symlink** to it rather than copy — copies
+drift. See [`.claude/skills/README.md`](../.claude/skills/README.md) §"Canonical
+source + symlink convention" for the exact per-skill and loop commands.
+
 For Claude Code, install by copying (or symlinking, if you want to track
 upstream):
 

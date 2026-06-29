@@ -17,6 +17,7 @@ Companion skills for the `roadmap` CLI. Each subdirectory contains a single `SKI
                      verdict ladder (GREEN/AMBER/RED/GBD/HONEST-RED/BLOCKED) ·
                      post-GREEN sniff · outcome vocabulary · trajectory patterns ·
                      terminal review inline (assess · threads · present · successor)
+  roadmap-term       Assess convergence, review session, write successor, close cleanly
 ```
 
 The chain: `orient → auto → (terminal inline) → spec → bootprompt → orient`.
@@ -26,6 +27,43 @@ fires). Spec consumes carriers via `inputs[]` of the successor and narrates them
 `dag_desc / Round`. Skill-as-floor: every dispatch brief carries a default code stance
 (subtract before adding · extend don't bolt · thin > fat · ~400 LOC) regardless of
 whether the host project has a tuned CLAUDE.md.
+
+## Canonical source + symlink convention
+
+**This directory is the canonical source of the roadmap skills.** The
+`roadmap-*` skills here are the single source of truth:
+
+```
+  roadmap-orient · roadmap-spec · roadmap-bootprompt · roadmap-auto ·
+  roadmap-term · roadmap-diffuse-shortfall
+```
+
+Consuming repos (e.g. fleet at `/home/griffin/src/fleet`) are meant to
+**symlink** to these, not copy. A symlink tracks upstream; a copy drifts the
+moment either side is edited, and a single source of truth is the entire point
+of consolidating them here.
+
+A consumer repo wires one skill like this:
+
+```sh
+ln -s /home/griffin/src/.dev/roadmap/.claude/skills/roadmap-spec \
+  <consumer-repo>/.claude/skills/roadmap-spec
+```
+
+Or symlink every canonical `roadmap-*` skill in a loop:
+
+```sh
+src=/home/griffin/src/.dev/roadmap/.claude/skills
+dst=<consumer-repo>/.claude/skills
+mkdir -p "$dst"
+for s in "$src"/roadmap-*/; do
+  ln -sfn "$s" "$dst/$(basename "$s")"
+done
+```
+
+**Copying is a stopgap that causes drift** — only fall back to `cp -r` when a
+target cannot follow a symlink (e.g. a sandbox that resolves links outside its
+root). If you copy, re-sync against this directory whenever it changes.
 
 ## Install
 
